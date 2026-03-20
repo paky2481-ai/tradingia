@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from gui.widgets.candlestick_chart import CandlestickChart
+from gui.widgets.oscillator_chart import OscillatorChart
 
 
 class ChartPanel(QWidget):
@@ -110,6 +111,11 @@ class ChartPanel(QWidget):
         )
         layout.addWidget(self._chart)
 
+        # ── Oscillator sub-chart (AI-selected, hidden by default) ──────
+        self._oscillator = OscillatorChart()
+        self._oscillator.hide()
+        layout.addWidget(self._oscillator)
+
         # ── Empty state ────────────────────────────────────────────────
         self._empty = QWidget()
         self._empty.setStyleSheet("background:#0d1117;")
@@ -153,6 +159,30 @@ class ChartPanel(QWidget):
 
     def apply_ma_settings(self, ma20: bool, ma50: bool, ma200: bool):
         self._chart.set_ma_visible(ma20, ma50, ma200)
+
+    def show_oscillator(self, column_name: str) -> None:
+        """Display the AI-selected oscillator sub-chart."""
+        if self._df is None:
+            return
+        # Compute indicator if not in df
+        df = self._df
+        if column_name not in df.columns:
+            try:
+                from indicators.technical import TechnicalIndicators
+                df = TechnicalIndicators.compute_all(df)
+                self._df = df
+            except Exception:
+                return
+
+        if column_name not in df.columns:
+            return
+
+        if column_name == "macd_hist" and "macd" in df.columns and "macd_signal" in df.columns:
+            self._oscillator.set_macd(df["macd"], df["macd_signal"], df["macd_hist"])
+        else:
+            self._oscillator.set_oscillator(column_name, df[column_name])
+
+        self._oscillator.show()
 
     def update_live_tick(self, bar: dict, symbol: str):
         """Update the last candle and info bar with a live tick."""

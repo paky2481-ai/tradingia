@@ -84,6 +84,57 @@ class MLSettings(BaseSettings):
         env_prefix = "ML_"
 
 
+class CycleSettings(BaseSettings):
+    hurst_min_window: int = 10
+    hurst_max_window: int = 100
+    fft_max_period: int = 50
+    fft_min_period: int = 4
+    # Regime thresholds
+    trending_hurst: float = 0.55
+    cycling_hurst: float = 0.45
+    adx_trend_threshold: float = 25.0
+
+    class Config:
+        env_prefix = "CYCLE_"
+
+
+class FundamentalSettings(BaseSettings):
+    enabled_asset_types: List[str] = ["stock", "forex", "commodity"]
+    cache_ttl_minutes: int = 60
+    # Stock scoring
+    fair_pe: float = 20.0
+    good_pe_low: float = 10.0
+    good_pe_high: float = 30.0
+    base_dividend_yield: float = 0.03
+    good_roe: float = 0.15
+    max_debt_equity: float = 2.0
+    good_growth: float = 0.10
+    # Central bank rates (overridable via env)
+    rate_usd: float = 5.50
+    rate_eur: float = 4.25
+    rate_gbp: float = 5.25
+    rate_jpy: float = 0.10
+    rate_aud: float = 4.35
+    rate_cad: float = 5.00
+    rate_chf: float = 1.75
+    rate_nzd: float = 5.50
+
+    class Config:
+        env_prefix = "FUND_"
+
+
+class AutoConfigSettings(BaseSettings):
+    enabled: bool = True
+    retune_interval_hours: int = 1
+    param_grid_lookback_bars: int = 300
+    min_history_for_meta: int = 50
+    # Number of top indicators to select per analysis
+    top_n_indicators: int = 8
+
+    class Config:
+        env_prefix = "AUTOCONF_"
+
+
 class NotificationSettings(BaseSettings):
     telegram_token: str = ""
     telegram_chat_id: str = ""
@@ -156,6 +207,9 @@ class Settings(BaseSettings):
     data: DataSettings = Field(default_factory=DataSettings)
     risk: RiskSettings = Field(default_factory=RiskSettings)
     ml: MLSettings = Field(default_factory=MLSettings)
+    cycle: CycleSettings = Field(default_factory=CycleSettings)
+    fundamental: FundamentalSettings = Field(default_factory=FundamentalSettings)
+    autoconfig: AutoConfigSettings = Field(default_factory=AutoConfigSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 

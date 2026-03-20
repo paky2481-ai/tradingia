@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 from gui.panels.chart_panel import ChartPanel
 from gui.panels.watchlist_panel import WatchlistPanel
 from gui.panels.data_panel import DataPanel
+from gui.panels.ai_analysis_panel import AIAnalysisPanel
 
 
 class LogPanel(QWidget):
@@ -95,6 +96,17 @@ class TradingMainWindow(QMainWindow):
             min_width=240, max_width=340,
         )
 
+        # ── AI Analysis panel (right, below Data) ─────────────────────
+        self._ai_panel = AIAnalysisPanel()
+        self._dock_ai = self._make_dock(
+            "AI Analysis", self._ai_panel,
+            Qt.DockWidgetArea.RightDockWidgetArea,
+            min_width=240, max_width=340,
+        )
+        # Tab AI Analysis with the Data dock
+        self.tabifyDockWidget(self._dock_data, self._dock_ai)
+        self._dock_data.raise_()   # Data tab visible by default
+
         # ── Log panel (bottom) ────────────────────────────────────────
         self._log_panel = LogPanel()
         self._dock_log = self._make_dock(
@@ -159,6 +171,16 @@ class TradingMainWindow(QMainWindow):
         tb.addAction(act_data)
 
         tb.addSeparator()
+
+        # AI Analysis toggle
+        act_ai = QAction("AI", self)
+        act_ai.setCheckable(True)
+        act_ai.setChecked(True)
+        act_ai.setToolTip("Toggle AI Analysis panel")
+        act_ai.toggled.connect(
+            lambda v: self._dock_ai.setVisible(v)
+        )
+        tb.addAction(act_ai)
 
         # Log toggle
         act_log = QAction("Log", self)
@@ -236,6 +258,12 @@ class TradingMainWindow(QMainWindow):
         # Data panel live tick → update chart
         self._data_panel.realtime_tick.connect(self._chart_panel.update_live_tick)
 
+        # AI panel oscillator selection → update chart sub-panel
+        self._ai_panel.oscillator_changed.connect(self._chart_panel.show_oscillator)
+
+        # AI panel analysis complete → log result
+        self._ai_panel.analysis_complete.connect(self._on_ai_analysis_complete)
+
     def _on_symbol_from_watchlist(self, symbol: str):
         """When user clicks a watchlist row, pre-fill data panel & load."""
         self._data_panel._symbol_input.setText(symbol)
@@ -248,6 +276,20 @@ class TradingMainWindow(QMainWindow):
         self._chart_panel.apply_ma_settings(**ma)
         self._lbl_status.setText(f"{symbol} [{timeframe}]  —  {len(df)} bars loaded")
         self._log(f"Loaded {symbol} [{timeframe}]: {len(df)} bars", color="#3fb950")
+
+        # Forward data to AI Analysis panel
+        from config.settings import settings
+        asset_type = settings.asset_type_map.get(symbol, "stock")
+        self._ai_panel.set_symbol(symbol, df, asset_type)
+
+    def _on_ai_analysis_complete(self, result):
+        regime = getattr(result, "regime", "?")
+        hurst = getattr(result, "hurst", 0.0)
+        strategy = getattr(result, "recommended_strategy", "?")
+        self._log(
+            f"AI [{result.symbol}] regime={regime} H={hurst:.3f} → {strategy}",
+            color="#a371f7",
+        )
 
     # ── Logging ────────────────────────────────────────────────────────────
 
