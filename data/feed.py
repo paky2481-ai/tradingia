@@ -217,6 +217,11 @@ class UniversalDataFeed:
     """
     Single interface for all asset types.
     Routes to appropriate underlying feed automatically.
+
+    Data priority:
+      1. 5-min pickle cache (fast, in-memory equivalent)
+      2. SQLite OHLCV store (long-term, survives restarts)
+      3. Live network (yfinance / CCXT)
     """
 
     def __init__(self):
@@ -225,9 +230,20 @@ class UniversalDataFeed:
         self.asset_map = settings.asset_type_map
         self._callbacks: Dict[str, List] = {}
         self._ws_tasks: Dict[str, asyncio.Task] = {}
+        # Lazy-loaded to avoid import cycle at module level
+        self._ohlcv_store = None
 
     def get_asset_type(self, symbol: str) -> str:
         return self.asset_map.get(symbol, "stock")
+
+    def _get_ohlcv_store(self):
+        if self._ohlcv_store is None:
+            try:
+                from database.ohlcv_store import ohlcv_store
+                self._ohlcv_store = ohlcv_store
+            except Exception:
+                self._ohlcv_store = False   # disabled
+        return self._ohlcv_store if self._ohlcv_store else None
 
     async def get_ohlcv(
         self,
@@ -238,14 +254,37 @@ class UniversalDataFeed:
         asset_type = self.get_asset_type(symbol)
         logger.debug(f"Fetching {symbol} ({asset_type}) [{timeframe}]")
 
-        # Try ccxt for crypto with API keys configured
+        # ── 1. Try ccxt for crypto with API keys configured ────────────
         if asset_type == "crypto" and settings.broker.ccxt_api_key:
             df = await self.ccxt_feed.fetch(symbol, timeframe, limit)
             if df is not None:
+                await self._persist(symbol, timeframe, df)
                 return df
 
-        # Default: yfinance
-        return await self.yf_feed.fetch(symbol, timeframe, limit)
+        # ── 2. Try yfinance (checks 5-min pickle cache internally) ─────
+        df = await self.yf_feed.fetch(symbol, timeframe, limit)
+        if df is not None:
+            await self._persist(symbol, timeframe, df)
+            return df
+
+        # ── 3. Fallback: SQLite long-term store ─────────────────────────
+        store = self._get_ohlcv_store()
+        if store is not None:
+            db_df = await store.get(symbol, timeframe, limit)
+            if db_df is not None:
+                logger.info(
+                    f"Network unavailable — using DB data for {symbol} {timeframe} "
+                    f"({len(db_df)} bars)"
+                )
+                return db_df
+
+        return None
+
+    async def _persist(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
+        """Background task: store bars in SQLite (fire-and-forget)."""
+        store = self._get_ohlcv_store()
+        if store is not None:
+            asyncio.create_task(store.store(symbol, timeframe, df))
 
     async def get_multiple_ohlcv(
         self,

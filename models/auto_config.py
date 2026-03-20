@@ -92,10 +92,12 @@ class AutoConfig:
             settings.ml.models_dir, "auto_config_results.pkl"
         )
 
-        # Load persisted state
+        # Load persisted state (pkl files for fast access)
         self._selector.load()
         self._meta.load()
         self._load_results()
+        # Lazy AI store (avoids import at module init)
+        self._ai_store = None
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -118,6 +120,8 @@ class AutoConfig:
         self._results[symbol] = result
         self._last_run[symbol] = datetime.utcnow()
         self._save_results()
+        # Persist to SQLite (fire-and-forget)
+        asyncio.create_task(self._save_to_db(result))
         return result
 
     def should_retune(self, symbol: str) -> bool:
@@ -398,6 +402,26 @@ class AutoConfig:
             oscillator_for_chart="rsi_14",
             confidence=0.5,
         )
+
+    def _get_ai_store(self):
+        if self._ai_store is None:
+            try:
+                from database.ai_store import ai_store
+                self._ai_store = ai_store
+            except Exception:
+                self._ai_store = False
+        return self._ai_store if self._ai_store else None
+
+    async def _save_to_db(self, result: AutoConfigResult) -> None:
+        store = self._get_ai_store()
+        if store is None:
+            return
+        try:
+            await store.save_config(result)
+            await store.save_selector_weights(result.symbol, self._selector._weights)
+            await store.save_meta_history(result.symbol, list(self._meta._history))
+        except Exception as e:
+            logger.debug(f"AutoConfig DB save error: {e}")
 
     def _save_results(self) -> None:
         try:

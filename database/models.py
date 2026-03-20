@@ -139,3 +139,58 @@ class MarketAlert(Base):
     triggered = Column(Boolean, default=False)
     notified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class OHLCVBar(Base):
+    """
+    Persistent OHLCV bar storage.
+    Acts as a long-lived cache (days to weeks) so data is not
+    re-downloaded on every restart.
+    """
+    __tablename__ = "ohlcv_bars"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False)
+    timeframe = Column(String(10), nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+    open = Column(Float, nullable=False)
+    high = Column(Float, nullable=False)
+    low = Column(Float, nullable=False)
+    close = Column(Float, nullable=False)
+    volume = Column(Float, nullable=False)
+    stored_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_ohlcv_symbol_tf_ts", "symbol", "timeframe", "timestamp", unique=True),
+        Index("ix_ohlcv_stored_at", "stored_at"),
+    )
+
+
+class AIConfig(Base):
+    """
+    Persists AutoConfigResult and AI state per symbol.
+    Allows the AI to restore its last known configuration after restart.
+    """
+    __tablename__ = "ai_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    asset_type = Column(String(20), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    regime = Column(String(20), nullable=True)
+    hurst = Column(Float, nullable=True)
+    dominant_period = Column(Integer, nullable=True)
+    recommended_strategy = Column(String(50), nullable=True)
+    active_indicators = Column(Text, nullable=True)      # JSON list
+    indicator_weights = Column(Text, nullable=True)      # JSON dict
+    tuned_params = Column(Text, nullable=True)           # JSON dict
+    fundamental_score = Column(Float, nullable=True)
+    oscillator_for_chart = Column(String(30), nullable=True)
+    confidence = Column(Float, nullable=True)
+    # Serialised ML state
+    meta_learner_history = Column(Text, nullable=True)   # JSON list of (fv, label)
+    selector_weights = Column(Text, nullable=True)       # JSON nested dict
+
+    __table_args__ = (
+        Index("ix_ai_configs_symbol_ts", "symbol", "timestamp"),
+    )

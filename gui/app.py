@@ -45,4 +45,13 @@ def run():
     window.show()
 
     with loop:
+        # Initialise SQLite database (creates tables if not exist)
+        async def _init():
+            try:
+                from database.db import init_db
+                await init_db()
+            except Exception as e:
+                print(f"[WARN] DB init failed: {e}")
+
+        loop.run_until_complete(_init())
         loop.run_forever()
