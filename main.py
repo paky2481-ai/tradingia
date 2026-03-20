@@ -84,6 +84,13 @@ def dashboard(port):
 
 
 @cli.command()
+def gui():
+    """Launch the desktop GUI application."""
+    from gui.app import run
+    run()
+
+
+@cli.command()
 @click.option("--symbols", default="", help="Specific symbols (empty = all)")
 def scan(symbols):
     """One-shot signal scan across all instruments."""

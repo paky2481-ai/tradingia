@@ -57,3 +57,9 @@ alpaca-trade-api>=3.0.2
 
 # Notifications
 python-telegram-bot>=20.6
+
+# Desktop GUI
+PyQt6>=6.6.0
+pyqtgraph>=0.13.3
+qasync>=0.27.0
+mplfinance>=0.12.10b0
