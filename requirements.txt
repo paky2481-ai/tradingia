@@ -19,7 +19,6 @@ websockets>=11.0
 # Technical Analysis
 ta>=0.10.2
 pandas-ta>=0.3.14b
-tulipy>=0.4.0
 
 # Backtesting
 backtrader>=1.9.78.123
