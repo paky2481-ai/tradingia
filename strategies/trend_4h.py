@@ -138,7 +138,9 @@ class TrendStrategy4H:
         loss  = np.where(delta < 0, -delta, 0.0)
         ag    = self._ema(gain, period)
         al    = self._ema(loss, period)
-        rs    = np.where(al > 1e-10, ag / al, 100.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rs = np.where(al > 1e-10, ag / al,
+                          np.where(ag > 1e-10, 100.0, 1.0))  # flat → RS=1 → RSI=50
         return 100 - 100 / (1 + rs)
 
     def _macd(self, arr: np.ndarray):

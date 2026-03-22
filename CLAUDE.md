@@ -27,6 +27,7 @@ la parola con: "Paky, vuoi spiegare tu questa parte?"
 Sistema di trading algoritmico AI-driven con GUI desktop PyQt6.
 
 ### Stack tecnico
+- **Python**: 3.14
 - **GUI**: PyQt6 + pyqtgraph + qasync
 - **Dati**: yfinance, ccxt, SQLite + SQLAlchemy
 - **AI/ML**: scikit-learn (GBM), PyTorch (LSTM), MetaLearner (SGD)

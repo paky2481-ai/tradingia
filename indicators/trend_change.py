@@ -278,11 +278,20 @@ class TrendChangeDetector:
         if abs(current_gap) < 1e-8:
             return "none", 0
 
-        # Velocità di avvicinamento (su 2 barre: gap[-3] → gap[-1])
-        # positiva = gap che si chiude (converge), negativa = gap che si apre (diverge)
-        gap_change_per_bar = (prev_gap - current_gap) / 2
+        # Velocità di variazione del gap (su 2 barre: gap[-3] → gap[-1])
+        # Positiva = gap sta crescendo, Negativa = gap sta scendendo
+        gap_change_per_bar = (current_gap - prev_gap) / 2
 
         if abs(gap_change_per_bar) < 1e-10:
+            return "none", 0
+
+        # Verifica convergenza verso 0:
+        # Bull: gap < 0 e sta aumentando (si avvicina a 0 da sotto)
+        # Bear: gap > 0 e sta diminuendo (si avvicina a 0 da sopra)
+        converging = (current_gap < 0 and gap_change_per_bar > 0) or \
+                     (current_gap > 0 and gap_change_per_bar < 0)
+
+        if not converging:
             return "none", 0
 
         # Stima barre al crossover
@@ -292,14 +301,10 @@ class TrendChangeDetector:
 
         bars_est = int(bars_to_cross)
 
-        # gap negativo (e9 < e21) che si chiude → cross rialzista imminente
-        if current_gap < 0 and gap_change_per_bar > 0:
+        if current_gap < 0:
             return "bull", bars_est
-        # gap positivo (e9 > e21) che si chiude → cross ribassista imminente
-        elif current_gap > 0 and gap_change_per_bar < 0:
+        else:
             return "bear", bars_est
-
-        return "none", 0
 
     def _adx_decay(self, adx: np.ndarray) -> str:
         """
@@ -447,7 +452,9 @@ class TrendChangeDetector:
         g = np.where(d > 0, d, 0.0)
         ls = np.where(d < 0, -d, 0.0)
         ag = self._ema(g, period); al = self._ema(ls, period)
-        rs = np.where(al > 1e-10, ag / al, 100.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rs = np.where(al > 1e-10, ag / al,
+                          np.where(ag > 1e-10, 100.0, 1.0))  # flat → RS=1 → RSI=50
         return 100 - 100 / (1 + rs)
 
     def _macd(self, arr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
