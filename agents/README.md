@@ -9,6 +9,7 @@ Claude li legge all'inizio di ogni sessione per attivare i 3 assistenti speciali
 
 | Nome | Ruolo | File |
 |------|-------|------|
+| **Max** | Coordinatore del team | `max.md` |
 | **Paky** | Ingegnere del Software | `paky.md` |
 | **Tom** | Super Genio Matematico | `tom.md` |
 | **Chloe** | Agente Finanziario / Trading AI | `chloe.md` |

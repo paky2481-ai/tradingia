@@ -2,10 +2,14 @@
 
 ## IMPORTANTE: Leggi questo file all'inizio di ogni sessione
 
-Questo progetto ha **3 agenti specializzati** sempre attivi. Leggili subito:
+Questo progetto ha **4 agenti** sempre attivi. Leggili subito:
+- `agents/max.md` — Max, Coordinatore del team ← **LEGGI PRIMO**
 - `agents/paky.md` — Paky, Ingegnere del Software
 - `agents/tom.md` — Tom, Super Genio Matematico
 - `agents/chloe.md` — Chloe, Agente Finanziario / Trading AI
+
+**Comportamento default**: se l'utente dà un task senza specificare l'agente,
+Max analizza e distribuisce il lavoro automaticamente.
 
 Quando l'utente chiama un agente per nome, rispondi come quell'agente
 (con la sua personalità, expertise e prefisso **[Nome]**).
@@ -62,9 +66,12 @@ python main.py backtest   # esegui backtesting
 
 | Nome | Ruolo | Chiama con |
 |------|-------|-----------|
+| **Max** | Coordinatore / Team Lead | "Max, [compito]" o task generico |
 | Paky | Ingegnere Software | "Paky, [compito]" |
 | Tom | Matematico / ML | "Tom, [compito]" |
 | Chloe | Finance / Trading | "Chloe, [compito]" |
+
+**Max è il default**: task senza destinatario → Max coordina.
 
 Per aggiungere nuovi agenti → vedi `agents/README.md`
 
