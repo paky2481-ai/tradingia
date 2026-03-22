@@ -84,10 +84,25 @@ def dashboard(port):
 
 
 @cli.command()
-def gui():
-    """Launch the desktop GUI application."""
+@click.option("--autorun", is_flag=True, default=False,
+              help="Avvia anche il motore automatico all'apertura della GUI")
+@click.option("--capital", default=1000.0, help="Capitale iniziale in EUR")
+@click.option("--mode", type=click.Choice(["paper", "live"]), default="paper")
+def gui(autorun, capital, mode):
+    """
+    Lancia l'interfaccia grafica desktop.
+
+    Esempi:
+        python main.py gui                              # solo GUI
+        python main.py gui --autorun                    # GUI + engine automatico
+        python main.py gui --autorun --capital 5000     # GUI + engine, €5000
+    """
+    if autorun and mode == "live":
+        click.confirm(
+            "⚠️  LIVE TRADING — soldi reali a rischio. Continuare?", abort=True
+        )
     from gui.app import run
-    run()
+    run(autorun=autorun, capital=capital, mode=mode)
 
 
 @cli.command()

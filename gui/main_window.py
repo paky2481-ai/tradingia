@@ -1,10 +1,13 @@
 """
-TradingIA Main Window
-QMainWindow with dockable panels:
-  - Left:   Watchlist
-  - Center: Chart (main area)
-  - Right:  Data panel
-  - Bottom: Log / status
+TradingIA Main Window — v2 (Full Automated)
+
+Layout docks:
+  Left:    EnginePanel (status + controlli motore + trend alerts)
+  Left 2:  WatchlistPanel (7 strumenti, quote live)
+  Center:  ChartPanel (grafico live)
+  Right:   AIAnalysisPanel / DataPanel (tab)
+  Bottom:  PositionsPanel (posizioni live + trading manuale)
+  Bottom2: LogPanel (log in tempo reale)
 """
 
 from __future__ import annotations
@@ -17,17 +20,20 @@ from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtWidgets import (
     QMainWindow, QDockWidget, QWidget, QLabel,
     QStatusBar, QToolBar, QApplication, QSizePolicy,
-    QTextEdit, QVBoxLayout,
+    QTextEdit, QVBoxLayout, QPushButton, QHBoxLayout,
 )
 
 from gui.panels.chart_panel import ChartPanel
 from gui.panels.watchlist_panel import WatchlistPanel
 from gui.panels.data_panel import DataPanel
 from gui.panels.ai_analysis_panel import AIAnalysisPanel
+from gui.panels.engine_panel import EnginePanel
+from gui.panels.positions_panel import PositionsPanel
+from core.signal_bus import get_bus
 
 
 class LogPanel(QWidget):
-    """Simple scrollable log panel."""
+    """Log panel in tempo reale con output colorato."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,86 +41,109 @@ class LogPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self._text = QTextEdit()
         self._text.setReadOnly(True)
-        self._text.setMaximumBlockCount(500)
+        self._text.setMaximumBlockCount(1000)
         self._text.setStyleSheet(
             "background:#0d1117; color:#8b949e; "
-            "font-family:monospace; font-size:12px; border:none;"
+            "font-family:monospace; font-size:11px; border:none;"
         )
         layout.addWidget(self._text)
 
     def append(self, msg: str, color: str = "#8b949e"):
-        self._text.append(f'<span style="color:{color}">{msg}</span>')
+        from datetime import datetime
+        ts = datetime.utcnow().strftime("%H:%M:%S")
+        self._text.append(f'<span style="color:#484f58">[{ts}]</span> <span style="color:{color}">{msg}</span>')
+        self._text.ensureCursorVisible()
 
 
 class TradingMainWindow(QMainWindow):
-    """Main application window."""
+    """Finestra principale TradingIA v2."""
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("TradingIA")
-        self.setMinimumSize(1280, 760)
-        self.resize(1600, 960)
+        self.setWindowTitle("TradingIA — Sistema Automatico")
+        self.setMinimumSize(1400, 820)
+        self.resize(1800, 1020)
 
         self._setup_central()
         self._setup_docks()
         self._setup_toolbar()
         self._setup_statusbar()
         self._connect_signals()
+        self._connect_bus()
 
-        # Clock in status bar
+        # Clock UTC
         self._clock_timer = QTimer(self)
         self._clock_timer.setInterval(1000)
         self._clock_timer.timeout.connect(self._update_clock)
         self._clock_timer.start()
 
-    # ── Central Widget ─────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Central widget
+    # ─────────────────────────────────────────────────────────────────────
 
     def _setup_central(self):
         self._chart_panel = ChartPanel()
         self._chart_panel.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding,
         )
         self.setCentralWidget(self._chart_panel)
 
-    # ── Docks ──────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Docks
+    # ─────────────────────────────────────────────────────────────────────
 
     def _setup_docks(self):
-        # ── Watchlist (left) ──────────────────────────────────────────
-        self._watchlist = WatchlistPanel()
+        # ── Engine Panel (sinistra, sopra) ─────────────────────────────
+        self._engine_panel = EnginePanel()
+        self._dock_engine  = self._make_dock(
+            "Engine", self._engine_panel,
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+            min_width=230, max_width=320,
+        )
+
+        # ── Watchlist (sinistra, sotto l'engine) ───────────────────────
+        self._watchlist   = WatchlistPanel()
         self._dock_watchlist = self._make_dock(
             "Watchlist", self._watchlist,
             Qt.DockWidgetArea.LeftDockWidgetArea,
             min_width=220, max_width=320,
         )
 
-        # ── Data panel (right) ────────────────────────────────────────
-        self._data_panel = DataPanel()
-        self._dock_data = self._make_dock(
-            "Data", self._data_panel,
-            Qt.DockWidgetArea.RightDockWidgetArea,
-            min_width=240, max_width=340,
-        )
-
-        # ── AI Analysis panel (right, below Data) ─────────────────────
-        self._ai_panel = AIAnalysisPanel()
-        self._dock_ai = self._make_dock(
+        # ── AI Analysis (destra) ────────────────────────────────────────
+        self._ai_panel  = AIAnalysisPanel()
+        self._dock_ai   = self._make_dock(
             "AI Analysis", self._ai_panel,
             Qt.DockWidgetArea.RightDockWidgetArea,
+            min_width=260, max_width=360,
+        )
+
+        # ── Data Panel (destra, tabbed con AI) ─────────────────────────
+        self._data_panel = DataPanel()
+        self._dock_data  = self._make_dock(
+            "Dati", self._data_panel,
+            Qt.DockWidgetArea.RightDockWidgetArea,
             min_width=240, max_width=340,
         )
-        # Tab AI Analysis with the Data dock
-        self.tabifyDockWidget(self._dock_data, self._dock_ai)
-        self._dock_data.raise_()   # Data tab visible by default
+        self.tabifyDockWidget(self._dock_ai, self._dock_data)
+        self._dock_ai.raise_()
 
-        # ── Log panel (bottom) ────────────────────────────────────────
+        # ── Positions Panel (basso) ─────────────────────────────────────
+        self._positions_panel = PositionsPanel()
+        self._dock_positions  = self._make_dock(
+            "Posizioni & Trading", self._positions_panel,
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            max_height=360,
+        )
+
+        # ── Log (basso, tabbed con Positions) ──────────────────────────
         self._log_panel = LogPanel()
-        self._dock_log = self._make_dock(
+        self._dock_log  = self._make_dock(
             "Log", self._log_panel,
             Qt.DockWidgetArea.BottomDockWidgetArea,
-            max_height=160,
+            max_height=360,
         )
-        self._dock_log.hide()   # hidden by default, toggle via menu
+        self.tabifyDockWidget(self._dock_positions, self._dock_log)
+        self._dock_positions.raise_()
 
     def _make_dock(
         self,
@@ -132,69 +161,41 @@ class TradingMainWindow(QMainWindow):
             QDockWidget.DockWidgetFeature.DockWidgetFloatable |
             QDockWidget.DockWidgetFeature.DockWidgetClosable,
         )
-        if min_width:
-            dock.setMinimumWidth(min_width)
-        if max_width:
-            dock.setMaximumWidth(max_width)
-        if max_height:
-            dock.setMaximumHeight(max_height)
+        if min_width: dock.setMinimumWidth(min_width)
+        if max_width: dock.setMaximumWidth(max_width)
+        if max_height: dock.setMaximumHeight(max_height)
         self.addDockWidget(area, dock)
         return dock
 
-    # ── Toolbar ────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Toolbar
+    # ─────────────────────────────────────────────────────────────────────
 
     def _setup_toolbar(self):
         tb = QToolBar("Main", self)
         tb.setMovable(False)
-        tb.setIconSize(QSize(18, 18))
+        tb.setIconSize(QSize(16, 16))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(tb)
 
-        # Watchlist toggle
-        act_wl = QAction("Watchlist", self)
-        act_wl.setCheckable(True)
-        act_wl.setChecked(True)
-        act_wl.setToolTip("Toggle Watchlist panel")
-        act_wl.toggled.connect(
-            lambda v: self._dock_watchlist.setVisible(v)
-        )
-        tb.addAction(act_wl)
-
-        # Data toggle
-        act_data = QAction("Data", self)
-        act_data.setCheckable(True)
-        act_data.setChecked(True)
-        act_data.setToolTip("Toggle Data panel")
-        act_data.toggled.connect(
-            lambda v: self._dock_data.setVisible(v)
-        )
-        tb.addAction(act_data)
+        panels = [
+            ("Engine",    "_dock_engine",    True),
+            ("Watchlist", "_dock_watchlist", True),
+            ("AI",        "_dock_ai",        True),
+            ("Dati",      "_dock_data",      True),
+            ("Posizioni", "_dock_positions", True),
+            ("Log",       "_dock_log",       False),
+        ]
+        for label, attr, default in panels:
+            act = QAction(label, self)
+            act.setCheckable(True)
+            act.setChecked(default)
+            dock_attr = attr
+            act.toggled.connect(lambda v, a=dock_attr: getattr(self, a).setVisible(v))
+            tb.addAction(act)
 
         tb.addSeparator()
 
-        # AI Analysis toggle
-        act_ai = QAction("AI", self)
-        act_ai.setCheckable(True)
-        act_ai.setChecked(True)
-        act_ai.setToolTip("Toggle AI Analysis panel")
-        act_ai.toggled.connect(
-            lambda v: self._dock_ai.setVisible(v)
-        )
-        tb.addAction(act_ai)
-
-        # Log toggle
-        act_log = QAction("Log", self)
-        act_log.setCheckable(True)
-        act_log.setChecked(False)
-        act_log.setToolTip("Toggle Log panel")
-        act_log.toggled.connect(
-            lambda v: self._dock_log.setVisible(v)
-        )
-        tb.addAction(act_log)
-
-        tb.addSeparator()
-
-        # MA toggles
         for label, attr in [("MA20", "_act_ma20"), ("MA50", "_act_ma50"), ("MA200", "_act_ma200")]:
             act = QAction(label, self)
             act.setCheckable(True)
@@ -203,15 +204,6 @@ class TradingMainWindow(QMainWindow):
             setattr(self, attr, act)
             tb.addAction(act)
 
-        tb.addSeparator()
-
-        # Theme (placeholder for future light mode)
-        act_theme = QAction("Dark", self)
-        act_theme.setCheckable(True)
-        act_theme.setChecked(True)
-        act_theme.setToolTip("Toggle theme (Dark/Light)")
-        tb.addAction(act_theme)
-
     def _on_ma_toggled(self):
         self._chart_panel.apply_ma_settings(
             ma20=self._act_ma20.isChecked(),
@@ -219,80 +211,129 @@ class TradingMainWindow(QMainWindow):
             ma200=self._act_ma200.isChecked(),
         )
 
-    # ── Status Bar ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Status bar
+    # ─────────────────────────────────────────────────────────────────────
 
     def _setup_statusbar(self):
         sb = QStatusBar()
         self.setStatusBar(sb)
 
-        self._lbl_status = QLabel("Ready")
+        self._lbl_status = QLabel("Pronto")
         self._lbl_status.setContentsMargins(8, 0, 0, 0)
         sb.addWidget(self._lbl_status, 1)
+
+        self._lbl_equity_sb = QLabel("Equity: —")
+        self._lbl_equity_sb.setStyleSheet(
+            "background:#21262d; color:#e6edf3; padding:2px 8px; "
+            "border-radius:4px; font-size:11px; font-weight:bold;"
+        )
+        sb.addPermanentWidget(self._lbl_equity_sb)
+
+        self._lbl_pnl_sb = QLabel("P&L: —")
+        self._lbl_pnl_sb.setStyleSheet(
+            "background:#21262d; color:#8b949e; padding:2px 8px; "
+            "border-radius:4px; font-size:11px;"
+        )
+        sb.addPermanentWidget(self._lbl_pnl_sb)
+
+        self._lbl_engine_sb = QLabel("● Engine: FERMO")
+        self._lbl_engine_sb.setStyleSheet(
+            "background:#21262d; color:#8b949e; padding:2px 8px; "
+            "border-radius:4px; font-size:11px;"
+        )
+        sb.addPermanentWidget(self._lbl_engine_sb)
 
         self._lbl_clock = QLabel("")
         self._lbl_clock.setContentsMargins(0, 0, 8, 0)
         sb.addPermanentWidget(self._lbl_clock)
-
-        self._lbl_mode = QLabel("Paper Mode")
-        self._lbl_mode.setStyleSheet(
-            "background:#21262d; color:#8b949e; padding:2px 8px; "
-            "border-radius:4px; font-size:11px;"
-        )
-        self._lbl_mode.setContentsMargins(0, 0, 8, 0)
-        sb.addPermanentWidget(self._lbl_mode)
 
     def _update_clock(self):
         from datetime import datetime
         now = datetime.utcnow().strftime("UTC  %Y-%m-%d  %H:%M:%S")
         self._lbl_clock.setText(now)
 
-    # ── Signal Connections ─────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Connections (GUI panels tra loro)
+    # ─────────────────────────────────────────────────────────────────────
 
     def _connect_signals(self):
-        # Watchlist row click → load chart
         self._watchlist.symbol_selected.connect(self._on_symbol_from_watchlist)
-
-        # Data panel download complete → update chart
         self._data_panel.data_loaded.connect(self._on_data_loaded)
-
-        # Data panel live tick → update chart
         self._data_panel.realtime_tick.connect(self._chart_panel.update_live_tick)
-
-        # AI panel oscillator selection → update chart sub-panel
         self._ai_panel.oscillator_changed.connect(self._chart_panel.show_oscillator)
-
-        # AI panel analysis complete → log result
-        self._ai_panel.analysis_complete.connect(self._on_ai_analysis_complete)
+        self._ai_panel.analysis_complete.connect(self._on_ai_complete)
 
     def _on_symbol_from_watchlist(self, symbol: str):
-        """When user clicks a watchlist row, pre-fill data panel & load."""
         self._data_panel._symbol_input.setText(symbol)
         self._data_panel._on_load_clicked()
-        self._log(f"Loading {symbol}…")
 
     def _on_data_loaded(self, df, symbol: str, timeframe: str):
         self._chart_panel.load_data(df, symbol, timeframe)
         ma = self._data_panel.ma_settings
         self._chart_panel.apply_ma_settings(**ma)
-        self._lbl_status.setText(f"{symbol} [{timeframe}]  —  {len(df)} bars loaded")
-        self._log(f"Loaded {symbol} [{timeframe}]: {len(df)} bars", color="#3fb950")
-
-        # Forward data to AI Analysis panel
+        self._lbl_status.setText(f"{symbol} [{timeframe}] — {len(df)} barre")
+        self._log(f"Caricato {symbol} [{timeframe}]: {len(df)} barre", "#3fb950")
         from config.settings import settings
         asset_type = settings.asset_type_map.get(symbol, "stock")
         self._ai_panel.set_symbol(symbol, df, asset_type)
 
-    def _on_ai_analysis_complete(self, result):
-        regime = getattr(result, "regime", "?")
-        hurst = getattr(result, "hurst", 0.0)
+    def _on_ai_complete(self, result):
+        regime   = getattr(result, "regime", "?")
+        hurst    = getattr(result, "hurst", 0.0)
         strategy = getattr(result, "recommended_strategy", "?")
         self._log(
-            f"AI [{result.symbol}] regime={regime} H={hurst:.3f} → {strategy}",
-            color="#a371f7",
+            f"AI [{result.symbol}] regime={regime} H={hurst:.3f} → {strategy}", "#a371f7"
         )
 
-    # ── Logging ────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Bus connections (Engine → GUI)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _connect_bus(self):
+        bus = get_bus()
+        bus.qt.engine_started.connect(self._on_engine_started)
+        bus.qt.engine_stopped.connect(self._on_engine_stopped)
+        bus.qt.engine_status.connect(self._on_engine_status)
+        bus.qt.log_message.connect(self._log)
+
+    def _on_engine_started(self):
+        self._lbl_engine_sb.setText("● Engine: ATTIVO")
+        self._lbl_engine_sb.setStyleSheet(
+            "background:#1a7f37; color:white; padding:2px 8px; "
+            "border-radius:4px; font-size:11px; font-weight:bold;"
+        )
+        self._dock_log.show()
+
+    def _on_engine_stopped(self):
+        self._lbl_engine_sb.setText("● Engine: FERMO")
+        self._lbl_engine_sb.setStyleSheet(
+            "background:#21262d; color:#8b949e; padding:2px 8px; "
+            "border-radius:4px; font-size:11px;"
+        )
+
+    def _on_engine_status(self, ev):
+        self._lbl_equity_sb.setText(f"Equity: €{ev.equity:,.2f}")
+        pnl_color = "#3fb950" if ev.daily_pnl >= 0 else "#f85149"
+        self._lbl_pnl_sb.setText(f"P&L: €{ev.daily_pnl:+.2f}")
+        self._lbl_pnl_sb.setStyleSheet(
+            f"background:#21262d; color:{pnl_color}; padding:2px 8px; "
+            "border-radius:4px; font-size:11px; font-weight:bold;"
+        )
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Log
+    # ─────────────────────────────────────────────────────────────────────
 
     def _log(self, msg: str, color: str = "#8b949e"):
         self._log_panel.append(msg, color)
-        self._lbl_status.setText(msg)
+        # Status bar: mostra solo messaggi non grigi (importanti)
+        if color not in ("#8b949e", "#484f58"):
+            self._lbl_status.setText(msg[:80])
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Engine reference (impostato da app.py)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def set_engine(self, engine):
+        self._engine_panel.set_engine(engine)
