@@ -257,10 +257,40 @@ async def _run_autoengine(capital: float, mode: str):
         click.echo("\nEngine fermato.")
 
 
-def _create_broker(broker_type: str):
+def _create_broker(broker_type: str = None):
+    if broker_type is None:
+        try:
+            from config.settings import settings
+            broker_type = settings.broker.active_broker
+        except Exception:
+            broker_type = "paper"
+
     if broker_type == "paper":
         from brokers.paper_broker import PaperBroker
         return PaperBroker()
+    elif broker_type == "ig":
+        from brokers.ig_broker import IGBroker
+        try:
+            from config.settings import settings
+            b = settings.broker
+            return IGBroker(
+                api_key=b.ig_api_key, username=b.ig_username,
+                password=b.ig_password, account_type=b.ig_account_type,
+                account_id=b.ig_account_id,
+            )
+        except Exception:
+            return IGBroker()
+    elif broker_type == "oanda":
+        from brokers.oanda_broker import OANDABroker
+        try:
+            from config.settings import settings
+            b = settings.broker
+            return OANDABroker(
+                api_token=b.oanda_api_token, account_id=b.oanda_account_id,
+                environment=b.oanda_environment,
+            )
+        except Exception:
+            return OANDABroker()
     elif broker_type == "alpaca":
         from brokers.alpaca_broker import AlpacaBroker
         return AlpacaBroker()

@@ -1,237 +1,292 @@
 # TradingIA
 
-**AI-powered multi-asset trading system** supporting stocks, forex, crypto, commodities and indices.
+**Sistema di trading algoritmico AI-driven con interfaccia desktop PyQt6.**
+Completamente automatico, con override manuale, analisi AI in tempo reale e rilevamento anticipato dei cambi di trend.
 
-## Features
+---
 
-| Module | Description |
-|--------|-------------|
-| **AI Models** | LSTM + Attention, Gradient Boosting Ensemble, Meta-Learner (online learning) |
-| **Cycle Analysis** | Hurst exponent (R/S), FFT dominant cycle detection, market regime classification |
-| **Fundamental Analysis** | Stocks (P/E, EPS, ROE), Forex (rate differential), Commodity (seasonal z-score) |
-| **Indicator Selector** | AI selects the top 8 indicators per instrument type and market regime |
-| **Auto-Config** | Hourly self-tuning: regime detection → strategy selection → parameter grid search |
-| **Strategies** | Trend Following, Mean Reversion, Breakout, Scalping, AI Ensemble |
-| **Instruments** | Stocks, Forex, Crypto, Commodities, Indices |
-| **Indicators** | 40+ technical indicators (RSI, MACD, BB, Ichimoku, Stochastic, ATR, VWAP, CCI...) |
-| **Risk Manager** | Kelly sizing, trailing stops, drawdown circuit-breaker, portfolio heat |
-| **Backtester** | Event-driven, Sharpe/Sortino/drawdown metrics |
-| **Brokers** | Alpaca, CCXT (100+ exchanges), Paper trading |
-| **Desktop GUI** | PyQt6 real-time chart, AI Analysis panel, oscillator sub-chart |
-| **Dashboard** | FastAPI + WebSocket real-time dashboard |
-| **Notifications** | Telegram + Email alerts |
-
-## Quick Start
+## Avvio rapido
 
 ```bash
-# Install dependencies
+# Installa dipendenze
 pip install -r requirements.txt
 
-# Configure (optional)
+# Copia e configura le credenziali
 cp .env.example .env
-# Edit .env with your API keys
+# → Apri .env e inserisci le tue API key (broker, Telegram, ecc.)
 
-# Launch desktop GUI
+# Lancia GUI + motore automatico (paper trading, €1000)
+python main.py gui --autorun
+
+# Con broker reale IG Markets demo
+# (imposta BROKER_ACTIVE_BROKER=ig nel .env)
+python main.py gui --autorun
+
+# Solo GUI senza engine (analisi manuale)
 python main.py gui
 
-# Paper trading (no keys needed)
-python main.py trade --paper --broker paper
-
-# Run backtests
-python main.py backtest --symbol AAPL --strategy trend_following
-python main.py backtest --symbol BTC-USD --strategy breakout
-python main.py backtest --symbol EURUSD=X --strategy mean_reversion
-
-# Train AI models
-python main.py train --symbols "AAPL,MSFT,BTC-USD,ETH-USD"
-
-# One-shot signal scan
-python main.py scan
-
-# Dashboard only
-python main.py dashboard --port 8080
+# Solo engine headless (senza GUI, ad es. su server)
+python main.py autorun --capital 1000 --mode paper
 ```
 
-## How It Works — Full AI Pipeline
+---
 
-Every time the system evaluates a symbol, the following pipeline runs:
+## Broker supportati
 
-```
-OHLCV data (yfinance / CCXT)
-  │
-  ├─→ TechnicalIndicators.compute_all()     40+ indicators computed in one pass
-  │
-  ├─→ CycleFeatures.compute_all()           Hurst exponent (R/S analysis)
-  │       HurstExponent.compute()           FFT dominant cycle period (4–50 bars)
-  │       DominantCycle.fft_period()        Market regime: trending / cycling / choppy
-  │       MarketRegime.detect()
-  │
-  ├─→ FundamentalFeed.get_fundamentals()    Asset-specific fundamental data (1h cache)
-  │       FundamentalScore.compute()        Score: -1.0 (bearish) → +1.0 (bullish)
-  │
-  ├─→ IndicatorSelector.select()            Top 8 indicators for (asset_type, regime)
-  │                                         Weights updated online via EWM after outcomes
-  │
-  ├─→ AutoConfig.run()  [every hour]        Full auto-configuration pipeline
-  │       _select_strategy()                Rule-based: regime + Hurst → strategy name
-  │       _tune_params()                    Walk-forward grid search on last 300 bars
-  │       MetaLearner.train()               Retrain if ≥50 samples in history
-  │
-  ├─→ EnsembleModel.predict()               LSTM (confidence) + GBM (confidence)
-  │
-  └─→ MetaLearner.predict_from_inputs()     13-dim feature vector → final signal
-          [lstm_buy, lstm_sell,             SGDClassifier with partial_fit
-           gbm_buy, gbm_sell,              online learning after each trade
-           hurst, cycle_phase_sin/cos,
-           fundamental_score,
-           regime_one_hot,
-           volatility_ratio, volume_ratio]
+| Broker | Tipo | Account demo | Strumenti |
+|--------|------|-------------|-----------|
+| **IG Markets** | CFD / Spread Betting | Gratuito | Forex, Indici (DAX, S&P 500), Oro, Petrolio |
+| **OANDA** | Forex broker | Gratuito (practice) | Forex (EUR/USD, GBP/USD…), XAU/USD |
+| **Paper** | Simulato interno | Sempre disponibile | Tutti (prezzi da yfinance) |
+| Alpaca | Azioni USA | Gratuito | Azioni, ETF USA |
+| CCXT | Crypto | Sandbox | 100+ exchange crypto |
 
-Final ModelSignal → RiskManager.evaluate() → RiskAssessment → Execution
+### Configurare IG Markets (consigliato)
+
+1. Crea conto **demo gratuito** su [ig.com/it](https://www.ig.com/it/trading-account/demo-account)
+2. Vai su [labs.ig.com](https://labs.ig.com) → My Applications → **crea nuova app** → copia la API Key
+3. Nel file `.env`:
+
+```env
+BROKER_ACTIVE_BROKER=ig
+BROKER_IG_API_KEY=la_tua_api_key
+BROKER_IG_USERNAME=la_tua_email_ig
+BROKER_IG_PASSWORD=la_tua_password
+BROKER_IG_ACCOUNT_TYPE=demo
 ```
 
-### Auto-Configuration Logic
+Quando sei pronto per il live, cambia `demo` → `live` e riavvia.
 
-The strategy selector maps market conditions to the optimal strategy:
+### Configurare OANDA (alternativa)
 
-| Regime | Hurst | Cycle | Selected Strategy |
-|--------|-------|-------|-------------------|
-| trending | > 0.55 | any | Trend Following |
-| cycling | < 0.45 | ≤ 20 bars | Mean Reversion |
-| cycling | < 0.45 | > 20 bars | Breakout |
-| choppy | any | any | Scalping (forex/crypto) |
-| any | any | any | AI Ensemble (default) |
+1. Crea conto **practice gratuito** su [oanda.com/it-it](https://www.oanda.com/it-it/)
+2. MyAccount → Manage API Access → **Generate new token**
+3. MyAccount → Account Details → copia **Account ID** (formato: `101-004-XXXXXXX-001`)
 
-### Fundamental Score
-
-| Asset Type | Inputs | Score Range |
-|------------|--------|-------------|
-| Stock | P/E, P/B, EPS growth, revenue growth, ROE, debt/equity, dividend | -1.0 → +1.0 |
-| Forex | Central bank rate differential, USD-index 1-month trend (UUP ETF) | -1.0 → +1.0 |
-| Commodity | Seasonal z-score vs 3-year monthly average, year-on-year % | -1.0 → +1.0 |
-
-## Architecture
-
-```
-tradingia/
-├── main.py                          # CLI entry point
-├── config/settings.py               # All configuration (Pydantic BaseSettings)
-├── data/
-│   ├── feed.py                      # Universal data feed (yfinance + CCXT)
-│   └── fundamental.py               # Fundamental data: stocks, forex, commodity
-├── indicators/
-│   ├── technical.py                 # 40+ technical indicators (compute_all)
-│   └── cycle_analysis.py            # Hurst exponent, FFT cycle, regime detection
-├── models/
-│   ├── base_model.py                # Abstract BaseModel + ModelSignal dataclass
-│   ├── lstm_model.py                # LSTM + MultiheadAttention (PyTorch)
-│   ├── random_forest_model.py       # Gradient Boosting classifier
-│   ├── ensemble_model.py            # Weighted ensemble (LSTM + GBM)
-│   ├── indicator_selector.py        # AI indicator selection per (asset, regime)
-│   ├── meta_learner.py              # SGDClassifier meta-model (online learning)
-│   └── auto_config.py               # Hourly auto-configuration engine
-├── strategies/
-│   ├── base_strategy.py             # Abstract BaseStrategy + TradeSignal dataclass
-│   ├── ai_strategy.py               # AI-driven signals via EnsembleModel
-│   ├── technical_strategy.py        # Trend Following, Mean Reversion, Breakout, Scalping
-│   └── strategy_manager.py          # Multi-strategy orchestration + meta-learner
-├── risk/risk_manager.py             # Position sizing + risk control
-├── backtesting/backtester.py        # Event-driven backtester
-├── portfolio/portfolio_manager.py   # Real-time P&L tracking
-├── brokers/
-│   ├── alpaca_broker.py             # Alpaca Markets
-│   ├── ccxt_broker.py               # All crypto exchanges
-│   └── paper_broker.py              # Simulated trading
-├── gui/
-│   ├── app.py                       # PyQt6 application entry (qasync)
-│   ├── main_window.py               # Dockable main window
-│   ├── panels/
-│   │   ├── chart_panel.py           # Chart + info bar
-│   │   ├── data_panel.py            # Symbol/timeframe loader + live feed
-│   │   ├── watchlist_panel.py       # Real-time multi-asset watchlist
-│   │   └── ai_analysis_panel.py     # AI Analysis dock panel
-│   └── widgets/
-│       ├── candlestick_chart.py     # Pyqtgraph OHLCV chart (candlestick + volume + MAs)
-│       └── oscillator_chart.py      # AI-selected oscillator sub-chart
-├── dashboard/api.py                 # FastAPI + WebSocket dashboard
-├── notifications/notifier.py        # Telegram + Email
-└── core/orchestrator.py             # Main trading loop
+```env
+BROKER_ACTIVE_BROKER=oanda
+BROKER_OANDA_API_TOKEN=il_tuo_token
+BROKER_OANDA_ACCOUNT_ID=101-004-XXXXXXX-001
+BROKER_OANDA_ENVIRONMENT=practice
 ```
 
-## Desktop GUI
+---
 
-Launch with `python main.py gui`:
+## Architettura del sistema
 
-- **Chart panel**: Candlestick chart with volume, MA20/50/200 overlays, live tick updates
-- **AI Analysis panel** (tab): After loading a symbol, click "Run AI Analysis" to see:
-  - Market regime classification with Hurst gauge
-  - Dominant cycle period (bars)
-  - Fundamental score bar (-1 to +1)
-  - Top 8 AI-selected indicators with importance weights
-  - Active strategy + tuned parameters
-  - Final AI signal with confidence breakdown
-- **Oscillator sub-chart**: AI automatically selects and shows the most relevant oscillator (RSI, MACD, Stochastic, CCI, or MFI)
-- **Watchlist**: Real-time quotes for Stocks, Crypto, Forex, Indices with 10s auto-refresh
+```
+python main.py gui --autorun
+         │
+         ├─ TradingEngine (asyncio, 5 loop paralleli)
+         │    ├─ scan_loop          → segnali ogni 1H (range) / 4H (trend)
+         │    ├─ trend_detect_loop  → Trend Change Detector ogni 15 min
+         │    ├─ position_monitor   → controlla SL/TP ogni 30s
+         │    ├─ gui_command_loop   → riceve comandi manuali dalla GUI
+         │    └─ status_loop        → heartbeat ogni 30s verso GUI
+         │
+         ├─ SignalBus (singleton asyncio + Qt signals)
+         │    → ponte thread-safe tra Engine e GUI
+         │
+         ├─ AccountSync (ogni 30s)
+         │    → sincronizza posizioni, balance, margine dal broker reale
+         │    → rileva posizioni aperte esternamente (app mobile IG)
+         │
+         └─ TradingMainWindow (PyQt6 + qasync)
+              ├─ [Sinistra]   EnginePanel     → stato motore + trend alerts
+              ├─ [Sinistra]   Watchlist       → 7 strumenti con prezzi live
+              ├─ [Centro]     ChartPanel      → grafico candlestick live
+              ├─ [Destra]     AIAnalysisPanel → analisi AI completa
+              ├─ [Destra]     DataPanel       → carica dati storici
+              ├─ [Basso]      PositionsPanel  → posizioni live + form manuale
+              └─ [Basso]      LogPanel        → log colorato in tempo reale
+```
 
-## Supported Instruments
+---
 
-- **Stocks**: AAPL, MSFT, GOOGL, NVDA, TSLA, META, SPY, QQQ + any ticker
-- **Forex**: EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CHF + all majors
-- **Crypto**: BTC, ETH, BNB, SOL, XRP, ADA + any CCXT-supported pair
-- **Commodities**: Gold, Silver, Crude Oil, Natural Gas, Wheat, Corn
-- **Indices**: S&P 500, DJIA, NASDAQ, FTSE 100, Nikkei 225
+## Strumenti monitorati
+
+| Simbolo | Strategia | Sessione operativa (UTC) |
+|---------|-----------|--------------------------|
+| EUR/USD | Trend 4H  | 07:00 – 21:00 |
+| GBP/USD | Trend 4H  | 07:00 – 21:00 |
+| XAU/USD | Trend 4H  | 08:00 – 20:00 |
+| S&P 500 | Trend 4H  | 08:00 – 21:30 |
+| DAX 40  | Trend 4H  | 08:00 – 21:30 |
+| EUR/GBP | Range 1H  | 07:00 – 21:00 |
+| USD/JPY | Range 1H  | 07:00 – 21:00 |
+
+Chiuso: venerdì dopo le 20:00 UTC e domenica (spread troppo ampi).
+
+---
+
+## Strategie
+
+### Trend Following 4H [Tom]
+- **Entry**: EMA 9 > EMA 21 > EMA 50 + MACD cross + ADX > 20 + RSI tra 45–65
+- **Stop Loss**: 2× ATR sotto entry (sopra per short)
+- **Take Profit**: 3× ATR → **R/R 1:1.5**
+- **Breakeven**: già profittevole al **40% di win rate**
+
+### Mean Reversion 1H [Tom + Chloe]
+- **Entry**: prezzo tocca banda Bollinger + RSI < 28 (buy) o RSI > 72 (sell)
+- **Filtro regime**: Hurst < 0.52 (ranging) + ADX < 25 (no trend)
+- **Target**: ritorno alla media Bollinger — R/R minimo 1.2
+- **Skip**: USD/JPY nelle 2h dopo comunicati BoJ/Fed
+
+---
+
+## Trend Change Detector — 7 segnali [Tom]
+
+Monitora tutti gli strumenti ogni 15 minuti e segnala i cambi di trend **prima** che avvengano.
+
+| Segnale | Come funziona | Anticipo | Peso |
+|---------|--------------|----------|------|
+| **RSI Divergenza** | Prezzo lower-low, RSI higher-low → inversione imminente | 3–10 barre | 20 pt |
+| **MACD Divergenza** | Divergenza su histogram MACD | 3–8 barre | 18 pt |
+| **EMA Convergenza** | Gap EMA9–EMA21 si restringe → cross imminente (stima barre) | 2–5 barre | 16 pt |
+| **ADX Decay** | ADX era > 28 e cala da 3+ barre → trend si esaurisce | 3–6 barre | 14 pt |
+| **Hurst Transition** | Hurst scende da >0.55 a <0.52 → regime cambia | variabile | 12 pt |
+| **Volume Climax** | Spike volume 2× su candela hammer/shooting star | 1–3 barre | 12 pt |
+| **Structure Break** | Prezzo tenta nuovo estremo ma chiude contro | 1 barra | 8 pt |
+
+- **Alert GUI**: confidence ≥ 30 → visibile nell'EnginePanel
+- **Alert Telegram**: confidence ≥ 65 **e** ≥ 3 segnali attivi → notifica forte
+
+---
+
+## AI Pipeline
+
+Per ogni strumento, ogni ora:
+
+```
+OHLCV (yfinance / IG API / OANDA API)
+  │
+  ├─ TechnicalIndicators.compute_all()   → 40+ indicatori in un pass
+  ├─ HurstExponent.compute()             → H: trending (>0.55) / ranging (<0.45)
+  ├─ DominantCycle.fft_period()          → ciclo dominante FFT (4–50 barre)
+  ├─ FundamentalFeed.get_score()         → score -1 → +1 (forex: rate diff)
+  ├─ IndicatorSelector.select()          → top 8 indicatori per (asset, regime)
+  ├─ AutoConfig.run()                    → strategia + parametri ottimali
+  │    ├─ selezione strategia da regime
+  │    └─ grid search walk-forward 300 barre
+  ├─ EnsembleModel.predict()             → LSTM 60% + GBM 40%
+  └─ MetaLearner.predict()               → SGD online, 13 feature
+
+→ TradeSignal → RiskManager.evaluate() → OrderResult → Broker
+```
+
+---
+
+## Portafoglio e dettagli conto
+
+Il pannello **Posizioni** nella GUI mostra in tempo reale (aggiornato ogni 30s):
+
+| Campo | Fonte |
+|-------|-------|
+| Equity / NAV | Broker (IG balance + P&L, o OANDA NAV) |
+| Balance | Deposito + P&L realizzato |
+| P&L non realizzato | Somma posizioni aperte |
+| Margine usato | Deposito impegnato (IG) / marginUsed (OANDA) |
+| Margine libero | Capital disponibile per nuovi trade |
+| Posizioni aperte | Sincronizzate dal broker ogni 30s |
+| Storico trade | Ultimi 50 trade chiusi |
+
+`AccountSync` rileva automaticamente le posizioni aperte dall'app mobile IG o dalla piattaforma web — non serve riaprire nulla manualmente.
+
+---
 
 ## Risk Management
 
-- **Position Sizing**: Kelly Criterion (fractional) scaled by signal confidence
-- **Stop Loss**: ATR-based (2×ATR) with optional trailing stops
-- **Take Profit**: ATR-based (3×ATR) for 1.5:1 R/R minimum
-- **Drawdown Limit**: Trading halts at configurable max drawdown (default 15%)
-- **Portfolio Heat**: Max concurrent risk exposure per portfolio %
+| Parametro | Default | `.env` |
+|-----------|---------|--------|
+| Rischio per trade | 1% capitale | `RISK_MAX_PORTFOLIO_RISK_PCT` |
+| Max drawdown | 8% | `RISK_MAX_DRAWDOWN_PCT` |
+| Max posizioni aperte | 2 | `RISK_MAX_OPEN_POSITIONS` |
+| Kelly fraction | 0.25 | `RISK_KELLY_FRACTION` |
+| Trailing stop | 1.5% | `RISK_TRAILING_STOP_PCT` |
 
-## Configuration
+**Circuit breaker automatico**: se drawdown ≥ 8% → engine si ferma → notifica Telegram.
 
-All settings in `config/settings.py` can be overridden via environment variables or `.env` file.
+---
 
-```bash
-# Risk
-RISK_MAX_PORTFOLIO_RISK_PCT=2.0     # % capital at risk per trade
-RISK_MAX_DRAWDOWN_PCT=15.0          # halt if drawdown exceeds
-RISK_MAX_OPEN_POSITIONS=10
+## Notifiche Telegram
 
-# ML
-ML_MIN_CONFIDENCE=0.6               # minimum signal confidence
-ML_LOOKBACK_WINDOW=60               # LSTM input bars
-ML_RETRAIN_INTERVAL_HOURS=24        # full model retrain frequency
+Il bot invia:
+- Engine avviato/fermato
+- Ogni trade aperto: direzione, entry, SL, TP, R/R, rischio €
+- Ogni trade chiuso: P&L realizzato
+- Trend Alert forti (≥65% confidence)
+- Circuit breaker drawdown
+- Report giornaliero alle 22:00 UTC
 
-# Cycle Analysis
-CYCLE_TRENDING_HURST=0.55           # Hurst threshold for trending regime
-CYCLE_CYCLING_HURST=0.45            # Hurst threshold for cycling regime
-CYCLE_FFT_MAX_PERIOD=50             # max cycle period to detect (bars)
-CYCLE_ADX_TREND_THRESHOLD=25.0      # ADX threshold for trend confirmation
+**Setup**:
+1. [@BotFather](https://t.me/BotFather) su Telegram → `/newbot` → copia token
+2. [@userinfobot](https://t.me/userinfobot) → copia chat ID
+3. Nel `.env`: `NOTIFY_TELEGRAM_TOKEN=...` e `NOTIFY_TELEGRAM_CHAT_ID=...`
 
-# Fundamental Analysis
-FUND_ENABLED_ASSET_TYPES=stock,forex,commodity
-FUND_CACHE_TTL_MINUTES=60
-FUND_RATE_EUR=4.25                  # ECB rate (overridable)
-FUND_RATE_GBP=5.25                  # BoE rate
-FUND_RATE_JPY=0.10                  # BoJ rate
+---
 
-# Auto-Configuration
-AUTOCONF_ENABLED=true
-AUTOCONF_RETUNE_INTERVAL_HOURS=1    # recalibrate every hour
-AUTOCONF_TOP_N_INDICATORS=8         # indicators to select per analysis
+## Struttura cartelle
+
+```
+tradingia/
+├── main.py                          # CLI: gui | autorun | backtest | scan
+├── .env.example                     # Template configurazione
+├── config/settings.py               # Settings centralizzate (Pydantic)
+│
+├── brokers/
+│   ├── ig_broker.py                 # IG Markets REST API v2 (demo + live)
+│   ├── oanda_broker.py              # OANDA REST API v20 (practice + live)
+│   ├── paper_broker.py              # Broker simulato (nessuna credenziale)
+│   ├── alpaca_broker.py             # Alpaca Markets
+│   └── ccxt_broker.py               # CCXT crypto
+│
+├── core/
+│   ├── engine.py                    # Motore automatico (5 loop async)
+│   └── signal_bus.py                # Event bus Engine ↔ GUI
+│
+├── indicators/
+│   ├── technical.py                 # 40+ indicatori tecnici
+│   ├── cycle_analysis.py            # Hurst, FFT, regime detection
+│   └── trend_change.py              # Trend Change Detector (7 segnali)
+│
+├── strategies/
+│   ├── trend_4h.py                  # EMA+MACD+ADX (trend)
+│   ├── range_1h.py                  # BB+RSI+Hurst (range)
+│   ├── ai_strategy.py               # AI strategy (EnsembleModel)
+│   └── strategy_manager.py          # Orchestrazione multi-strategia
+│
+├── models/
+│   ├── lstm_model.py                # LSTM + MultiheadAttention (PyTorch)
+│   ├── random_forest_model.py       # Gradient Boosting Classifier
+│   ├── ensemble_model.py            # Ensemble LSTM+GBM
+│   ├── meta_learner.py              # SGD online learning
+│   ├── indicator_selector.py        # Selezione AI indicatori
+│   └── auto_config.py               # Auto-tuning orario
+│
+├── risk/risk_manager.py             # Kelly, SL/TP, drawdown CB
+│
+├── portfolio/
+│   ├── portfolio_manager.py         # Tracker P&L locale
+│   └── account_sync.py              # Sync broker → GUI ogni 30s
+│
+├── gui/
+│   ├── app.py                       # Entry PyQt6 + qasync
+│   ├── main_window.py               # Finestra con dock layout
+│   └── panels/
+│       ├── engine_panel.py          # Stato motore + trend alerts
+│       ├── positions_panel.py       # Posizioni live + form manuale
+│       ├── chart_panel.py           # Grafico candlestick
+│       ├── watchlist_panel.py       # 7 strumenti live
+│       ├── ai_analysis_panel.py     # Analisi AI completa
+│       └── data_panel.py            # Loader dati storici
+│
+├── notifications/notifier.py        # Telegram + Email
+└── backtesting/backtester.py        # Backtester event-driven
 ```
 
-## Dashboard
+---
 
-Open `http://localhost:8080` after starting the trading engine:
-- Real-time portfolio equity, P&L, drawdown
-- Live open positions with unrealized P&L
-- Signal feed from all strategies
-- Trade history with performance metrics
-- REST API at `/api/*` and WebSocket at `/ws`
+## ⚠️ Disclaimer
 
-## Disclaimer
-
-This software is for educational and research purposes only. Trading financial instruments involves significant risk of loss. Past performance does not guarantee future results. Always use paper trading mode first and never risk more than you can afford to lose.
+Questo software è fornito a scopo **educativo e di ricerca**. Il trading di strumenti finanziari comporta un rischio significativo di perdita del capitale. Le performance passate non garantiscono risultati futuri. **Usa sempre prima il paper trading per almeno 30 giorni prima di utilizzare denaro reale.** Non rischiare mai più di quanto puoi permetterti di perdere.
