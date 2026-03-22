@@ -120,21 +120,35 @@ class OANDABroker(BaseBroker):
         }
 
     async def _get(self, path: str) -> Optional[dict]:
+        if not self._session:
+            logger.error("OANDA: sessione non inizializzata, chiama connect() prima")
+            return None
         url = f"{self._base_url}{path}"
-        async with self._session.get(url) as r:
-            if r.status == 200:
-                return await r.json()
-            text = await r.text()
-            logger.warning(f"OANDA GET {path} → {r.status}: {text[:200]}")
+        try:
+            async with self._session.get(url) as r:
+                if r.status == 200:
+                    return await r.json()
+                text = await r.text()
+                logger.warning(f"OANDA GET {path} → {r.status}: {text[:200]}")
+                return None
+        except Exception as e:
+            logger.error(f"OANDA GET {path} error: {e}")
             return None
 
     async def _post(self, path: str, body: dict) -> Optional[dict]:
+        if not self._session:
+            logger.error("OANDA: sessione non inizializzata, chiama connect() prima")
+            return None
         url = f"{self._base_url}{path}"
-        async with self._session.post(url, json=body) as r:
-            data = await r.json()
-            if r.status in (200, 201):
-                return data
-            logger.warning(f"OANDA POST {path} → {r.status}: {data}")
+        try:
+            async with self._session.post(url, json=body) as r:
+                data = await r.json()
+                if r.status in (200, 201):
+                    return data
+                logger.warning(f"OANDA POST {path} → {r.status}: {data}")
+                return None
+        except Exception as e:
+            logger.error(f"OANDA POST {path} error: {e}")
             return None
 
     async def _put(self, path: str, body: dict) -> Optional[dict]:
@@ -275,7 +289,8 @@ class OANDABroker(BaseBroker):
             )
 
         # Unità: negative per short, positive per long
-        units = int(quantity * 100_000) if "JPY" not in instrument else int(quantity * 100_000)
+        # Per JPY crosses (es. USD_JPY) OANDA usa le stesse unità della base (USD)
+        units = int(quantity * 100_000)
         if direction.lower() == "sell":
             units = -abs(units)
         else:

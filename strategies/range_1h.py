@@ -96,7 +96,7 @@ class RangeStrategy1H:
             rr = abs(price - tp) / abs(sl - price) if abs(sl - price) > 1e-10 else 0
             if rr < 1.2:
                 return self._no_signal(symbol, f"R/R too low ({rr:.2f})")
-            conf = self._confidence(100 - rsi_c, "sell", hurst, adx_c)
+            conf = self._confidence(rsi_c, "sell", hurst, adx_c)
             return Signal(
                 symbol=symbol, direction="sell", confidence=conf,
                 stop_loss=sl, take_profit=tp, entry_price=price,
@@ -107,17 +107,19 @@ class RangeStrategy1H:
 
     # ── Confidence ─────────────────────────────────────────────────────────
 
-    def _confidence(self, rsi_extreme, direction, hurst, adx) -> float:
+    def _confidence(self, rsi_c, direction, hurst, adx) -> float:
         score = 0.5
-        # RSI più estremo → più confidenza
+        # RSI più estremo → più confidenza (usa sempre rsi_c diretto)
         if direction == "buy":
-            score += min((self.RSI_OS - rsi_extreme) / self.RSI_OS, 0.25)
+            # rsi_c < RSI_OS: più basso = più oversold
+            score += min(max((self.RSI_OS - rsi_c) / self.RSI_OS, 0.0), 0.25)
         else:
-            score += min((rsi_extreme - self.RSI_OB) / (100 - self.RSI_OB), 0.25)
+            # rsi_c > RSI_OB: più alto = più overbought
+            score += min(max((rsi_c - self.RSI_OB) / (100 - self.RSI_OB), 0.0), 0.25)
         # Hurst più basso → più mean-reverting
-        score += min((self.MAX_HURST - hurst) / self.MAX_HURST, 0.15)
+        score += min(max((self.MAX_HURST - hurst) / self.MAX_HURST, 0.0), 0.15)
         # ADX basso → range più stabile
-        score += min((self.MAX_ADX - adx) / self.MAX_ADX, 0.10)
+        score += min(max((self.MAX_ADX - adx) / self.MAX_ADX, 0.0), 0.10)
         return round(min(score, 1.0), 3)
 
     # ── Indicatori ─────────────────────────────────────────────────────────
@@ -181,7 +183,7 @@ class RangeStrategy1H:
 
     @staticmethod
     def _hurst(arr: np.ndarray) -> float:
-        """R/S analysis — [Tom] implementazione corretta."""
+        """R/S analysis — [Tom] finestre non-sovrapposte, ddof=1."""
         n = len(arr)
         if n < 20:
             return 0.5
@@ -189,16 +191,23 @@ class RangeStrategy1H:
         windows = [w for w in [10, 15, 20, 30] if w <= len(returns)]
         rs_vals, ns = [], []
         for w in windows:
-            sub = returns[-w:]
-            mean = sub.mean()
-            cumdev = (sub - mean).cumsum()
-            R = cumdev.max() - cumdev.min()
-            S = sub.std()
-            if S > 1e-10:
-                rs_vals.append(R / S); ns.append(w)
+            # Finestre non-sovrapposte: media R/S per stima più robusta
+            subseries_rs = []
+            for start in range(0, len(returns) - w + 1, w):
+                sub = returns[start:start + w]
+                mean = sub.mean()
+                if abs(mean) < 1e-10:
+                    continue
+                cumdev = (sub - mean).cumsum()
+                R = cumdev.max() - cumdev.min()
+                S = sub.std(ddof=1)
+                if S > 1e-10:
+                    subseries_rs.append(R / S)
+            if subseries_rs:
+                rs_vals.append(np.mean(subseries_rs)); ns.append(w)
         if len(rs_vals) < 2:
             return 0.5
-        coeffs = np.polyfit(np.log(ns), np.log(rs_vals), 1)
+        coeffs = np.polyfit(np.log(ns), np.log(np.maximum(rs_vals, 1e-10)), 1)
         return float(np.clip(coeffs[0], 0.1, 0.9))
 
     @staticmethod

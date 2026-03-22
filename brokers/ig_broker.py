@@ -175,24 +175,39 @@ class IGBroker(BaseBroker):
 
     async def _get(self, path: str, version: str = "1") -> Optional[dict]:
         await self._ensure_connected()
+        if not self._session:
+            return None
         h = {**self._headers(), "Version": version}
-        async with self._session.get(f"{self._base_url}{path}", headers=h) as r:
-            if r.status == 200:
-                return await r.json()
-            text = await r.text()
-            logger.warning(f"IG GET {path} → {r.status}: {text[:200]}")
+        try:
+            async with self._session.get(f"{self._base_url}{path}", headers=h) as r:
+                if r.status == 200:
+                    return await r.json()
+                text = await r.text()
+                logger.warning(f"IG GET {path} → {r.status}: {text[:200]}")
+                return None
+        except Exception as e:
+            logger.error(f"IG GET {path} error: {e}")
             return None
 
     async def _post(self, path: str, body: dict, version: str = "1") -> Optional[dict]:
         await self._ensure_connected()
+        if not self._session:
+            return None
         h = {**self._headers(), "Version": version}
-        async with self._session.post(
-            f"{self._base_url}{path}", json=body, headers=h
-        ) as r:
-            data = await r.json()
-            if r.status in (200, 201):
-                return data
-            logger.warning(f"IG POST {path} → {r.status}: {data}")
+        try:
+            async with self._session.post(
+                f"{self._base_url}{path}", json=body, headers=h
+            ) as r:
+                try:
+                    data = await r.json()
+                except Exception:
+                    data = {"error": await r.text()}
+                if r.status in (200, 201):
+                    return data
+                logger.warning(f"IG POST {path} → {r.status}: {data}")
+                return None
+        except Exception as e:
+            logger.error(f"IG POST {path} error: {e}")
             return None
 
     async def _delete(self, path: str, body: dict = None, version: str = "1") -> Optional[dict]:

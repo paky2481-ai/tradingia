@@ -143,10 +143,11 @@ class TrendChangeDetector:
 
         # 4. ADX Decay
         adx_decay_dir = self._adx_decay(adx)
-        if adx_decay_dir == "uptrend_weakening" and is_uptrend:
-            signals_bear.append(("ADX in calo — trend rialzista si esaurisce", self.SIGNAL_WEIGHTS["adx_decay"]))
-        elif adx_decay_dir == "downtrend_weakening" and is_downtrend:
-            signals_bull.append(("ADX in calo — trend ribassista si esaurisce", self.SIGNAL_WEIGHTS["adx_decay"]))
+        if adx_decay_dir == "weakening":
+            if is_uptrend:
+                signals_bear.append(("ADX in calo — trend rialzista si esaurisce", self.SIGNAL_WEIGHTS["adx_decay"]))
+            elif is_downtrend:
+                signals_bull.append(("ADX in calo — trend ribassista si esaurisce", self.SIGNAL_WEIGHTS["adx_decay"]))
 
         # 5. Hurst Transition
         hurst_dir = self._hurst_transition(hurst)
@@ -277,28 +278,25 @@ class TrendChangeDetector:
         if abs(current_gap) < 1e-8:
             return "none", 0
 
-        # La velocità di avvicinamento
-        gap_change_per_bar = (prev_gap - current_gap) / 3  # barre medie
+        # Velocità di avvicinamento (su 2 barre: gap[-3] → gap[-1])
+        # positiva = gap che si chiude (converge), negativa = gap che si apre (diverge)
+        gap_change_per_bar = (prev_gap - current_gap) / 2
 
-        if gap_change_per_bar <= 0:
+        if abs(gap_change_per_bar) < 1e-10:
             return "none", 0
 
         # Stima barre al crossover
-        if abs(gap_change_per_bar) > 1e-8:
-            bars_to_cross = abs(current_gap) / abs(gap_change_per_bar)
-        else:
-            return "none", 0
-
+        bars_to_cross = abs(current_gap) / abs(gap_change_per_bar)
         if bars_to_cross > 10:
             return "none", 0
 
         bars_est = int(bars_to_cross)
 
+        # gap negativo (e9 < e21) che si chiude → cross rialzista imminente
         if current_gap < 0 and gap_change_per_bar > 0:
-            # gap negativo che si chiude → cross rialzista imminente
             return "bull", bars_est
+        # gap positivo (e9 > e21) che si chiude → cross ribassista imminente
         elif current_gap > 0 and gap_change_per_bar < 0:
-            # gap positivo che si chiude → cross ribassista imminente
             return "bear", bars_est
 
         return "none", 0
@@ -306,6 +304,8 @@ class TrendChangeDetector:
     def _adx_decay(self, adx: np.ndarray) -> str:
         """
         ADX ha picco > 28 e cala da 3+ barre consecutive.
+        Ritorna "weakening" se il trend sta perdendo forza.
+        Il chiamante (analyze) applica il contesto bull/bear.
         """
         if len(adx) < 6:
             return "none"
@@ -329,9 +329,7 @@ class TrendChangeDetector:
         if drop < 3:  # deve aver perso almeno 3 punti ADX
             return "none"
 
-        # In uptrend decaying?
-        # Semplificazione: se ADX è in calo usiamo il contesto esterno
-        return "uptrend_weakening"
+        return "weakening"
 
     def _hurst_transition(self, hurst_series: np.ndarray) -> str:
         """
@@ -504,16 +502,23 @@ class TrendChangeDetector:
             ws = [w for w in [8, 12, 16, 20] if w <= len(returns)]
             rs_v, ns = [], []
             for w in ws:
-                s = returns[-w:]
-                mean = s.mean()
-                cd = (s - mean).cumsum()
-                R = cd.max() - cd.min()
-                S = s.std()
-                if S > 1e-10:
-                    rs_v.append(R / S); ns.append(w)
+                # Finestre non-sovrapposte: media R/S per stima più robusta
+                subseries_rs = []
+                for start in range(0, len(returns) - w + 1, w):
+                    s = returns[start:start + w]
+                    mean = s.mean()
+                    if abs(mean) < 1e-10:
+                        continue
+                    cd = (s - mean).cumsum()
+                    R = cd.max() - cd.min()
+                    S = s.std(ddof=1)
+                    if S > 1e-10:
+                        subseries_rs.append(R / S)
+                if subseries_rs:
+                    rs_v.append(np.mean(subseries_rs)); ns.append(w)
             if len(rs_v) >= 2:
                 try:
-                    coeff = np.polyfit(np.log(ns), np.log(rs_v), 1)
+                    coeff = np.polyfit(np.log(ns), np.log(np.maximum(rs_v, 1e-10)), 1)
                     out[i] = float(np.clip(coeff[0], 0.1, 0.9))
                 except Exception:
                     pass
