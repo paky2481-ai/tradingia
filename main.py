@@ -91,6 +91,42 @@ def gui():
 
 
 @cli.command()
+@click.option("--capital", default=1000.0, help="Capitale iniziale in EUR (default: 1000)")
+@click.option("--mode", type=click.Choice(["paper", "live"]), default="paper",
+              help="paper = simulato | live = soldi reali (richiede broker API)")
+def autorun(capital, mode):
+    """
+    Avvia il sistema di trading completamente automatico.
+
+    Paper mode (default): simula gli ordini senza soldi reali.
+    Live mode: richiede OANDA API key nel file .env
+
+    Esempi:
+        python main.py autorun                    # paper, €1000
+        python main.py autorun --capital 5000     # paper, €5000
+        python main.py autorun --mode live        # live trading
+    """
+    click.echo(f"\n{'═'*52}")
+    click.echo(f"  TradingIA — Sistema Automatico")
+    click.echo(f"  Modo:     {mode.upper()}")
+    click.echo(f"  Capitale: €{capital:,.2f}")
+    click.echo(f"  Strumenti: EUR/USD GBP/USD XAU/USD S&P DAX EUR/GBP USD/JPY")
+    click.echo(f"  Strategie: Trend 4H + Range 1H")
+    click.echo(f"  Rischio:  max 1% per trade | max 2 posizioni | DD 8%")
+    click.echo(f"{'═'*52}\n")
+
+    if mode == "live":
+        click.confirm(
+            "⚠️  ATTENZIONE: LIVE TRADING — soldi reali a rischio.\n"
+            "   Hai già testato il sistema in paper mode per almeno 30 giorni?\n"
+            "   Continuare?",
+            abort=True,
+        )
+
+    asyncio.run(_run_autoengine(capital, mode))
+
+
+@cli.command()
 @click.option("--symbols", default="", help="Specific symbols (empty = all)")
 def scan(symbols):
     """One-shot signal scan across all instruments."""
@@ -194,6 +230,16 @@ async def _run_scan(symbols=None):
     print(f"{'='*60}\n")
 
     await data_feed.close()
+
+
+async def _run_autoengine(capital: float, mode: str):
+    from core.engine import TradingEngine
+    engine = TradingEngine(capital=capital, mode=mode)
+    try:
+        await engine.run()
+    except KeyboardInterrupt:
+        await engine.stop()
+        click.echo("\nEngine fermato.")
 
 
 def _create_broker(broker_type: str):
