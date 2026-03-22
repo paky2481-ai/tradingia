@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PositionsPanel</class>
+ <widget class="QWidget" name="PositionsPanel">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>900</width><height>380</height></rect>
+  </property>
+  <layout class="QVBoxLayout" name="rootLayout">
+   <property name="spacing"><number>0</number></property>
+   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
+
+   <!-- ── Posizioni aperte ───────────────────────────────────────────── -->
+   <item>
+    <widget class="QGroupBox" name="posGroup">
+     <property name="title"><string>Posizioni Aperte</string></property>
+     <layout class="QVBoxLayout" name="posLayout">
+      <property name="contentsMargins"><rect><left>4</left><top>6</top><right>4</right><bottom>4</bottom></rect></property>
+
+      <!-- Positions table -->
+      <item>
+       <widget class="QTableWidget" name="_table">
+        <property name="minimumHeight"><number>120</number></property>
+        <property name="maximumHeight"><number>220</number></property>
+        <property name="columnCount"><number>10</number></property>
+        <attribute name="horizontalHeaderStretchLastSection"><bool>false</bool></attribute>
+        <attribute name="verticalHeaderVisible"><bool>false</bool></attribute>
+        <column><property name="text"><string>Strumento</string></property></column>
+        <column><property name="text"><string>Dir</string></property></column>
+        <column><property name="text"><string>Qty</string></property></column>
+        <column><property name="text"><string>Entry</string></property></column>
+        <column><property name="text"><string>Prezzo</string></property></column>
+        <column><property name="text"><string>P&amp;L €</string></property></column>
+        <column><property name="text"><string>P&amp;L %</string></property></column>
+        <column><property name="text"><string>SL</string></property></column>
+        <column><property name="text"><string>TP</string></property></column>
+        <column><property name="text"><string>Chiudi</string></property></column>
+       </widget>
+      </item>
+
+      <!-- No positions label -->
+      <item>
+       <widget class="QLabel" name="_lbl_no_pos">
+        <property name="text"><string>Nessuna posizione aperta</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Form manuale ───────────────────────────────────────────────── -->
+   <item>
+    <widget class="QGroupBox" name="manualGroup">
+     <property name="title"><string>Apri Trade Manuale</string></property>
+     <layout class="QGridLayout" name="manualLayout">
+      <property name="contentsMargins"><rect><left>8</left><top>8</top><right>8</right><bottom>8</bottom></rect></property>
+      <property name="spacing"><number>6</number></property>
+
+      <!-- Row 0: Strumento -->
+      <item row="0" column="0">
+       <widget class="QLabel" name="lblStrumento">
+        <property name="text"><string>Strumento</string></property>
+       </widget>
+      </item>
+      <item row="0" column="1" colspan="3">
+       <widget class="QComboBox" name="_cmb_symbol"/>
+      </item>
+
+      <!-- Row 1: Lotti + SL -->
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblLotti">
+        <property name="text"><string>Lotti</string></property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="_spin_qty">
+        <property name="minimum"><double>0.001</double></property>
+        <property name="maximum"><double>10.000000000000000</double></property>
+        <property name="singleStep"><double>0.010000000000000</double></property>
+        <property name="value"><double>0.010000000000000</double></property>
+        <property name="decimals"><number>3</number></property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="lblSL">
+        <property name="text"><string>SL</string></property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QDoubleSpinBox" name="_spin_sl">
+        <property name="minimum"><double>0.000000000000000</double></property>
+        <property name="maximum"><double>999999.000000000000000</double></property>
+        <property name="decimals"><number>5</number></property>
+        <property name="value"><double>0.000000000000000</double></property>
+       </widget>
+      </item>
+
+      <!-- Row 2: TP + hint -->
+      <item row="2" column="0">
+       <widget class="QLabel" name="lblTP">
+        <property name="text"><string>TP</string></property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="_spin_tp">
+        <property name="minimum"><double>0.000000000000000</double></property>
+        <property name="maximum"><double>999999.000000000000000</double></property>
+        <property name="decimals"><number>5</number></property>
+        <property name="value"><double>0.000000000000000</double></property>
+       </widget>
+      </item>
+      <item row="2" column="2" colspan="2">
+       <widget class="QLabel" name="lblHint">
+        <property name="text"><string>SL/TP = 0 → automatico (ATR)</string></property>
+       </widget>
+      </item>
+
+      <!-- Row 3: Buy / Sell buttons -->
+      <item row="3" column="0" colspan="2">
+       <widget class="QPushButton" name="_btn_buy">
+        <property name="text"><string>▲  COMPRA</string></property>
+        <property name="minimumHeight"><number>34</number></property>
+        <property name="maximumHeight"><number>34</number></property>
+       </widget>
+      </item>
+      <item row="3" column="2" colspan="2">
+       <widget class="QPushButton" name="_btn_sell">
+        <property name="text"><string>▼  VENDI</string></property>
+        <property name="minimumHeight"><number>34</number></property>
+        <property name="maximumHeight"><number>34</number></property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Trade recenti ──────────────────────────────────────────────── -->
+   <item>
+    <widget class="QGroupBox" name="logGroup">
+     <property name="title"><string>Trade Recenti</string></property>
+     <layout class="QVBoxLayout" name="logLayout">
+      <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
+      <item>
+       <widget class="QTableWidget" name="_trade_log">
+        <property name="maximumHeight"><number>140</number></property>
+        <property name="columnCount"><number>6</number></property>
+        <attribute name="verticalHeaderVisible"><bool>false</bool></attribute>
+        <column><property name="text"><string>Ora</string></property></column>
+        <column><property name="text"><string>Strumento</string></property></column>
+        <column><property name="text"><string>Dir</string></property></column>
+        <column><property name="text"><string>Entry</string></property></column>
+        <column><property name="text"><string>Exit</string></property></column>
+        <column><property name="text"><string>P&amp;L €</string></property></column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- Vertical spacer -->
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+     <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+    </spacer>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

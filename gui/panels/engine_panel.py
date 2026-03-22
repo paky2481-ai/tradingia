@@ -11,15 +11,13 @@ Mostra in tempo reale:
 
 from __future__ import annotations
 
-from datetime import datetime
+from pathlib import Path
 from typing import Dict
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
-from PyQt6.QtGui import QFont
+from PyQt6 import uic
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QScrollArea, QSizePolicy,
-    QGroupBox, QGridLayout,
+    QWidget, QLabel, QFrame, QVBoxLayout,
 )
 
 from core.signal_bus import (
@@ -27,27 +25,15 @@ from core.signal_bus import (
     TradeOpenedEvent, TradeClosedEvent,
 )
 
+_UI = Path(__file__).parent.parent / "ui" / "engine_panel.ui"
+
 # ─── Stili ───────────────────────────────────────────────────────────────────
 
-_STYLE_CARD = """
-    QFrame {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-    }
-"""
 _STYLE_GREEN  = "color: #3fb950; font-weight: bold;"
 _STYLE_RED    = "color: #f85149; font-weight: bold;"
 _STYLE_YELLOW = "color: #e3b341; font-weight: bold;"
 _STYLE_GRAY   = "color: #8b949e;"
 _STYLE_WHITE  = "color: #e6edf3;"
-
-
-def _lbl(text: str, style: str = _STYLE_GRAY, align=Qt.AlignmentFlag.AlignLeft) -> QLabel:
-    l = QLabel(text)
-    l.setStyleSheet(style)
-    l.setAlignment(align)
-    return l
 
 
 def _sep() -> QFrame:
@@ -65,36 +51,42 @@ class EnginePanel(QWidget):
         super().__init__(parent)
         self._running = False
         self._engine  = None    # reference al TradingEngine (impostato da app.py)
-        self._trend_alerts: list = []
 
-        self._build_ui()
+        uic.loadUi(str(_UI), self)
+
+        # Get layout references from named container widgets
+        self._scan_layout   = self._scan_container.layout()
+        self._alert_layout  = self._alert_container.layout()
+
+        # Add stretch at end of each scroll container
+        self._scan_layout.addStretch()
+        self._alert_layout.addStretch()
+
+        self._setup_styles()
+        self._setup_connections()
         self._connect_bus()
 
     # ─────────────────────────────────────────────────────────────────────
-    # UI
+    # Setup
     # ─────────────────────────────────────────────────────────────────────
 
-    def _build_ui(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
-        root.setSpacing(8)
-
-        # ── Header ────────────────────────────────────────────────────────
-        hdr = QHBoxLayout()
-        self._lbl_title = QLabel("MOTORE AUTO")
-        self._lbl_title.setStyleSheet("color:#e6edf3; font-size:13px; font-weight:bold;")
-        hdr.addWidget(self._lbl_title)
-        hdr.addStretch()
-        self._lbl_state = QLabel("⏸ FERMO")
+    def _setup_styles(self):
+        self._lbl_title.setStyleSheet(
+            "color:#e6edf3; font-size:13px; font-weight:bold;")
         self._lbl_state.setStyleSheet(_STYLE_GRAY)
-        hdr.addWidget(self._lbl_state)
-        root.addLayout(hdr)
+        self._lbl_equity.setStyleSheet(_STYLE_WHITE)
+        self._lbl_pnl.setStyleSheet(_STYLE_GRAY)
+        self._lbl_return.setStyleSheet(_STYLE_GRAY)
+        self._lbl_dd.setStyleSheet(_STYLE_GRAY)
+        self._lbl_positions.setStyleSheet(_STYLE_GRAY)
 
-        root.addWidget(_sep())
+        # Caption labels
+        for name in ("lblEquityCaption", "lblPnlCaption", "lblReturnCaption",
+                     "lblDdCaption", "lblPosCaption"):
+            lbl = self.findChild(QLabel, name)
+            if lbl:
+                lbl.setStyleSheet(_STYLE_GRAY)
 
-        # ── Bottone Start/Stop ────────────────────────────────────────────
-        self._btn_start = QPushButton("▶  Avvia Engine")
-        self._btn_start.setFixedHeight(36)
         self._btn_start.setStyleSheet("""
             QPushButton {
                 background: #238636; color: white;
@@ -103,89 +95,26 @@ class EnginePanel(QWidget):
             QPushButton:hover { background: #2ea043; }
             QPushButton:pressed { background: #1a7f37; }
         """)
-        self._btn_start.clicked.connect(self._on_start_stop)
-        root.addWidget(self._btn_start)
-
-        # ── Metriche equity ───────────────────────────────────────────────
-        metrics = QFrame()
-        metrics.setStyleSheet(_STYLE_CARD)
-        mg = QGridLayout(metrics)
-        mg.setContentsMargins(10, 8, 10, 8)
-        mg.setSpacing(4)
-
-        mg.addWidget(_lbl("Equity", _STYLE_GRAY), 0, 0)
-        self._lbl_equity = _lbl("€ —", _STYLE_WHITE)
-        mg.addWidget(self._lbl_equity, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
-
-        mg.addWidget(_lbl("P&L oggi", _STYLE_GRAY), 1, 0)
-        self._lbl_pnl = _lbl("€ —", _STYLE_GRAY)
-        mg.addWidget(self._lbl_pnl, 1, 1, alignment=Qt.AlignmentFlag.AlignRight)
-
-        mg.addWidget(_lbl("Rendimento", _STYLE_GRAY), 2, 0)
-        self._lbl_return = _lbl("—", _STYLE_GRAY)
-        mg.addWidget(self._lbl_return, 2, 1, alignment=Qt.AlignmentFlag.AlignRight)
-
-        mg.addWidget(_lbl("Drawdown", _STYLE_GRAY), 3, 0)
-        self._lbl_dd = _lbl("—", _STYLE_GRAY)
-        mg.addWidget(self._lbl_dd, 3, 1, alignment=Qt.AlignmentFlag.AlignRight)
-
-        mg.addWidget(_lbl("Posizioni aperte", _STYLE_GRAY), 4, 0)
-        self._lbl_positions = _lbl("—", _STYLE_GRAY)
-        mg.addWidget(self._lbl_positions, 4, 1, alignment=Qt.AlignmentFlag.AlignRight)
-
-        root.addWidget(metrics)
-
-        # ── Ultimi scan ───────────────────────────────────────────────────
-        scan_group = QGroupBox("Ultimi segnali")
-        scan_group.setStyleSheet("""
+        self.metricsFrame.setStyleSheet("""
+            QFrame {
+                background: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+            }
+        """)
+        self.scanGroup.setStyleSheet("""
             QGroupBox { color:#8b949e; font-size:11px; border:1px solid #30363d;
                         border-radius:4px; margin-top:6px; padding-top:4px; }
             QGroupBox::title { subcontrol-origin:margin; left:8px; }
         """)
-        sg = QVBoxLayout(scan_group)
-        sg.setContentsMargins(6, 6, 6, 6)
-        sg.setSpacing(2)
-
-        self._scan_area = QWidget()
-        self._scan_layout = QVBoxLayout(self._scan_area)
-        self._scan_layout.setContentsMargins(0, 0, 0, 0)
-        self._scan_layout.setSpacing(1)
-        self._scan_layout.addStretch()
-
-        scroll_scan = QScrollArea()
-        scroll_scan.setWidget(self._scan_area)
-        scroll_scan.setWidgetResizable(True)
-        scroll_scan.setMaximumHeight(130)
-        scroll_scan.setStyleSheet("QScrollArea { border:none; background:transparent; }")
-        sg.addWidget(scroll_scan)
-        root.addWidget(scan_group)
-
-        # ── Trend Alerts ──────────────────────────────────────────────────
-        alert_group = QGroupBox("Trend Alerts")
-        alert_group.setStyleSheet("""
+        self.alertGroup.setStyleSheet("""
             QGroupBox { color:#e3b341; font-size:11px; border:1px solid #30363d;
                         border-radius:4px; margin-top:6px; padding-top:4px; }
             QGroupBox::title { subcontrol-origin:margin; left:8px; }
         """)
-        ag = QVBoxLayout(alert_group)
-        ag.setContentsMargins(6, 6, 6, 6)
-        ag.setSpacing(2)
 
-        self._alert_area = QWidget()
-        self._alert_layout = QVBoxLayout(self._alert_area)
-        self._alert_layout.setContentsMargins(0, 0, 0, 0)
-        self._alert_layout.setSpacing(3)
-        self._alert_layout.addStretch()
-
-        scroll_alert = QScrollArea()
-        scroll_alert.setWidget(self._alert_area)
-        scroll_alert.setWidgetResizable(True)
-        scroll_alert.setMaximumHeight(200)
-        scroll_alert.setStyleSheet("QScrollArea { border:none; background:transparent; }")
-        ag.addWidget(scroll_alert)
-        root.addWidget(alert_group)
-
-        root.addStretch()
+    def _setup_connections(self):
+        self._btn_start.clicked.connect(self._on_start_stop)
 
     # ─────────────────────────────────────────────────────────────────────
     # Bus connections
