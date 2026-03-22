@@ -175,9 +175,10 @@ class RangeStrategy1H:
             atr_[i] = tr[i]*a + atr_[i-1]*(1-a)
             dmp[i]  = dm_p[i]*a + dmp[i-1]*(1-a)
             dmm[i]  = dm_m[i]*a + dmm[i-1]*(1-a)
-        di_p = np.where(atr_>1e-10, 100*dmp/atr_, 0)
-        di_m = np.where(atr_>1e-10, 100*dmm/atr_, 0)
-        dx   = np.where((di_p+di_m)>1e-10, 100*np.abs(di_p-di_m)/(di_p+di_m), 0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            di_p = np.where(atr_>1e-10, 100*dmp/atr_, 0)
+            di_m = np.where(atr_>1e-10, 100*dmm/atr_, 0)
+            dx   = np.where((di_p+di_m)>1e-10, 100*np.abs(di_p-di_m)/(di_p+di_m), 0)
         adx  = np.empty(len(dx)); adx[0] = dx[0]
         for i in range(1, len(dx)):
             adx[i] = dx[i]*a + adx[i-1]*(1-a)

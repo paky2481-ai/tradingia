@@ -487,20 +487,26 @@ class TrendChangeDetector:
             atr_[i] = tr[i] * a + atr_[i - 1] * (1 - a)
             dp[i]   = dmp[i] * a + dp[i - 1] * (1 - a)
             dm[i]   = dmm[i] * a + dm[i - 1] * (1 - a)
-        di_p = np.where(atr_ > 1e-10, 100 * dp / atr_, 0)
-        di_m = np.where(atr_ > 1e-10, 100 * dm / atr_, 0)
-        dx   = np.where((di_p + di_m) > 1e-10,
-                        100 * np.abs(di_p - di_m) / (di_p + di_m), 0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            di_p = np.where(atr_ > 1e-10, 100 * dp / atr_, 0)
+            di_m = np.where(atr_ > 1e-10, 100 * dm / atr_, 0)
+            dx   = np.where((di_p + di_m) > 1e-10,
+                            100 * np.abs(di_p - di_m) / (di_p + di_m), 0)
         adx  = np.empty(len(dx)); adx[0] = dx[0]
         for i in range(1, len(dx)):
             adx[i] = dx[i] * a + adx[i - 1] * (1 - a)
         return adx
 
     @staticmethod
-    def _hurst_rolling(arr: np.ndarray, window: int = 30) -> np.ndarray:
+    def _hurst_rolling(arr: np.ndarray, window: int = 60) -> np.ndarray:
         """
         [Tom] Hurst rolling: calcola Hurst sull'ultima finestra di barre.
         Ritorna un array della stessa lunghezza di arr.
+
+        window=60 (minimo consigliato): con 59 returns e sub-finestre [8,12,16,20]
+        si ottengono 7/4/3/2 subseries non-sovrapposte → stima R/S affidabile.
+        Con window=30 (vecchio default) w=16 e w=20 davano solo 1 subseria
+        ciascuna → regressione log-log inaffidabile (varianza ~0.5).
         """
         out = np.full(len(arr), 0.5)
         for i in range(window, len(arr)):

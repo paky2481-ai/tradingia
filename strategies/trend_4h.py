@@ -174,10 +174,11 @@ class TrendStrategy4H:
             atr_[i] = tr[i] * a + atr_[i-1] * (1-a)
             dmp[i]  = dm_plus[i] * a + dmp[i-1] * (1-a)
             dmm[i]  = dm_minus[i] * a + dmm[i-1] * (1-a)
-        di_plus  = np.where(atr_ > 1e-10, 100 * dmp / atr_, 0)
-        di_minus = np.where(atr_ > 1e-10, 100 * dmm / atr_, 0)
-        dx = np.where((di_plus + di_minus) > 1e-10,
-                      100 * np.abs(di_plus - di_minus) / (di_plus + di_minus), 0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            di_plus  = np.where(atr_ > 1e-10, 100 * dmp / atr_, 0)
+            di_minus = np.where(atr_ > 1e-10, 100 * dmm / atr_, 0)
+            dx = np.where((di_plus + di_minus) > 1e-10,
+                          100 * np.abs(di_plus - di_minus) / (di_plus + di_minus), 0)
         adx = np.empty(len(dx)); adx[0] = dx[0]
         for i in range(1, len(dx)):
             adx[i] = dx[i] * a + adx[i-1] * (1-a)
