@@ -20,7 +20,7 @@ from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtWidgets import (
     QMainWindow, QDockWidget, QWidget, QLabel,
     QStatusBar, QToolBar, QApplication, QSizePolicy,
-    QTextEdit, QVBoxLayout, QPushButton, QHBoxLayout,
+    QPlainTextEdit, QVBoxLayout, QPushButton, QHBoxLayout,
 )
 
 from gui.panels.chart_panel import ChartPanel
@@ -41,7 +41,7 @@ class LogPanel(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._text = QTextEdit()
+        self._text = QPlainTextEdit()
         self._text.setReadOnly(True)
         self._text.setMaximumBlockCount(1000)
         self._text.setStyleSheet(
@@ -53,7 +53,7 @@ class LogPanel(QWidget):
     def append(self, msg: str, color: str = "#8b949e"):
         from datetime import datetime
         ts = datetime.utcnow().strftime("%H:%M:%S")
-        self._text.append(f'<span style="color:#484f58">[{ts}]</span> <span style="color:{color}">{msg}</span>')
+        self._text.appendHtml(f'<span style="color:#484f58">[{ts}]</span> <span style="color:{color}">{msg}</span>')
         self._text.ensureCursorVisible()
 
 
