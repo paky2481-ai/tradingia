@@ -84,10 +84,61 @@ def dashboard(port):
 
 
 @cli.command()
-def gui():
-    """Launch the desktop GUI application."""
+@click.option("--autorun", is_flag=True, default=False,
+              help="Avvia anche il motore automatico all'apertura della GUI")
+@click.option("--capital", default=1000.0, help="Capitale iniziale in EUR")
+@click.option("--mode", type=click.Choice(["paper", "live"]), default="paper")
+def gui(autorun, capital, mode):
+    """
+    Lancia l'interfaccia grafica desktop.
+
+    Esempi:
+        python main.py gui                              # solo GUI
+        python main.py gui --autorun                    # GUI + engine automatico
+        python main.py gui --autorun --capital 5000     # GUI + engine, €5000
+    """
+    if autorun and mode == "live":
+        click.confirm(
+            "⚠️  LIVE TRADING — soldi reali a rischio. Continuare?", abort=True
+        )
     from gui.app import run
-    run()
+    run(autorun=autorun, capital=capital, mode=mode)
+
+
+@cli.command()
+@click.option("--capital", default=1000.0, help="Capitale iniziale in EUR (default: 1000)")
+@click.option("--mode", type=click.Choice(["paper", "live"]), default="paper",
+              help="paper = simulato | live = soldi reali (richiede broker API)")
+def autorun(capital, mode):
+    """
+    Avvia il sistema di trading completamente automatico.
+
+    Paper mode (default): simula gli ordini senza soldi reali.
+    Live mode: richiede OANDA API key nel file .env
+
+    Esempi:
+        python main.py autorun                    # paper, €1000
+        python main.py autorun --capital 5000     # paper, €5000
+        python main.py autorun --mode live        # live trading
+    """
+    click.echo(f"\n{'═'*52}")
+    click.echo(f"  TradingIA — Sistema Automatico")
+    click.echo(f"  Modo:     {mode.upper()}")
+    click.echo(f"  Capitale: €{capital:,.2f}")
+    click.echo(f"  Strumenti: EUR/USD GBP/USD XAU/USD S&P DAX EUR/GBP USD/JPY")
+    click.echo(f"  Strategie: Trend 4H + Range 1H")
+    click.echo(f"  Rischio:  max 1% per trade | max 2 posizioni | DD 8%")
+    click.echo(f"{'═'*52}\n")
+
+    if mode == "live":
+        click.confirm(
+            "⚠️  ATTENZIONE: LIVE TRADING — soldi reali a rischio.\n"
+            "   Hai già testato il sistema in paper mode per almeno 30 giorni?\n"
+            "   Continuare?",
+            abort=True,
+        )
+
+    asyncio.run(_run_autoengine(capital, mode))
 
 
 @cli.command()
@@ -196,10 +247,50 @@ async def _run_scan(symbols=None):
     await data_feed.close()
 
 
-def _create_broker(broker_type: str):
+async def _run_autoengine(capital: float, mode: str):
+    from core.engine import TradingEngine
+    engine = TradingEngine(capital=capital, mode=mode)
+    try:
+        await engine.run()
+    except KeyboardInterrupt:
+        await engine.stop()
+        click.echo("\nEngine fermato.")
+
+
+def _create_broker(broker_type: str = None):
+    if broker_type is None:
+        try:
+            from config.settings import settings
+            broker_type = settings.broker.active_broker
+        except Exception:
+            broker_type = "paper"
+
     if broker_type == "paper":
         from brokers.paper_broker import PaperBroker
         return PaperBroker()
+    elif broker_type == "ig":
+        from brokers.ig_broker import IGBroker
+        try:
+            from config.settings import settings
+            b = settings.broker
+            return IGBroker(
+                api_key=b.ig_api_key, username=b.ig_username,
+                password=b.ig_password, account_type=b.ig_account_type,
+                account_id=b.ig_account_id,
+            )
+        except Exception:
+            return IGBroker()
+    elif broker_type == "oanda":
+        from brokers.oanda_broker import OANDABroker
+        try:
+            from config.settings import settings
+            b = settings.broker
+            return OANDABroker(
+                api_token=b.oanda_api_token, account_id=b.oanda_account_id,
+                environment=b.oanda_environment,
+            )
+        except Exception:
+            return OANDABroker()
     elif broker_type == "alpaca":
         from brokers.alpaca_broker import AlpacaBroker
         return AlpacaBroker()

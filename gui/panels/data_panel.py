@@ -7,26 +7,16 @@ Emits data_loaded(df, symbol, timeframe) when download completes.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Optional
 
-import pandas as pd
-from PyQt6.QtCore import Qt, pyqtSignal, QDateTime
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QLineEdit, QComboBox,
-    QGroupBox, QCheckBox, QProgressBar, QDateTimeEdit,
-    QSizePolicy,
-)
+from PyQt6 import uic
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget
 
+_UI = Path(__file__).parent.parent / "ui" / "data_panel.ui"
 
 TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"]
-
-SYMBOL_PRESETS = {
-    "Stocks":  ["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA", "SPY", "QQQ"],
-    "Crypto":  ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD"],
-    "Forex":   ["EURUSD=X", "GBPUSD=X", "USDJPY=X"],
-    "Indices": ["^GSPC", "^DJI", "^IXIC"],
-}
 
 
 class DataPanel(QWidget):
@@ -43,135 +33,43 @@ class DataPanel(QWidget):
         super().__init__(parent)
         self._live_task: Optional[asyncio.Task] = None
         self._live_symbol = ""
-        self._setup_ui()
+
+        uic.loadUi(str(_UI), self)
+
+        # Set default timeframe selection
+        self._tf_combo.setCurrentText("1h")
+
+        self._setup_connections()
 
     # ── Setup ──────────────────────────────────────────────────────────────
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # ── Header ────────────────────────────────────────────────────
-        header = QWidget()
-        header.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
-        header.setFixedHeight(44)
-        h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(10, 0, 10, 0)
-        title = QLabel("Data")
-        title.setObjectName("label_section")
-        h_layout.addWidget(title)
-        h_layout.addStretch()
-        layout.addWidget(header)
-
-        # ── Body ───────────────────────────────────────────────────────
-        body = QWidget()
-        body.setStyleSheet("background:#0d1117;")
-        b_layout = QVBoxLayout(body)
-        b_layout.setContentsMargins(12, 12, 12, 12)
-        b_layout.setSpacing(12)
-
-        # ── Symbol input ───────────────────────────────────────────────
-        sym_group = QGroupBox("Symbol")
-        sg_layout = QVBoxLayout(sym_group)
-        sg_layout.setSpacing(8)
-
-        self._symbol_input = QLineEdit()
-        self._symbol_input.setPlaceholderText("AAPL, BTC-USD, EURUSD=X …")
-        self._symbol_input.setFixedHeight(34)
+    def _setup_connections(self):
+        # Symbol input
         self._symbol_input.returnPressed.connect(self._on_load_clicked)
-        sg_layout.addWidget(self._symbol_input)
 
         # Quick-pick buttons
-        qp_layout = QHBoxLayout()
-        qp_layout.setSpacing(4)
-        for sym in ["AAPL", "BTC-USD", "EURUSD=X", "^GSPC"]:
-            btn = QPushButton(sym)
-            btn.setFixedHeight(24)
-            btn.setStyleSheet("""
-                QPushButton { background:#21262d; border:1px solid #30363d;
-                              border-radius:4px; color:#8b949e; font-size:11px; padding:0 6px; }
-                QPushButton:hover { background:#30363d; color:#e6edf3; }
-            """)
-            btn.clicked.connect(lambda _, s=sym: self._symbol_input.setText(s))
-            qp_layout.addWidget(btn)
-        sg_layout.addLayout(qp_layout)
-        b_layout.addWidget(sym_group)
-
-        # ── Timeframe ──────────────────────────────────────────────────
-        tf_group = QGroupBox("Timeframe")
-        tf_layout = QVBoxLayout(tf_group)
-
-        self._tf_combo = QComboBox()
-        self._tf_combo.addItems(TIMEFRAMES)
-        self._tf_combo.setCurrentText("1h")
-        self._tf_combo.setFixedHeight(34)
-        tf_layout.addWidget(self._tf_combo)
+        self._btn_quick_aapl.clicked.connect(
+            lambda: self._symbol_input.setText("AAPL"))
+        self._btn_quick_btc.clicked.connect(
+            lambda: self._symbol_input.setText("BTC-USD"))
+        self._btn_quick_eurusd.clicked.connect(
+            lambda: self._symbol_input.setText("EURUSD=X"))
+        self._btn_quick_gspc.clicked.connect(
+            lambda: self._symbol_input.setText("^GSPC"))
 
         # Quick timeframe buttons
-        qf_layout = QHBoxLayout()
-        qf_layout.setSpacing(4)
-        for tf in ["5m", "1h", "4h", "1d"]:
-            btn = QPushButton(tf)
-            btn.setFixedHeight(24)
-            btn.setCheckable(True)
-            btn.setStyleSheet("""
-                QPushButton { background:#21262d; border:1px solid #30363d;
-                              border-radius:4px; color:#8b949e; font-size:11px; padding:0 6px; }
-                QPushButton:checked { background:#1f6feb22; border-color:#1f6feb; color:#58a6ff; }
-                QPushButton:hover { background:#30363d; color:#e6edf3; }
-            """)
-            btn.clicked.connect(lambda _, t=tf: self._tf_combo.setCurrentText(t))
-            qf_layout.addWidget(btn)
-        tf_layout.addLayout(qf_layout)
-        b_layout.addWidget(tf_group)
+        self._btn_tf_5m.clicked.connect(
+            lambda: self._tf_combo.setCurrentText("5m"))
+        self._btn_tf_1h.clicked.connect(
+            lambda: self._tf_combo.setCurrentText("1h"))
+        self._btn_tf_4h.clicked.connect(
+            lambda: self._tf_combo.setCurrentText("4h"))
+        self._btn_tf_1d.clicked.connect(
+            lambda: self._tf_combo.setCurrentText("1d"))
 
-        # ── Options ────────────────────────────────────────────────────
-        opt_group = QGroupBox("Options")
-        opt_layout = QVBoxLayout(opt_group)
-        opt_layout.setSpacing(6)
-
-        self._chk_ma20  = QCheckBox("MA 20")
-        self._chk_ma50  = QCheckBox("MA 50")
-        self._chk_ma200 = QCheckBox("MA 200")
-        self._chk_ma20.setChecked(True)
-        self._chk_ma50.setChecked(True)
-        self._chk_ma200.setChecked(False)
-
-        for chk in (self._chk_ma20, self._chk_ma50, self._chk_ma200):
-            opt_layout.addWidget(chk)
-
-        b_layout.addWidget(opt_group)
-
-        # ── Buttons ────────────────────────────────────────────────────
-        self._btn_load = QPushButton("Load Historical Data")
-        self._btn_load.setObjectName("btn_primary")
-        self._btn_load.setFixedHeight(36)
+        # Load / live buttons
         self._btn_load.clicked.connect(self._on_load_clicked)
-        b_layout.addWidget(self._btn_load)
-
-        self._btn_live = QPushButton("Start Live Feed")
-        self._btn_live.setObjectName("btn_success")
-        self._btn_live.setFixedHeight(36)
-        self._btn_live.setCheckable(True)
         self._btn_live.clicked.connect(self._on_live_clicked)
-        b_layout.addWidget(self._btn_live)
-
-        # ── Progress ───────────────────────────────────────────────────
-        self._progress = QProgressBar()
-        self._progress.setRange(0, 0)   # indeterminate
-        self._progress.setFixedHeight(6)
-        self._progress.setVisible(False)
-        b_layout.addWidget(self._progress)
-
-        # ── Status ─────────────────────────────────────────────────────
-        self._status = QLabel("")
-        self._status.setWordWrap(True)
-        self._status.setStyleSheet("font-size:11px; color:#8b949e;")
-        b_layout.addWidget(self._status)
-
-        b_layout.addStretch()
-        layout.addWidget(body)
 
     # ── Slots ──────────────────────────────────────────────────────────────
 
@@ -192,7 +90,6 @@ class DataPanel(QWidget):
 
         if self._btn_live.isChecked():
             self._btn_live.setText("Stop Live Feed")
-            self._btn_live.setObjectName("btn_danger")
             self._btn_live.setStyleSheet("""
                 QPushButton { background-color:#da3633; border-color:#da3633;
                               color:#ffffff; border-radius:6px; }
@@ -208,7 +105,6 @@ class DataPanel(QWidget):
             self._live_task.cancel()
             self._live_task = None
         self._btn_live.setText("Start Live Feed")
-        self._btn_live.setObjectName("btn_success")
         self._btn_live.setStyleSheet("")   # reset to stylesheet
         self._btn_live.setChecked(False)
         self._set_status("Live feed stopped.")
@@ -231,7 +127,6 @@ class DataPanel(QWidget):
                     f"({df.index[0] if hasattr(df.index[0], 'date') else ''} …)"
                 )
                 self.data_loaded.emit(df, symbol, timeframe)
-                # Apply MA visibility from checkboxes
                 self._emit_ma_settings()
         except Exception as e:
             self._set_status(f"Error: {e}", error=True)

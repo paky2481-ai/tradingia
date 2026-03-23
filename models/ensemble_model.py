@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 
 from models.base_model import BaseModel, ModelSignal
 from models.random_forest_model import RandomForestModel
-from models.lstm_model import LSTMModel
+from models.lstm_model import LSTMModel, TORCH_AVAILABLE
 from config.settings import settings
 from utils.logger import get_logger
 
@@ -25,8 +25,8 @@ class EnsembleModel(BaseModel):
     def __init__(self, name: str = "ensemble"):
         super().__init__(name)
         self.rf_model = RandomForestModel(name=f"{name}_rf")
-        self.lstm_model = LSTMModel(name=f"{name}_lstm")
-        self.weights = {"rf": 0.5, "lstm": 0.5}
+        self.lstm_model = LSTMModel(name=f"{name}_lstm") if TORCH_AVAILABLE else None
+        self.weights = {"rf": 0.6, "lstm": 0.4} if TORCH_AVAILABLE else {"rf": 1.0}
 
     def prepare_features(self, df: pd.DataFrame):
         # Not used directly — delegates to sub-models
@@ -35,7 +35,7 @@ class EnsembleModel(BaseModel):
     def train(self, df: pd.DataFrame) -> Dict:
         logger.info("Training ensemble sub-models...")
         rf_metrics = self.rf_model.train(df)
-        lstm_metrics = self.lstm_model.train(df)
+        lstm_metrics = self.lstm_model.train(df) if self.lstm_model else {"skipped": "torch_not_installed"}
         self.is_trained = True
         return {"rf": rf_metrics, "lstm": lstm_metrics}
 
@@ -52,13 +52,14 @@ class EnsembleModel(BaseModel):
         except Exception as e:
             logger.warning(f"RF predict error: {e}")
 
-        try:
-            lstm_signal = self.lstm_model.predict(df)
-            if lstm_signal.confidence > 0:
-                signals.append(lstm_signal)
-                weights.append(self.weights["lstm"])
-        except Exception as e:
-            logger.warning(f"LSTM predict error: {e}")
+        if self.lstm_model is not None:
+            try:
+                lstm_signal = self.lstm_model.predict(df)
+                if lstm_signal.confidence > 0:
+                    signals.append(lstm_signal)
+                    weights.append(self.weights["lstm"])
+            except Exception as e:
+                logger.warning(f"LSTM predict error: {e}")
 
         if not signals:
             return ModelSignal("neutral", 0.0)
@@ -92,10 +93,11 @@ class EnsembleModel(BaseModel):
 
     def save(self):
         self.rf_model.save()
-        self.lstm_model.save()
+        if self.lstm_model:
+            self.lstm_model.save()
 
     def load(self) -> bool:
         rf_ok = self.rf_model.load()
-        lstm_ok = self.lstm_model.load()
+        lstm_ok = self.lstm_model.load() if self.lstm_model else False
         self.is_trained = rf_ok or lstm_ok
         return self.is_trained

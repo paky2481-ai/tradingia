@@ -38,6 +38,22 @@ class BrokerSettings(BaseSettings):
     ib_port: int = 7497
     ib_client_id: int = 1
 
+    # IG Markets (forex/indici/commodity CFD)
+    ig_api_key: str = ""
+    ig_username: str = ""
+    ig_password: str = ""
+    ig_account_type: str = "demo"   # "demo" o "live"
+    ig_account_id: str = ""
+
+    # OANDA (forex, XAU/USD)
+    oanda_api_token: str = ""
+    oanda_account_id: str = ""
+    oanda_environment: str = "practice"   # "practice" o "live"
+
+    # Broker attivo per trading automatico
+    # Valori: "paper" | "ig" | "oanda" | "alpaca" | "ccxt"
+    active_broker: str = "paper"
+
     class Config:
         env_prefix = "BROKER_"
 

@@ -115,6 +115,12 @@ class StrategyManager:
         if config is not None and aggregated:
             aggregated = self._apply_meta(aggregated, config, primary_df)
 
+        # ── Persist signals to DB (fire-and-forget) ────────────────────
+        if aggregated:
+            asyncio.create_task(
+                self._persist_signals(aggregated, asset_type)
+            )
+
         return aggregated
 
     async def evaluate_all(
@@ -266,6 +272,23 @@ class StrategyManager:
         except Exception as e:
             logger.debug(f"Meta-learner apply error: {e}")
             return signals
+
+    async def _persist_signals(self, signals: List[TradeSignal], asset_type: str) -> None:
+        try:
+            from database.ai_store import ai_store
+            for sig in signals:
+                await ai_store.save_signal(
+                    symbol=sig.symbol,
+                    asset_type=asset_type,
+                    timeframe=sig.timeframe,
+                    direction=sig.direction,
+                    confidence=sig.confidence,
+                    strategy=sig.strategy_name,
+                    price=sig.price,
+                    indicators=sig.metadata,
+                )
+        except Exception as e:
+            logger.debug(f"Signal persist error: {e}")
 
     def _get_auto_config(self):
         """Lazy-load AutoConfig to defer heavy imports."""

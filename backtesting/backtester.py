@@ -228,7 +228,7 @@ class Backtester:
         result = BacktestResult(
             symbol=symbol,
             strategy=strategy.name,
-            timeframe=strategy.timeframe,
+            timeframe=getattr(strategy, "timeframe", "1h"),
             start_date=str(df.index[0])[:10],
             end_date=str(df.index[-1])[:10],
             initial_capital=self.initial_capital,
@@ -239,6 +239,23 @@ class Backtester:
         self._compute_metrics(result, equity_curve)
         logger.info(result.summary())
         return result
+
+    @staticmethod
+    def _bars_per_year(timeframe: str) -> int:
+        """Numero di barre per anno in base al timeframe."""
+        mapping = {
+            "1m":  252 * 24 * 60,  # forex: 24h/day
+            "5m":  252 * 24 * 12,
+            "15m": 252 * 24 * 4,
+            "30m": 252 * 24 * 2,
+            "1h":  252 * 24,       # forex: 6048 barre/anno
+            "4h":  252 * 6,        # forex: 1512 barre/anno
+            "1d":  252,
+            "1w":  52,
+        }
+        # Normalizza: "4H" → "4h", "D1" → "1d", ecc.
+        tf = timeframe.lower().replace("h", "h").strip()
+        return mapping.get(tf, 252)
 
     def _close_trade(
         self,
@@ -289,10 +306,15 @@ class Backtester:
         total_ret = (result.final_capital - result.initial_capital) / result.initial_capital * 100
         result.total_return_pct = total_ret
 
-        # Annualize (assume 252 trading days)
+        # Bars per year: dipende dal timeframe della strategia
+        bars_per_year = self._bars_per_year(result.timeframe)
+
+        # Annualize: (total_return+1)^(bars_per_year/n_bars) - 1
         n_bars = len(equity)
         if n_bars > 1:
-            result.annualized_return_pct = ((result.final_capital / result.initial_capital) ** (252 / max(n_bars, 1)) - 1) * 100
+            result.annualized_return_pct = (
+                (result.final_capital / result.initial_capital) ** (bars_per_year / max(n_bars, 1)) - 1
+            ) * 100
 
         # Drawdown
         eq_arr = np.array(equity)
@@ -300,10 +322,10 @@ class Backtester:
         dd = (peak - eq_arr) / peak * 100
         result.max_drawdown_pct = float(dd.max())
 
-        # Sharpe & Sortino
-        daily_rets = np.diff(eq_arr) / eq_arr[:-1]
-        if len(daily_rets) > 1 and daily_rets.std() > 0:
-            result.sharpe_ratio = float(daily_rets.mean() / daily_rets.std() * np.sqrt(252))
-            neg_rets = daily_rets[daily_rets < 0]
+        # Sharpe & Sortino — annualizzati con sqrt(bars_per_year)
+        bar_rets = np.diff(eq_arr) / eq_arr[:-1]
+        if len(bar_rets) > 1 and bar_rets.std() > 0:
+            result.sharpe_ratio = float(bar_rets.mean() / bar_rets.std() * np.sqrt(bars_per_year))
+            neg_rets = bar_rets[bar_rets < 0]
             if len(neg_rets) > 0 and neg_rets.std() > 0:
-                result.sortino_ratio = float(daily_rets.mean() / neg_rets.std() * np.sqrt(252))
+                result.sortino_ratio = float(bar_rets.mean() / neg_rets.std() * np.sqrt(bars_per_year))

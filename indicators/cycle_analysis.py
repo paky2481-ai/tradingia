@@ -49,7 +49,7 @@ class HurstExponent:
             for start in range(0, n - w + 1, w):
                 sub = returns.iloc[start : start + w].values
                 mean = sub.mean()
-                if mean == 0:
+                if abs(mean) < 1e-10:
                     continue
                 deviations = sub - mean
                 cumulative = np.cumsum(deviations)
@@ -108,8 +108,8 @@ class DominantCycle:
         with np.errstate(divide="ignore", invalid="ignore"):
             periods = np.where(freqs > 0, 1.0 / freqs, 0.0)
 
-        # Mask outside valid range
-        valid_mask = (periods >= min_period) & (periods <= max_period)
+        # Mask outside valid range (escludi anche inf/nan)
+        valid_mask = (periods >= min_period) & (periods <= max_period) & np.isfinite(periods)
         if not valid_mask.any():
             return 20
 

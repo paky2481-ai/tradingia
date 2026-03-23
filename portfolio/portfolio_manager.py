@@ -124,11 +124,17 @@ class PortfolioManager:
             return None
 
         pos = self.positions.pop(symbol)
-        proceeds = pos.quantity * price
-        self.cash += proceeds
 
-        pnl = pos.unrealized_pnl
-        pnl_pct = pos.unrealized_pnl_pct
+        # Calcola PnL usando il prezzo di uscita effettivo (non current_price)
+        if pos.direction == "buy":
+            pnl = (price - pos.avg_entry_price) * pos.quantity
+            self.cash += pos.quantity * price           # ricevi i proventi della vendita
+        else:
+            pnl = (pos.avg_entry_price - price) * pos.quantity
+            # Per short CFD: restituiamo il cost basis + PnL al cash
+            self.cash += pos.quantity * pos.avg_entry_price + pnl
+
+        pnl_pct = pnl / max(pos.avg_entry_price * pos.quantity, 1e-10) * 100
 
         trade_record = {
             "symbol": symbol,
@@ -165,7 +171,12 @@ class PortfolioManager:
 
     @property
     def total_equity(self) -> float:
-        return self.cash + sum(p.market_value for p in self.positions.values())
+        # Modello mark-to-market corretto per long E short CFD:
+        # cash + cost_basis + unrealized_pnl
+        # Equivalente a: cash + (market_value per long) ma corretto anche per short
+        cost_basis = sum(p.quantity * p.avg_entry_price for p in self.positions.values())
+        unrealized = sum(p.unrealized_pnl for p in self.positions.values())
+        return self.cash + cost_basis + unrealized
 
     @property
     def unrealized_pnl(self) -> float:

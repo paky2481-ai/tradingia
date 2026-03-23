@@ -5,9 +5,6 @@ Uses PyTorch for GPU/CPU flexibility.
 
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 from typing import Dict, Optional, Tuple
 import os
 
@@ -18,6 +15,19 @@ from utils.logger import get_logger
 
 logger = get_logger.bind(name="models.lstm")
 
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import DataLoader, TensorDataset
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None  # type: ignore
+    DataLoader = None  # type: ignore
+    TensorDataset = None  # type: ignore
+    TORCH_AVAILABLE = False
+    logger.warning("PyTorch not installed — LSTM model disabled. Run: pip install torch")
+
 LSTM_FEATURES = [
     "returns", "log_returns", "rsi_14", "macd_hist",
     "bb_pct", "bb_width", "atr_14", "volume_ratio",
@@ -26,38 +36,41 @@ LSTM_FEATURES = [
 ]
 
 
-class LSTMNetwork(nn.Module):
-    def __init__(
-        self,
-        input_size: int,
-        hidden_size: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.3,
-        num_classes: int = 3,
-    ):
-        super().__init__()
-        self.lstm = nn.LSTM(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            dropout=dropout if num_layers > 1 else 0.0,
-            batch_first=True,
-        )
-        self.attention = nn.MultiheadAttention(hidden_size, num_heads=4, batch_first=True)
-        self.norm = nn.LayerNorm(hidden_size)
-        self.head = nn.Sequential(
-            nn.Linear(hidden_size, 64),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(64, num_classes),
-        )
+if TORCH_AVAILABLE:
+    class LSTMNetwork(nn.Module):
+        def __init__(
+            self,
+            input_size: int,
+            hidden_size: int = 128,
+            num_layers: int = 2,
+            dropout: float = 0.3,
+            num_classes: int = 3,
+        ):
+            super().__init__()
+            self.lstm = nn.LSTM(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                dropout=dropout if num_layers > 1 else 0.0,
+                batch_first=True,
+            )
+            self.attention = nn.MultiheadAttention(hidden_size, num_heads=4, batch_first=True)
+            self.norm = nn.LayerNorm(hidden_size)
+            self.head = nn.Sequential(
+                nn.Linear(hidden_size, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(64, num_classes),
+            )
 
-    def forward(self, x):
-        lstm_out, _ = self.lstm(x)
-        attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
-        out = self.norm(lstm_out + attn_out)
-        last = out[:, -1, :]
-        return self.head(last)
+        def forward(self, x):
+            lstm_out, _ = self.lstm(x)
+            attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
+            out = self.norm(lstm_out + attn_out)
+            last = out[:, -1, :]
+            return self.head(last)
+else:
+    LSTMNetwork = None  # type: ignore
 
 
 class LSTMModel(BaseModel):
@@ -74,10 +87,13 @@ class LSTMModel(BaseModel):
         self.window = window or settings.ml.lookback_window
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.network: Optional[LSTMNetwork] = None
+        if TORCH_AVAILABLE:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            logger.info(f"LSTM using device: {self.device}")
+        else:
+            self.device = None
+        self.network = None
         self.model_path = os.path.join(settings.ml.models_dir, f"{name}.pt")
-        logger.info(f"LSTM using device: {self.device}")
 
     def prepare_features(
         self, df: pd.DataFrame
@@ -109,6 +125,9 @@ class LSTMModel(BaseModel):
         return np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)
 
     def train(self, df: pd.DataFrame, epochs: int = 30, batch_size: int = 64) -> Dict:
+        if not TORCH_AVAILABLE:
+            logger.warning("PyTorch not available — LSTM training skipped")
+            return {"error": "torch_not_installed"}
         logger.info(f"Training {self.name}...")
         data, labels = self.prepare_features(df)
 
@@ -173,6 +192,8 @@ class LSTMModel(BaseModel):
         return float((preds == y).mean())
 
     def predict(self, df: pd.DataFrame) -> ModelSignal:
+        if not TORCH_AVAILABLE:
+            return ModelSignal("neutral", 0.0)
         if self.network is None:
             if not self.load():
                 return ModelSignal("neutral", 0.0)
@@ -210,6 +231,8 @@ class LSTMModel(BaseModel):
         )
 
     def save(self):
+        if not TORCH_AVAILABLE:
+            return
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
         torch.save({
             "network_state": self.network.state_dict() if self.network else None,
@@ -222,7 +245,7 @@ class LSTMModel(BaseModel):
         }, self.model_path)
 
     def load(self) -> bool:
-        if not os.path.exists(self.model_path):
+        if not TORCH_AVAILABLE or not os.path.exists(self.model_path):
             return False
         try:
             checkpoint = torch.load(self.model_path, map_location=self.device)

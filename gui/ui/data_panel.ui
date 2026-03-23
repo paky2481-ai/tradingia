@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DataPanel</class>
+ <widget class="QWidget" name="DataPanel">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>280</width><height>620</height></rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing"><number>0</number></property>
+   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
+
+   <!-- ── Header ─────────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QWidget" name="header">
+     <property name="minimumHeight"><number>44</number></property>
+     <property name="maximumHeight"><number>44</number></property>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="contentsMargins"><rect><left>10</left><top>0</top><right>10</right><bottom>0</bottom></rect></property>
+      <item>
+       <widget class="QLabel" name="label_section">
+        <property name="text"><string>Data</string></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="headerSpacer">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Body ──────────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QWidget" name="body">
+     <layout class="QVBoxLayout" name="bodyLayout">
+      <property name="spacing"><number>12</number></property>
+      <property name="contentsMargins"><rect><left>12</left><top>12</top><right>12</right><bottom>12</bottom></rect></property>
+
+      <!-- Symbol group -->
+      <item>
+       <widget class="QGroupBox" name="symGroup">
+        <property name="title"><string>Symbol</string></property>
+        <layout class="QVBoxLayout" name="symLayout">
+         <property name="spacing"><number>8</number></property>
+         <item>
+          <widget class="QLineEdit" name="_symbol_input">
+           <property name="placeholderText"><string>AAPL, BTC-USD, EURUSD=X …</string></property>
+           <property name="minimumHeight"><number>34</number></property>
+           <property name="maximumHeight"><number>34</number></property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="quickPickLayout">
+           <property name="spacing"><number>4</number></property>
+           <item>
+            <widget class="QPushButton" name="_btn_quick_aapl">
+             <property name="text"><string>AAPL</string></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_quick_btc">
+             <property name="text"><string>BTC-USD</string></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_quick_eurusd">
+             <property name="text"><string>EURUSD=X</string></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_quick_gspc">
+             <property name="text"><string>^GSPC</string></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
+      <!-- Timeframe group -->
+      <item>
+       <widget class="QGroupBox" name="tfGroup">
+        <property name="title"><string>Timeframe</string></property>
+        <layout class="QVBoxLayout" name="tfLayout">
+         <item>
+          <widget class="QComboBox" name="_tf_combo">
+           <property name="minimumHeight"><number>34</number></property>
+           <property name="maximumHeight"><number>34</number></property>
+           <item><property name="text"><string>1m</string></property></item>
+           <item><property name="text"><string>5m</string></property></item>
+           <item><property name="text"><string>15m</string></property></item>
+           <item><property name="text"><string>30m</string></property></item>
+           <item><property name="text"><string>1h</string></property></item>
+           <item><property name="text"><string>4h</string></property></item>
+           <item><property name="text"><string>1d</string></property></item>
+           <item><property name="text"><string>1wk</string></property></item>
+           <item><property name="text"><string>1mo</string></property></item>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="quickTfLayout">
+           <property name="spacing"><number>4</number></property>
+           <item>
+            <widget class="QPushButton" name="_btn_tf_5m">
+             <property name="text"><string>5m</string></property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_tf_1h">
+             <property name="text"><string>1h</string></property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_tf_4h">
+             <property name="text"><string>4h</string></property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="_btn_tf_1d">
+             <property name="text"><string>1d</string></property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="maximumHeight"><number>24</number></property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
+      <!-- Options group -->
+      <item>
+       <widget class="QGroupBox" name="optGroup">
+        <property name="title"><string>Options</string></property>
+        <layout class="QVBoxLayout" name="optLayout">
+         <property name="spacing"><number>6</number></property>
+         <item>
+          <widget class="QCheckBox" name="_chk_ma20">
+           <property name="text"><string>MA 20</string></property>
+           <property name="checked"><bool>true</bool></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="_chk_ma50">
+           <property name="text"><string>MA 50</string></property>
+           <property name="checked"><bool>true</bool></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="_chk_ma200">
+           <property name="text"><string>MA 200</string></property>
+           <property name="checked"><bool>false</bool></property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
+      <!-- Load button -->
+      <item>
+       <widget class="QPushButton" name="_btn_load">
+        <property name="text"><string>Load Historical Data</string></property>
+        <property name="minimumHeight"><number>36</number></property>
+        <property name="maximumHeight"><number>36</number></property>
+       </widget>
+      </item>
+
+      <!-- Live feed button -->
+      <item>
+       <widget class="QPushButton" name="_btn_live">
+        <property name="text"><string>Start Live Feed</string></property>
+        <property name="checkable"><bool>true</bool></property>
+        <property name="minimumHeight"><number>36</number></property>
+        <property name="maximumHeight"><number>36</number></property>
+       </widget>
+      </item>
+
+      <!-- Progress bar -->
+      <item>
+       <widget class="QProgressBar" name="_progress">
+        <property name="visible"><bool>false</bool></property>
+        <property name="minimum"><number>0</number></property>
+        <property name="maximum"><number>0</number></property>
+        <property name="value"><number>-1</number></property>
+        <property name="minimumHeight"><number>6</number></property>
+        <property name="maximumHeight"><number>6</number></property>
+        <property name="textVisible"><bool>false</bool></property>
+       </widget>
+      </item>
+
+      <!-- Status label -->
+      <item>
+       <widget class="QLabel" name="_status">
+        <property name="text"><string/></property>
+        <property name="wordWrap"><bool>true</bool></property>
+       </widget>
+      </item>
+
+      <!-- Vertical spacer -->
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation"><enum>Qt::Vertical</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+       </spacer>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

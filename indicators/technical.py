@@ -138,7 +138,12 @@ class TechnicalIndicators:
         avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
         avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
         rs = avg_gain / avg_loss
-        return 100 - (100 / (1 + rs))
+        rsi = 100 - (100 / (1 + rs))
+        # avg_gain>0, avg_loss=0 → rs=inf → RSI=100 (corretto, già gestito)
+        # avg_gain=0, avg_loss=0 → rs=NaN → RSI=NaN → deve essere 50 (mercato piatto)
+        flat = (avg_gain < 1e-10) & (avg_loss < 1e-10)
+        rsi[flat] = 50.0
+        return rsi
 
     @staticmethod
     def stochastic(

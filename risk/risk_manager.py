@@ -244,7 +244,7 @@ class RiskManager:
         total_risk = sum(
             p.get("risk_usd", 0) for p in self._open_positions.values()
         )
-        return total_risk / self._portfolio_value * 100
+        return total_risk / max(self._portfolio_value, 1e-10) * 100
 
     @property
     def drawdown_pct(self) -> float:

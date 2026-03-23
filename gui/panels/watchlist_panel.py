@@ -7,16 +7,17 @@ Emits symbol_selected(symbol) signal when user clicks a row.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Dict, List, Optional
 
+from PyQt6 import uic
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QFont
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QTableWidget, QTableWidgetItem, QHeaderView,
-    QLineEdit, QPushButton, QAbstractItemView,
+    QWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 
+_UI = Path(__file__).parent.parent / "ui" / "watchlist_panel.ui"
 
 # Default watchlists
 DEFAULT_WATCHLISTS: Dict[str, List[str]] = {
@@ -69,7 +70,19 @@ class WatchlistPanel(QWidget):
         self._symbols: List[str] = []
         self._active_list = "Stocks"
         self._refresh_task: Optional[asyncio.Task] = None
-        self._setup_ui()
+
+        uic.loadUi(str(_UI), self)
+
+        # Build tab_buttons dict from named widgets loaded by uic
+        self._tab_buttons: Dict[str, "QPushButton"] = {
+            "Stocks":  self._btn_tab_stocks,
+            "Crypto":  self._btn_tab_crypto,
+            "Forex":   self._btn_tab_forex,
+            "Indices": self._btn_tab_indices,
+        }
+
+        self._setup_table()
+        self._setup_connections()
         self._load_list("Stocks")
 
         # Refresh timer (every 10 seconds while visible)
@@ -80,106 +93,29 @@ class WatchlistPanel(QWidget):
 
     # ── Setup ──────────────────────────────────────────────────────────────
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # ── Header ────────────────────────────────────────────────────
-        header = QWidget()
-        header.setObjectName("panel_header")
-        header.setStyleSheet("QWidget#panel_header { background:#161b22; border-bottom:1px solid #30363d; }")
-        header.setFixedHeight(44)
-        h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(10, 0, 10, 0)
-        h_layout.setSpacing(6)
-
-        title = QLabel("Watchlist")
-        title.setObjectName("label_section")
-        h_layout.addWidget(title)
-        h_layout.addStretch()
-
-        # Refresh button
-        self._btn_refresh = QPushButton("↻")
-        self._btn_refresh.setFixedSize(28, 28)
-        self._btn_refresh.setToolTip("Refresh quotes")
-        self._btn_refresh.clicked.connect(self._trigger_refresh)
-        h_layout.addWidget(self._btn_refresh)
-
-        layout.addWidget(header)
-
-        # ── List selector tabs ─────────────────────────────────────────
-        tabs = QWidget()
-        tabs.setStyleSheet("background:#0d1117; border-bottom:1px solid #21262d;")
-        t_layout = QHBoxLayout(tabs)
-        t_layout.setContentsMargins(8, 4, 8, 4)
-        t_layout.setSpacing(4)
-
-        self._tab_buttons: Dict[str, QPushButton] = {}
-        for name in DEFAULT_WATCHLISTS:
-            btn = QPushButton(name)
-            btn.setCheckable(True)
-            btn.setFixedHeight(26)
-            btn.setStyleSheet("""
-                QPushButton { background:transparent; border:1px solid transparent;
-                              border-radius:4px; padding:0 10px; color:#8b949e; font-size:12px; }
-                QPushButton:checked { background:#1f6feb22; border-color:#1f6feb; color:#58a6ff; }
-                QPushButton:hover { background:#21262d; color:#e6edf3; }
-            """)
-            btn.clicked.connect(lambda checked, n=name: self._load_list(n))
-            t_layout.addWidget(btn)
-            self._tab_buttons[name] = btn
-        t_layout.addStretch()
-        layout.addWidget(tabs)
-
-        # ── Search bar ────────────────────────────────────────────────
-        search_bar = QWidget()
-        search_bar.setStyleSheet("background:#0d1117; padding:0;")
-        s_layout = QHBoxLayout(search_bar)
-        s_layout.setContentsMargins(8, 6, 8, 6)
-        s_layout.setSpacing(6)
-
-        self._search = QLineEdit()
-        self._search.setPlaceholderText("Add symbol (e.g. AAPL, BTC-USD)...")
-        self._search.setFixedHeight(30)
-        self._search.returnPressed.connect(self._add_symbol)
-        s_layout.addWidget(self._search)
-
-        btn_add = QPushButton("+")
-        btn_add.setFixedSize(30, 30)
-        btn_add.setObjectName("btn_primary")
-        btn_add.setToolTip("Add symbol to watchlist")
-        btn_add.clicked.connect(self._add_symbol)
-        s_layout.addWidget(btn_add)
-
-        layout.addWidget(search_bar)
-
-        # ── Table ──────────────────────────────────────────────────────
-        self._table = QTableWidget(0, len(COLS))
-        self._table.setHorizontalHeaderLabels(COLS)
-        self._table.verticalHeader().setVisible(False)
+    def _setup_table(self):
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._table.setShowGrid(False)
         self._table.setAlternatingRowColors(False)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(COL_SYMBOL, QHeaderView.ResizeMode.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(
+            COL_SYMBOL, QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(COL_SYMBOL, 80)
         self._table.setColumnWidth(COL_PRICE, 80)
         self._table.setColumnWidth(COL_CHANGE, 70)
         self._table.setColumnWidth(COL_CHANGEP, 60)
-        self._table.setRowHeight(0, 32)
-        self._table.cellClicked.connect(self._on_row_clicked)
-        layout.addWidget(self._table)
+        self._table.verticalHeader().setVisible(False)
 
-        # ── Status line ────────────────────────────────────────────────
-        self._status_label = QLabel("Loading…")
-        self._status_label.setObjectName("label_muted")
-        self._status_label.setContentsMargins(10, 4, 0, 4)
-        self._status_label.setFixedHeight(24)
-        self._status_label.setStyleSheet("font-size:11px; color:#484f58;")
-        layout.addWidget(self._status_label)
+    def _setup_connections(self):
+        self._btn_refresh.clicked.connect(self._trigger_refresh)
+        self._search.returnPressed.connect(self._add_symbol)
+        self._btn_add_symbol.clicked.connect(self._add_symbol)
+        self._table.cellClicked.connect(self._on_row_clicked)
+
+        for name, btn in self._tab_buttons.items():
+            btn.clicked.connect(lambda checked, n=name: self._load_list(n))
 
     # ── List Management ────────────────────────────────────────────────────
 
@@ -242,7 +178,6 @@ class WatchlistPanel(QWidget):
     async def _fetch_quotes(self):
         self._status_label.setText("Updating…")
         try:
-            # Import here to avoid circular at module load
             from data.feed import data_feed
             quotes = await data_feed.get_multiple_quotes(self._symbols)
             self._quotes.update(quotes)
