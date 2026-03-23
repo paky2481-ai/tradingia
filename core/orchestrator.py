@@ -4,7 +4,9 @@ Coordinates: data feed → indicators → AI models → strategies → risk → 
 """
 
 import asyncio
+import json
 from datetime import datetime, timedelta, time
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from config.settings import settings
@@ -16,6 +18,8 @@ from portfolio.portfolio_manager import PortfolioManager
 from notifications.notifier import notifier
 from database.db import init_db
 from utils.logger import get_logger
+
+_RETRAIN_STAMP_FILE = Path(settings.ml.models_dir) / ".last_retrain.json"
 
 logger = get_logger.bind(name="orchestrator")
 
@@ -52,6 +56,11 @@ class TradingOrchestrator:
                 return
 
         self._running = True
+
+        # Retrain se il sistema non era attivo durante la finestra notturna
+        if settings.ml.nightly_retrain_enabled:
+            await self._retrain_if_missed()
+
         loops = [
             self._main_loop(),
             self._position_monitor_loop(),
@@ -337,10 +346,63 @@ class TradingOrchestrator:
                 logger.error(f"[Training] Errore su {symbol}: {e}", exc_info=True)
 
         logger.info(f"[Training {mode_label}] Completato per {len(targets)} simboli")
+        self._write_last_retrain()
 
     async def train_all_models(self, symbols: List[str] = None, timeframe: str = "1h"):
         """Compatibilità: delega a retrain_all_models(incremental=False)."""
         await self.retrain_all_models(symbols=symbols, timeframe=timeframe, incremental=False)
+
+    # ── Retrain timestamp helpers ───────────────────────────────────────────
+
+    @staticmethod
+    def _read_last_retrain() -> Optional[datetime]:
+        """Legge il timestamp dell'ultimo retrain da file JSON."""
+        try:
+            if _RETRAIN_STAMP_FILE.exists():
+                data = json.loads(_RETRAIN_STAMP_FILE.read_text())
+                return datetime.fromisoformat(data["ts"])
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _write_last_retrain():
+        """Scrive il timestamp dell'ultimo retrain su file JSON."""
+        try:
+            _RETRAIN_STAMP_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _RETRAIN_STAMP_FILE.write_text(
+                json.dumps({"ts": datetime.utcnow().isoformat()})
+            )
+        except Exception as e:
+            logger.warning(f"[Retrain stamp] Impossibile scrivere timestamp: {e}")
+
+    async def _retrain_if_missed(self):
+        """
+        All'avvio controlla se il retraining notturno è stato saltato
+        (es. app spenta di notte). Se l'ultimo retrain risale a più di
+        30 ore fa, esegue subito un retraining incrementale.
+        """
+        last = self._read_last_retrain()
+        threshold = timedelta(hours=30)   # 24h + 6h di tolleranza
+
+        if last is None:
+            logger.info("[Startup] Nessun retrain precedente trovato — skip (prima esecuzione).")
+            return
+
+        elapsed = datetime.utcnow() - last
+        if elapsed > threshold:
+            logger.info(
+                f"[Startup] Retrain notturno saltato (ultimo: {last.strftime('%Y-%m-%d %H:%M')} UTC, "
+                f"passate {elapsed.total_seconds()/3600:.1f}h). Avvio recupero..."
+            )
+            await self.retrain_all_models(
+                timeframe=settings.primary_timeframe,
+                incremental=True,
+            )
+        else:
+            logger.info(
+                f"[Startup] Retrain notturno aggiornato ({elapsed.total_seconds()/3600:.1f}h fa) — OK."
+            )
 
     # ── Nightly retrain loop ────────────────────────────────────────────────
 
