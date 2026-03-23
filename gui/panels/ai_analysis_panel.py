@@ -285,7 +285,9 @@ class AIAnalysisPanel(QWidget):
         hl = QHBoxLayout(hurst_row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
-        hl.addWidget(QLabel("Hurst").also(lambda l: l.setStyleSheet("color:#8b949e; font-size:11px;")))
+        lbl_hurst = QLabel("Hurst")
+        lbl_hurst.setStyleSheet("color:#8b949e; font-size:11px;")
+        hl.addWidget(lbl_hurst)
         bar = _BarWidget(value=hurst * 2 - 1, symmetric=False)  # map 0-1 → 0-1 bar
         bar.set_value(hurst)
         hl.addWidget(bar, 1)
@@ -417,11 +419,3 @@ class AIAnalysisPanel(QWidget):
             self._sec_indicators, self._sec_strategy, self._sec_signal,
         ]:
             sec.show()
-
-
-# Monkey-patch QLabel for fluent helper used above
-def _also(self, fn):
-    fn(self)
-    return self
-
-QLabel.also = _also  # type: ignore
