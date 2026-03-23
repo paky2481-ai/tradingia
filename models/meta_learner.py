@@ -287,7 +287,16 @@ class MetaLearner(BaseModel):
 
     def _partial_fit_one(self, fv: np.ndarray, label: int) -> None:
         try:
-            fv_scaled = self._scaler.transform(fv.reshape(1, -1))
+            fv2d = fv.reshape(1, -1)
+            # Fit the scaler on first call (online mode: no full dataset available)
+            from sklearn.exceptions import NotFittedError
+            try:
+                self._scaler.transform(fv2d)
+            except NotFittedError:
+                # Initialise scaler using the current history buffer
+                X_hist = np.array([h[0] for h in self._history])
+                self._scaler.fit(X_hist)
+            fv_scaled = self._scaler.transform(fv2d)
             classes = np.array([-1, 0, 1])
             self._clf.partial_fit(fv_scaled, [label], classes=classes)
             self._is_fitted = True
