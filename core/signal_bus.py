@@ -101,6 +101,19 @@ class TrendAlertEvent:
 
 
 @dataclass
+class PatternAlertEvent:
+    symbol: str
+    pattern_name: str
+    direction: str          # "bullish" | "bearish" | "neutral"
+    status: str             # "forming" | "confirmed" | "failed" | "expired"
+    confidence: float
+    timeframe: str
+    target_price: Optional[float] = None
+    observation_id: str = ""
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
 class EngineStatusEvent:
     running: bool
     mode: str
@@ -143,6 +156,7 @@ class _BusQtEmitter(QObject):
     position_update = pyqtSignal(object)   # PositionUpdateEvent
     trend_alert     = pyqtSignal(object)   # TrendAlertEvent
     engine_status   = pyqtSignal(object)   # EngineStatusEvent
+    pattern_alert   = pyqtSignal(object)   # PatternAlertEvent
     engine_started  = pyqtSignal()
     engine_stopped  = pyqtSignal()
     log_message     = pyqtSignal(str, str)  # message, color
@@ -189,6 +203,9 @@ class SignalBus:
 
     def emit_trend_alert(self, event: TrendAlertEvent):
         self.qt.trend_alert.emit(event)
+
+    def emit_pattern_alert(self, event: PatternAlertEvent):
+        self.qt.pattern_alert.emit(event)
 
     def emit_engine_status(self, event: EngineStatusEvent):
         self.qt.engine_status.emit(event)

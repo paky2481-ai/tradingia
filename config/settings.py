@@ -62,8 +62,12 @@ class DataSettings(BaseSettings):
     # Yahoo Finance (free, stocks/forex/crypto/commodities)
     yfinance_enabled: bool = True
 
-    # Alpha Vantage (requires free API key)
+    # Alpha Vantage — https://www.alphavantage.co/support/#api-key (free, 25 req/day)
     alpha_vantage_key: str = ""
+
+    # Financial Modeling Prep — https://financialmodelingprep.com/developer/docs (free, 250 req/day)
+    # La chiave "demo" funziona per dati di base su simboli popolari senza registrazione
+    fmp_api_key: str = "demo"
 
     # Data cache
     cache_dir: str = str(BASE_DIR / "data" / "cache")
@@ -96,6 +100,15 @@ class MLSettings(BaseSettings):
     models_dir: str = str(BASE_DIR / "models" / "saved")
     min_confidence: float = 0.6               # minimum signal confidence
 
+    # Training modes
+    # full_train_limit=0 → scarica tutto il disponibile (730d per 1h, max per 1d)
+    full_train_limit: int = 0
+    # giorni di dati per il retraining incrementale (nightly)
+    incremental_train_days: int = 90
+    # retraining notturno automatico
+    nightly_retrain_enabled: bool = True
+    nightly_retrain_hour: int = 2              # ora UTC (default: 02:05)
+
     class Config:
         env_prefix = "ML_"
 
@@ -125,15 +138,15 @@ class FundamentalSettings(BaseSettings):
     good_roe: float = 0.15
     max_debt_equity: float = 2.0
     good_growth: float = 0.10
-    # Central bank rates (overridable via env)
-    rate_usd: float = 5.50
-    rate_eur: float = 4.25
-    rate_gbp: float = 5.25
-    rate_jpy: float = 0.10
-    rate_aud: float = 4.35
-    rate_cad: float = 5.00
-    rate_chf: float = 1.75
-    rate_nzd: float = 5.50
+    # Tassi banche centrali (aggiornati Marzo 2026 — override via env FUND_RATE_XXX)
+    rate_usd: float = 4.25   # Fed Funds Rate
+    rate_eur: float = 2.50   # ECB Deposit Rate
+    rate_gbp: float = 4.50   # BoE Base Rate
+    rate_jpy: float = 0.50   # BoJ Policy Rate
+    rate_aud: float = 4.10   # RBA Cash Rate
+    rate_cad: float = 3.25   # BoC Target Rate
+    rate_chf: float = 0.50   # SNB Policy Rate
+    rate_nzd: float = 3.75   # RBNZ OCR
 
     class Config:
         env_prefix = "FUND_"
@@ -149,6 +162,52 @@ class AutoConfigSettings(BaseSettings):
 
     class Config:
         env_prefix = "AUTOCONF_"
+
+
+class TimeframeSelectorSettings(BaseSettings):
+    """
+    Configurazione per la selezione automatica del timeframe ottimale.
+
+    L'AI analizza Hurst exponent, ciclo dominante FFT e autocorrelazione
+    dei ritorni per determinare quale timeframe offre il miglior
+    rapporto segnale/rumore per ogni strumento.
+    """
+    enabled: bool = True
+    # Periodo ciclo dominante "ideale" in barre (Bollinger 20, SMA 20, RSI 14-21)
+    ideal_cycle_bars: int = 20
+    # Minimo barre per un'analisi affidabile
+    min_bars: int = 50
+
+    class Config:
+        env_prefix = "TFSELECTOR_"
+
+
+class PatternSettings(BaseSettings):
+    """
+    Configurazione per il modulo di riconoscimento pattern.
+
+    Pattern candlestick (1-3 candele) e chart pattern (10-60 barre).
+    Due thread separati: watchlist (apertura) e posizioni aperte (chiusura).
+    """
+    enabled: bool = True
+    candlestick_enabled: bool = True
+    chart_patterns_enabled: bool = True
+
+    # Confidenza minima per entrare in osservazione
+    min_confidence: float = 0.60
+    # Confidenza minima per generare TradeSignal confermato
+    min_signal_confidence: float = 0.65
+
+    # Ciclo di vita osservazione
+    ttl_bars: int = 10              # barre max prima di expire (senza conferma)
+    max_per_symbol: int = 8         # max pattern in osservazione contemporaneamente
+
+    # Intervalli loop (secondi)
+    watchlist_scan_interval_s: int = 300    # ogni 5 min — scansione watchlist
+    position_scan_interval_s: int = 30     # ogni 30s — controllo posizioni aperte
+
+    class Config:
+        env_prefix = "PATTERN_"
 
 
 class NotificationSettings(BaseSettings):
@@ -226,6 +285,8 @@ class Settings(BaseSettings):
     cycle: CycleSettings = Field(default_factory=CycleSettings)
     fundamental: FundamentalSettings = Field(default_factory=FundamentalSettings)
     autoconfig: AutoConfigSettings = Field(default_factory=AutoConfigSettings)
+    tf_selector: TimeframeSelectorSettings = Field(default_factory=TimeframeSelectorSettings)
+    pattern: PatternSettings = Field(default_factory=PatternSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 

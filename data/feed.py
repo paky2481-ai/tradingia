@@ -87,18 +87,42 @@ class YFinanceFeed:
     def __init__(self):
         self.cache = DataCache(settings.data.cache_dir, settings.data.cache_ttl_minutes)
 
+    # Periodi massimi per il training iniziale completo (limit=0)
+    _FULL_PERIOD_MAP = {
+        "1m":  ("7d",   "1m"),
+        "5m":  ("60d",  "5m"),
+        "15m": ("60d",  "15m"),
+        "30m": ("60d",  "30m"),
+        "1h":  ("730d", "1h"),   # max consentito da yfinance per hourly
+        "4h":  ("730d", "1h"),   # resampleato da 1h
+        "1d":  ("max",  "1d"),   # tutti i dati storici disponibili
+        "1w":  ("max",  "1wk"),
+    }
+
     async def fetch(
         self,
         symbol: str,
         timeframe: str = "1h",
         limit: int = 500,
     ) -> Optional[pd.DataFrame]:
-        cached = self.cache.get(symbol, timeframe)
-        if cached is not None:
-            logger.debug(f"Cache hit: {symbol} {timeframe}")
-            return cached.tail(limit)
+        full_mode = limit == 0
 
-        period, interval = YFINANCE_PERIOD_MAP.get(timeframe, ("730d", "1d"))
+        # Per full mode bypassa la cache (download fresco di tutti i dati)
+        if not full_mode:
+            cached = self.cache.get(symbol, timeframe)
+            if cached is not None:
+                logger.debug(f"Cache hit: {symbol} {timeframe}")
+                return cached.tail(limit)
+
+        if full_mode:
+            period, interval = self._FULL_PERIOD_MAP.get(
+                timeframe, ("730d", "1d")
+            )
+            logger.info(
+                f"Full training download: {symbol} {timeframe} period={period}"
+            )
+        else:
+            period, interval = YFINANCE_PERIOD_MAP.get(timeframe, ("730d", "1d"))
 
         try:
             df = await asyncio.to_thread(
@@ -111,8 +135,13 @@ class YFinanceFeed:
             if timeframe == "4h":
                 df = resample_ohlcv(df, "4h")
 
+            if not full_mode:
+                self.cache.set(symbol, timeframe, df)
+                return df.tail(limit)
+
+            # Full mode: salva in cache la versione completa e ritorna tutto
             self.cache.set(symbol, timeframe, df)
-            return df.tail(limit)
+            return df
 
         except Exception as e:
             logger.error(f"YFinance error for {symbol}: {e}")

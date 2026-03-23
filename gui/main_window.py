@@ -29,6 +29,8 @@ from gui.panels.data_panel import DataPanel
 from gui.panels.ai_analysis_panel import AIAnalysisPanel
 from gui.panels.engine_panel import EnginePanel
 from gui.panels.positions_panel import PositionsPanel
+from gui.panels.backtest_panel import BacktestPanel
+from gui.panels.pattern_panel import PatternPanel
 from core.signal_bus import get_bus
 
 
@@ -143,6 +145,24 @@ class TradingMainWindow(QMainWindow):
             max_height=360,
         )
         self.tabifyDockWidget(self._dock_positions, self._dock_log)
+
+        # ── Backtest (basso, tabbed con Positions e Log) ────────────────
+        self._backtest_panel = BacktestPanel()
+        self._dock_backtest  = self._make_dock(
+            "Backtest", self._backtest_panel,
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            max_height=360,
+        )
+        self.tabifyDockWidget(self._dock_log, self._dock_backtest)
+
+        # ── Pattern Observer (basso, tabbed con Positions/Log/Backtest) ─
+        self._pattern_panel = PatternPanel()
+        self._dock_pattern  = self._make_dock(
+            "Patterns", self._pattern_panel,
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            max_height=360,
+        )
+        self.tabifyDockWidget(self._dock_backtest, self._dock_pattern)
         self._dock_positions.raise_()
 
     def _make_dock(
@@ -185,6 +205,8 @@ class TradingMainWindow(QMainWindow):
             ("Dati",      "_dock_data",      True),
             ("Posizioni", "_dock_positions", True),
             ("Log",       "_dock_log",       False),
+            ("Backtest",  "_dock_backtest",  False),
+            ("Patterns",  "_dock_pattern",   True),
         ]
         for label, attr, default in panels:
             act = QAction(label, self)

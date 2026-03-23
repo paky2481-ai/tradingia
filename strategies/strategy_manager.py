@@ -20,6 +20,7 @@ from strategies.technical_strategy import (
     BreakoutStrategy,
     ScalpingStrategy,
 )
+from strategies.pattern_strategy import PatternStrategy
 from config.settings import settings
 from utils.logger import get_logger
 
@@ -35,11 +36,12 @@ class StrategyManager:
     def __init__(self):
         # All available strategies, keyed by name
         self._strategy_map: Dict[str, BaseStrategy] = {
-            "ai_ensemble":     AIStrategy(timeframe=settings.primary_timeframe),
-            "trend_following": TrendFollowingStrategy(timeframe="1h"),
-            "mean_reversion":  MeanReversionStrategy(timeframe="1h"),
-            "breakout":        BreakoutStrategy(timeframe="1d"),
-            "scalping":        ScalpingStrategy(),
+            "ai_ensemble":         AIStrategy(timeframe=settings.primary_timeframe),
+            "trend_following":     TrendFollowingStrategy(timeframe="1h"),
+            "mean_reversion":      MeanReversionStrategy(timeframe="1h"),
+            "breakout":            BreakoutStrategy(timeframe="1d"),
+            "scalping":            ScalpingStrategy(),
+            "pattern_recognition": PatternStrategy(timeframe=settings.primary_timeframe),
         }
 
         # Lazy-load AutoConfig to avoid heavy imports at startup
@@ -63,14 +65,16 @@ class StrategyManager:
         4. Aggregate with meta-learner confirmation
         """
         auto_config = self._get_auto_config()
-        primary_df = data_by_timeframe.get(settings.primary_timeframe)
+        # Usa il timeframe ottimale se già calcolato, altrimenti il primario
+        active_tf  = auto_config.get_optimal_timeframe(symbol)
+        primary_df = data_by_timeframe.get(active_tf) or data_by_timeframe.get(settings.primary_timeframe)
         if primary_df is None or len(primary_df) < 50:
             return []
 
         # ── Auto-config (hourly retune) ────────────────────────────────
         if auto_config.should_retune(symbol):
             try:
-                await auto_config.run(symbol, primary_df, asset_type)
+                await auto_config.run(symbol, primary_df, asset_type, data_by_timeframe)
             except Exception as e:
                 logger.warning(f"AutoConfig failed for {symbol}: {e}")
 

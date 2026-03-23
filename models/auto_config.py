@@ -29,6 +29,7 @@ from indicators.cycle_analysis import CycleFeatures
 from data.fundamental import FundamentalFeed, FundamentalScore, fundamental_feed
 from models.indicator_selector import IndicatorSelector
 from models.meta_learner import MetaLearner, MetaInput
+from models.timeframe_selector import TimeframeSelector
 from utils.logger import get_logger
 
 logger = get_logger.bind(name="models.auto_config")
@@ -72,6 +73,9 @@ class AutoConfigResult:
     oscillator_for_chart: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
     confidence: float = 0.5
+    # Timeframe ottimale selezionato dall'AI per questo simbolo.
+    # Stringa vuota = usa settings.primary_timeframe come fallback.
+    optimal_timeframe: str = ""
 
 
 class AutoConfig:
@@ -85,6 +89,7 @@ class AutoConfig:
         self._last_run: Dict[str, datetime] = {}
         self._selector = IndicatorSelector()
         self._meta = MetaLearner()
+        self._tf_selector = TimeframeSelector()
         self._retune_interval = timedelta(
             hours=settings.autoconfig.retune_interval_hours
         )
@@ -106,13 +111,20 @@ class AutoConfig:
         symbol: str,
         df: pd.DataFrame,
         asset_type: str,
+        data_by_tf: Optional[Dict[str, pd.DataFrame]] = None,
     ) -> AutoConfigResult:
         """
         Full auto-configuration pipeline for a symbol.
         Updates internal state and returns a result.
+
+        Parameters
+        ----------
+        data_by_tf : dict opzionale {tf: DataFrame} con più timeframe.
+                     Se fornito, viene usato per selezionare il timeframe
+                     ottimale tramite TimeframeSelector.
         """
         try:
-            result = await self._pipeline(symbol, df, asset_type)
+            result = await self._pipeline(symbol, df, asset_type, data_by_tf)
         except Exception as e:
             logger.error(f"AutoConfig pipeline error for {symbol}: {e}")
             result = self._default_result(symbol, asset_type)
@@ -135,6 +147,16 @@ class AutoConfig:
 
     def get_result(self, symbol: str) -> Optional[AutoConfigResult]:
         return self._results.get(symbol)
+
+    def get_optimal_timeframe(self, symbol: str) -> str:
+        """
+        Ritorna il timeframe ottimale per il simbolo selezionato dall'AI.
+        Fallback a settings.primary_timeframe se non ancora calcolato.
+        """
+        result = self._results.get(symbol)
+        if result and result.optimal_timeframe:
+            return result.optimal_timeframe
+        return settings.primary_timeframe
 
     def get_meta_learner(self) -> MetaLearner:
         return self._meta
@@ -169,8 +191,19 @@ class AutoConfig:
     # ── Pipeline ──────────────────────────────────────────────────────────
 
     async def _pipeline(
-        self, symbol: str, df: pd.DataFrame, asset_type: str
+        self,
+        symbol: str,
+        df: pd.DataFrame,
+        asset_type: str,
+        data_by_tf: Optional[Dict[str, pd.DataFrame]] = None,
     ) -> AutoConfigResult:
+        # ── 0. Timeframe selection (se abilitato e dati multi-TF disponibili) ─
+        optimal_tf = ""
+        if settings.tf_selector.enabled and data_by_tf and len(data_by_tf) > 1:
+            optimal_tf = await asyncio.to_thread(
+                self._tf_selector.select, data_by_tf, symbol
+            )
+
         # ── 1. Cycle analysis ──────────────────────────────────────────
         cycle = await asyncio.to_thread(
             CycleFeatures.compute_all,
@@ -237,6 +270,7 @@ class AutoConfig:
             fundamental_score=fund_score,
             oscillator_for_chart=oscillator,
             confidence=min(0.5 + abs(hurst - 0.5) * 0.5, 0.95),
+            optimal_timeframe=optimal_tf,
         )
 
     # ── Strategy selection ─────────────────────────────────────────────────

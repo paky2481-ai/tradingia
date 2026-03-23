@@ -166,6 +166,36 @@ class OHLCVBar(Base):
     )
 
 
+class PatternObservationDB(Base):
+    """
+    Persistenza della coda di osservazione pattern.
+    Creata automaticamente da create_all() all'avvio.
+    """
+    __tablename__ = "pattern_observations"
+
+    id              = Column(String(36), primary_key=True)   # uuid
+    symbol          = Column(String(20), nullable=False, index=True)
+    pattern_name    = Column(String(60), nullable=False)
+    direction       = Column(String(10), nullable=False)     # bullish|bearish|neutral
+    status          = Column(String(12), nullable=False)     # forming|confirmed|failed|expired
+    confidence      = Column(Float, nullable=True)
+    timeframe       = Column(String(10), nullable=True)
+    bars_involved   = Column(Integer, nullable=True)
+    invalidation_price  = Column(Float, nullable=True)
+    confirmation_price  = Column(Float, nullable=True)
+    target_price    = Column(Float, nullable=True)
+    forming_since   = Column(DateTime, nullable=True)
+    confirmed_at    = Column(DateTime, nullable=True)
+    failed_at       = Column(DateTime, nullable=True)
+    metadata_json   = Column(Text, nullable=True)            # JSON dict
+    created_at      = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_pattern_obs_symbol_status", "symbol", "status"),
+        Index("ix_pattern_obs_created_at",    "created_at"),
+    )
+
+
 class AIConfig(Base):
     """
     Persists AutoConfigResult and AI state per symbol.

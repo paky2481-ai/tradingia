@@ -139,7 +139,14 @@ class Backtester:
         df: pd.DataFrame,
         strategy: BaseStrategy,
         symbol: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
     ) -> BacktestResult:
+        """
+        Esegue il backtest.
+
+        progress_callback(pct: int): chiamata ogni ~1% delle barre processate,
+        con il valore percentuale di avanzamento (0-100).
+        """
         logger.info(f"Backtesting {symbol} | {strategy.name}...")
 
         df = TechnicalIndicators.compute_all(df)
@@ -149,6 +156,9 @@ class Backtester:
         equity_curve = [capital]
         trades: List[BacktestTrade] = []
         open_trade: Optional[dict] = None
+
+        total_bars = len(df) - 50
+        _last_pct = -1
 
         for i in range(50, len(df)):
             window = df.iloc[:i+1]
@@ -218,12 +228,22 @@ class Backtester:
 
             equity_curve.append(capital)
 
+            # Progress callback ogni 1% circa
+            if progress_callback is not None and total_bars > 0:
+                pct = int((i - 50) / total_bars * 100)
+                if pct != _last_pct:
+                    _last_pct = pct
+                    progress_callback(pct)
+
         # Close any remaining position at end
         if open_trade:
             last_price = float(df["close"].iloc[-1])
             t = self._close_trade(open_trade, last_price, df.index[-1], "end", len(df) - 1)
             capital += t.pnl
             trades.append(t)
+
+        if progress_callback is not None:
+            progress_callback(100)
 
         result = BacktestResult(
             symbol=symbol,

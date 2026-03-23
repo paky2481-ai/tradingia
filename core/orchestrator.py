@@ -4,7 +4,9 @@ Coordinates: data feed → indicators → AI models → strategies → risk → 
 """
 
 import asyncio
-from datetime import datetime, time
+import json
+from datetime import datetime, timedelta, time
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from config.settings import settings
@@ -16,6 +18,8 @@ from portfolio.portfolio_manager import PortfolioManager
 from notifications.notifier import notifier
 from database.db import init_db
 from utils.logger import get_logger
+
+_RETRAIN_STAMP_FILE = Path(settings.ml.models_dir) / ".last_retrain.json"
 
 logger = get_logger.bind(name="orchestrator")
 
@@ -52,11 +56,22 @@ class TradingOrchestrator:
                 return
 
         self._running = True
-        await asyncio.gather(
+
+        # Retrain se il sistema non era attivo durante la finestra notturna
+        if settings.ml.nightly_retrain_enabled:
+            await self._retrain_if_missed()
+
+        loops = [
             self._main_loop(),
             self._position_monitor_loop(),
             self._daily_reset_loop(),
-        )
+        ]
+        if settings.ml.nightly_retrain_enabled:
+            loops.append(self._nightly_retrain_loop())
+        if settings.pattern.enabled:
+            loops.append(self._pattern_watchlist_loop())
+            loops.append(self._pattern_position_loop())
+        await asyncio.gather(*loops)
 
     async def stop(self):
         self._running = False
@@ -115,7 +130,9 @@ class TradingOrchestrator:
         new_signals = []
         for symbol, signals in all_signals.items():
             for signal in signals:
-                df = data[symbol].get(settings.primary_timeframe)
+                # Usa il timeframe ottimale selezionato dall'AI (fallback al primario)
+                optimal_tf = self.strategy_manager._get_auto_config().get_optimal_timeframe(symbol)
+                df = data[symbol].get(optimal_tf) or data[symbol].get(settings.primary_timeframe)
                 if df is None:
                     continue
 
@@ -268,18 +285,340 @@ class TradingOrchestrator:
 
     # ── Model training ─────────────────────────────────────────────────────
 
-    async def train_all_models(self, symbols: List[str] = None, timeframe: str = "1h"):
-        """Train AI models for given symbols."""
+    async def retrain_all_models(
+        self,
+        symbols: List[str] = None,
+        timeframe: str = "1h",
+        incremental: bool = True,
+    ):
+        """
+        Addestra / aggiorna i modelli AI per tutti i simboli dati.
+
+        incremental=False (--full):
+            Scarica il massimo disponibile (limit=0) e riaddestra da zero.
+        incremental=True (default / nightly):
+            Scarica gli ultimi N giorni e aggiorna i pesi esistenti.
+        """
         from models.ensemble_model import EnsembleModel
+        from models.indicator_selector import IndicatorSelector
 
         targets = symbols or settings.stock_symbols[:5] + settings.crypto_symbols[:3]
-        logger.info(f"Training models for {len(targets)} symbols...")
+        mode_label = "INCREMENTALE" if incremental else "COMPLETO"
+        logger.info(
+            f"[Training {mode_label}] {len(targets)} simboli | timeframe={timeframe}"
+        )
+
+        if incremental:
+            # Ore → barre: 90 giorni × 24h per "1h", 90 giorni per "1d", ecc.
+            hours_per_bar = {"1m": 1/60, "5m": 1/12, "15m": 1/4, "30m": 1/2,
+                             "1h": 1, "4h": 4, "1d": 24, "1w": 168}
+            h = hours_per_bar.get(timeframe, 1)
+            limit = int(settings.ml.incremental_train_days * 24 / h)
+        else:
+            limit = 0   # full download
+
+        selector = IndicatorSelector()
 
         for symbol in targets:
-            df = await self.data_feed.get_ohlcv(symbol, timeframe, limit=5000)
-            if df is None or len(df) < 300:
-                logger.warning(f"Skipping {symbol}: insufficient data")
+            safe_name = symbol.replace("/", "_").replace("=", "_").replace("^", "")
+            try:
+                df = await self.data_feed.get_ohlcv(symbol, timeframe, limit=limit)
+                if df is None or len(df) < 200:
+                    logger.warning(f"[Training] Salto {symbol}: dati insufficienti ({len(df) if df is not None else 0} barre)")
+                    continue
+
+                model = EnsembleModel(name=f"ensemble_{safe_name}")
+
+                if incremental:
+                    # Carica pesi esistenti prima di aggiornare
+                    model.load()
+
+                metrics = await asyncio.to_thread(model.train, df)
+                model.save()
+
+                # Aggiorna IndicatorSelector con le nuove importances del GBM
+                if model.rf_model.model is not None:
+                    asset_type = settings.asset_type_map.get(symbol, "stock")
+                    selector.load_from_gbm_model(
+                        model.rf_model.model,
+                        asset_type=asset_type,
+                    )
+                    selector.save()
+
+                logger.info(f"[Training] {symbol} OK | barre={len(df)} | {metrics}")
+
+            except Exception as e:
+                logger.error(f"[Training] Errore su {symbol}: {e}", exc_info=True)
+
+        logger.info(f"[Training {mode_label}] Completato per {len(targets)} simboli")
+        self._write_last_retrain()
+
+    async def train_all_models(self, symbols: List[str] = None, timeframe: str = "1h"):
+        """Compatibilità: delega a retrain_all_models(incremental=False)."""
+        await self.retrain_all_models(symbols=symbols, timeframe=timeframe, incremental=False)
+
+    # ── Retrain timestamp helpers ───────────────────────────────────────────
+
+    @staticmethod
+    def _read_last_retrain() -> Optional[datetime]:
+        """Legge il timestamp dell'ultimo retrain da file JSON."""
+        try:
+            if _RETRAIN_STAMP_FILE.exists():
+                data = json.loads(_RETRAIN_STAMP_FILE.read_text())
+                return datetime.fromisoformat(data["ts"])
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _write_last_retrain():
+        """Scrive il timestamp dell'ultimo retrain su file JSON."""
+        try:
+            _RETRAIN_STAMP_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _RETRAIN_STAMP_FILE.write_text(
+                json.dumps({"ts": datetime.utcnow().isoformat()})
+            )
+        except Exception as e:
+            logger.warning(f"[Retrain stamp] Impossibile scrivere timestamp: {e}")
+
+    async def _retrain_if_missed(self):
+        """
+        All'avvio controlla se il retraining notturno è stato saltato
+        (es. app spenta di notte). Se l'ultimo retrain risale a più di
+        30 ore fa, esegue subito un retraining incrementale.
+        """
+        last = self._read_last_retrain()
+        threshold = timedelta(hours=30)   # 24h + 6h di tolleranza
+
+        if last is None:
+            logger.info("[Startup] Nessun retrain precedente trovato — skip (prima esecuzione).")
+            return
+
+        elapsed = datetime.utcnow() - last
+        if elapsed > threshold:
+            logger.info(
+                f"[Startup] Retrain notturno saltato (ultimo: {last.strftime('%Y-%m-%d %H:%M')} UTC, "
+                f"passate {elapsed.total_seconds()/3600:.1f}h). Avvio recupero..."
+            )
+            await self.retrain_all_models(
+                timeframe=settings.primary_timeframe,
+                incremental=True,
+            )
+        else:
+            logger.info(
+                f"[Startup] Retrain notturno aggiornato ({elapsed.total_seconds()/3600:.1f}h fa) — OK."
+            )
+
+    # ── Nightly retrain loop ────────────────────────────────────────────────
+
+    # ── Pattern recognition loops ───────────────────────────────────────────
+
+    async def _pattern_watchlist_loop(self):
+        """
+        Scansiona tutta la watchlist alla ricerca di pattern (ogni 5 min).
+        Pattern confermati → genera TradeSignal → flusso normale di esecuzione.
+        """
+        from indicators.patterns import PatternDetector
+        from core.pattern_observer import get_pattern_observer
+        from core.signal_bus import get_bus, PatternAlertEvent
+        from indicators.technical import TechnicalIndicators
+        import pandas as pd
+
+        observer = get_pattern_observer()
+        bus      = get_bus()
+
+        while self._running:
+            await asyncio.sleep(settings.pattern.watchlist_scan_interval_s)
+            if not self._running:
+                break
+
+            symbols = settings.all_symbols
+            logger.debug(f"[pattern_watchlist] Scansione {len(symbols)} simboli...")
+
+            for symbol in symbols:
+                if not self._running:
+                    break
+                try:
+                    tf = self.strategy_manager._get_auto_config().get_optimal_timeframe(symbol)
+                    df = await self.data_feed.get_ohlcv(symbol, tf, limit=150)
+                    if df is None or len(df) < 10:
+                        continue
+
+                    raw_patterns = await asyncio.to_thread(
+                        PatternDetector.detect_all, df, tf
+                    )
+                    added = await observer.ingest(symbol, raw_patterns)
+                    await observer.update(symbol, df.iloc[-1])
+
+                    # Emetti eventi "forming" per la GUI
+                    for raw in raw_patterns:
+                        if raw.confidence >= settings.pattern.min_confidence:
+                            bus.emit_pattern_alert(PatternAlertEvent(
+                                symbol=symbol,
+                                pattern_name=raw.name,
+                                direction=raw.direction,
+                                status="forming",
+                                confidence=raw.confidence,
+                                timeframe=tf,
+                                target_price=raw.target_price,
+                            ))
+
+                    # Segnali confermati → risk manager → esecuzione
+                    can_trade, reason = self.risk_manager.can_trade()
+                    if not can_trade:
+                        continue
+
+                    confirmed = await observer.get_confirmed(symbol, consume=True)
+                    for obs in confirmed:
+                        if obs.raw.confidence < settings.pattern.min_signal_confidence:
+                            continue
+                        current_price = float(df["close"].iloc[-1])
+                        signal = observer.to_trade_signal(obs, current_price)
+
+                        atr_series = TechnicalIndicators.atr(
+                            df["high"], df["low"], df["close"], 14
+                        )
+                        atr = float(atr_series.iloc[-1]) if not pd.isna(atr_series.iloc[-1]) else None
+                        assessment = self.risk_manager.evaluate(signal, current_price, atr)
+
+                        if assessment.approved:
+                            await self._execute_signal(signal, assessment, current_price)
+
+                        bus.emit_pattern_alert(PatternAlertEvent(
+                            symbol=symbol,
+                            pattern_name=obs.raw.name,
+                            direction=obs.raw.direction,
+                            status="confirmed",
+                            confidence=obs.raw.confidence,
+                            timeframe=obs.raw.timeframe,
+                            target_price=obs.raw.target_price,
+                            observation_id=obs.id,
+                        ))
+
+                    if added > 0:
+                        logger.info(f"[pattern_watchlist] {symbol}: +{added} pattern in osservazione")
+
+                except Exception as e:
+                    logger.debug(f"[pattern_watchlist] {symbol}: {e}")
+
+            pruned = await observer.prune()
+            if pruned:
+                logger.debug(f"[pattern_watchlist] Prune: rimossi {pruned} pattern terminali")
+
+    async def _pattern_position_loop(self):
+        """
+        Controlla pattern di inversione su posizioni aperte (ogni 30s).
+        Pattern bearish su long → valuta chiusura anticipata.
+        Pattern bullish su short → valuta chiusura anticipata.
+        """
+        from indicators.patterns import PatternDetector
+        from core.signal_bus import get_bus, PatternAlertEvent
+        from strategies.base_strategy import TradeSignal
+
+        bus = get_bus()
+
+        while self._running:
+            await asyncio.sleep(settings.pattern.position_scan_interval_s)
+            if not self._running or not self.portfolio.positions:
                 continue
-            model = EnsembleModel(name=f"ensemble_{symbol.replace('/', '_').replace('=', '_')}")
-            metrics = await asyncio.to_thread(model.train, df)
-            logger.info(f"Trained {symbol}: {metrics}")
+
+            for symbol, pos in list(self.portfolio.positions.items()):
+                try:
+                    df = await self.data_feed.get_ohlcv(symbol, "1h", limit=60)
+                    if df is None or len(df) < 10:
+                        continue
+
+                    reversal = await asyncio.to_thread(
+                        PatternDetector.detect_reversal, df, pos.direction, "1h"
+                    )
+                    high_conf = [p for p in reversal if p.confidence >= 0.70]
+                    if not high_conf:
+                        continue
+
+                    best = max(high_conf, key=lambda p: p.confidence)
+                    current_price = float(df["close"].iloc[-1])
+
+                    logger.info(
+                        f"[pattern_position] {symbol}: {best.name} ({best.direction}, "
+                        f"conf={best.confidence:.2f}) su posizione {pos.direction.upper()}"
+                    )
+
+                    # Genera segnale di chiusura
+                    close_signal = TradeSignal(
+                        symbol=symbol,
+                        direction="close",
+                        confidence=best.confidence,
+                        strategy_name=f"pattern_exit_{best.name.lower().replace(' ', '_')}",
+                        price=current_price,
+                        timeframe="1h",
+                        metadata={
+                            "pattern_name":  best.name,
+                            "reason":        f"Pattern {best.name} segnala inversione",
+                            "exit_type":     "pattern_reversal",
+                        },
+                    )
+
+                    # Chiudi la posizione tramite portfolio manager
+                    trade = self.portfolio.close_position(
+                        symbol, current_price, f"pattern_exit_{best.name}"
+                    )
+                    if trade:
+                        await notifier.notify_trade(
+                            symbol, "close", trade["quantity"], current_price, trade["pnl"]
+                        )
+                        self.risk_manager.update_portfolio(
+                            equity=self.portfolio.total_equity,
+                            positions={
+                                s: {"risk_usd": p.risk_usd}
+                                for s, p in self.portfolio.positions.items()
+                            },
+                        )
+                        bus.emit_pattern_alert(PatternAlertEvent(
+                            symbol=symbol,
+                            pattern_name=best.name,
+                            direction=best.direction,
+                            status="confirmed",
+                            confidence=best.confidence,
+                            timeframe="1h",
+                            target_price=best.target_price,
+                        ))
+                        logger.info(
+                            f"[pattern_position] {symbol}: chiusura anticipata per {best.name} "
+                            f"| PnL={trade.get('pnl', 0):+.2f}"
+                        )
+
+                except Exception as e:
+                    logger.debug(f"[pattern_position] {symbol}: {e}")
+
+    async def _nightly_retrain_loop(self):
+        """
+        Loop in background: ogni notte alle settings.ml.nightly_retrain_hour (UTC)
+        esegue un retraining incrementale di tutti i modelli.
+        """
+        while self._running:
+            now = datetime.utcnow()
+            target = now.replace(
+                hour=settings.ml.nightly_retrain_hour,
+                minute=5, second=0, microsecond=0,
+            )
+            if target <= now:
+                target += timedelta(days=1)
+
+            wait_secs = (target - now).total_seconds()
+            logger.info(
+                f"[Nightly retrain] Prossimo aggiornamento: {target.strftime('%Y-%m-%d %H:%M')} UTC "
+                f"(tra {wait_secs/3600:.1f}h)"
+            )
+            await asyncio.sleep(wait_secs)
+
+            if not self._running:
+                break
+
+            logger.info("[Nightly retrain] Avvio retraining incrementale notturno...")
+            try:
+                await self.retrain_all_models(
+                    timeframe=settings.primary_timeframe,
+                    incremental=True,
+                )
+            except Exception as e:
+                logger.error(f"[Nightly retrain] Errore: {e}", exc_info=True)
