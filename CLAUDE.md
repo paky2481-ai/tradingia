@@ -84,6 +84,7 @@ python main.py backtest   # esegui backtesting
 | Paky | Ingegnere Software | "Paky, [compito]" |
 | Tom | Matematico / ML | "Tom, [compito]" |
 | Chloe | Finance / Trading | "Chloe, [compito]" |
+| Marco | GUI / Grafica / Data Visualization | "Marco, [compito]" |
 
 **Max è il default**: task senza destinatario → Max coordina.
 
