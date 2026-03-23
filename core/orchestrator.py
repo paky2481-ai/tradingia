@@ -127,7 +127,9 @@ class TradingOrchestrator:
         new_signals = []
         for symbol, signals in all_signals.items():
             for signal in signals:
-                df = data[symbol].get(settings.primary_timeframe)
+                # Usa il timeframe ottimale selezionato dall'AI (fallback al primario)
+                optimal_tf = self.strategy_manager._get_auto_config().get_optimal_timeframe(symbol)
+                df = data[symbol].get(optimal_tf) or data[symbol].get(settings.primary_timeframe)
                 if df is None:
                     continue
 

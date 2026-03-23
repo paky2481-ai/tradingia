@@ -160,6 +160,24 @@ class AutoConfigSettings(BaseSettings):
         env_prefix = "AUTOCONF_"
 
 
+class TimeframeSelectorSettings(BaseSettings):
+    """
+    Configurazione per la selezione automatica del timeframe ottimale.
+
+    L'AI analizza Hurst exponent, ciclo dominante FFT e autocorrelazione
+    dei ritorni per determinare quale timeframe offre il miglior
+    rapporto segnale/rumore per ogni strumento.
+    """
+    enabled: bool = True
+    # Periodo ciclo dominante "ideale" in barre (Bollinger 20, SMA 20, RSI 14-21)
+    ideal_cycle_bars: int = 20
+    # Minimo barre per un'analisi affidabile
+    min_bars: int = 50
+
+    class Config:
+        env_prefix = "TFSELECTOR_"
+
+
 class NotificationSettings(BaseSettings):
     telegram_token: str = ""
     telegram_chat_id: str = ""
@@ -235,6 +253,7 @@ class Settings(BaseSettings):
     cycle: CycleSettings = Field(default_factory=CycleSettings)
     fundamental: FundamentalSettings = Field(default_factory=FundamentalSettings)
     autoconfig: AutoConfigSettings = Field(default_factory=AutoConfigSettings)
+    tf_selector: TimeframeSelectorSettings = Field(default_factory=TimeframeSelectorSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 

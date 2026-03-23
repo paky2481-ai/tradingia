@@ -63,14 +63,16 @@ class StrategyManager:
         4. Aggregate with meta-learner confirmation
         """
         auto_config = self._get_auto_config()
-        primary_df = data_by_timeframe.get(settings.primary_timeframe)
+        # Usa il timeframe ottimale se già calcolato, altrimenti il primario
+        active_tf  = auto_config.get_optimal_timeframe(symbol)
+        primary_df = data_by_timeframe.get(active_tf) or data_by_timeframe.get(settings.primary_timeframe)
         if primary_df is None or len(primary_df) < 50:
             return []
 
         # ── Auto-config (hourly retune) ────────────────────────────────
         if auto_config.should_retune(symbol):
             try:
-                await auto_config.run(symbol, primary_df, asset_type)
+                await auto_config.run(symbol, primary_df, asset_type, data_by_timeframe)
             except Exception as e:
                 logger.warning(f"AutoConfig failed for {symbol}: {e}")
 
