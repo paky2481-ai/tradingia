@@ -68,6 +68,9 @@ class TradingOrchestrator:
         ]
         if settings.ml.nightly_retrain_enabled:
             loops.append(self._nightly_retrain_loop())
+        if settings.pattern.enabled:
+            loops.append(self._pattern_watchlist_loop())
+            loops.append(self._pattern_position_loop())
         await asyncio.gather(*loops)
 
     async def stop(self):
@@ -407,6 +410,185 @@ class TradingOrchestrator:
             )
 
     # ── Nightly retrain loop ────────────────────────────────────────────────
+
+    # ── Pattern recognition loops ───────────────────────────────────────────
+
+    async def _pattern_watchlist_loop(self):
+        """
+        Scansiona tutta la watchlist alla ricerca di pattern (ogni 5 min).
+        Pattern confermati → genera TradeSignal → flusso normale di esecuzione.
+        """
+        from indicators.patterns import PatternDetector
+        from core.pattern_observer import get_pattern_observer
+        from core.signal_bus import get_bus, PatternAlertEvent
+        from indicators.technical import TechnicalIndicators
+        import pandas as pd
+
+        observer = get_pattern_observer()
+        bus      = get_bus()
+
+        while self._running:
+            await asyncio.sleep(settings.pattern.watchlist_scan_interval_s)
+            if not self._running:
+                break
+
+            symbols = settings.all_symbols
+            logger.debug(f"[pattern_watchlist] Scansione {len(symbols)} simboli...")
+
+            for symbol in symbols:
+                if not self._running:
+                    break
+                try:
+                    tf = self.strategy_manager._get_auto_config().get_optimal_timeframe(symbol)
+                    df = await self.data_feed.get_ohlcv(symbol, tf, limit=150)
+                    if df is None or len(df) < 10:
+                        continue
+
+                    raw_patterns = await asyncio.to_thread(
+                        PatternDetector.detect_all, df, tf
+                    )
+                    added = await observer.ingest(symbol, raw_patterns)
+                    await observer.update(symbol, df.iloc[-1])
+
+                    # Emetti eventi "forming" per la GUI
+                    for raw in raw_patterns:
+                        if raw.confidence >= settings.pattern.min_confidence:
+                            bus.emit_pattern_alert(PatternAlertEvent(
+                                symbol=symbol,
+                                pattern_name=raw.name,
+                                direction=raw.direction,
+                                status="forming",
+                                confidence=raw.confidence,
+                                timeframe=tf,
+                                target_price=raw.target_price,
+                            ))
+
+                    # Segnali confermati → risk manager → esecuzione
+                    can_trade, reason = self.risk_manager.can_trade()
+                    if not can_trade:
+                        continue
+
+                    confirmed = await observer.get_confirmed(symbol, consume=True)
+                    for obs in confirmed:
+                        if obs.raw.confidence < settings.pattern.min_signal_confidence:
+                            continue
+                        current_price = float(df["close"].iloc[-1])
+                        signal = observer.to_trade_signal(obs, current_price)
+
+                        atr_series = TechnicalIndicators.atr(
+                            df["high"], df["low"], df["close"], 14
+                        )
+                        atr = float(atr_series.iloc[-1]) if not pd.isna(atr_series.iloc[-1]) else None
+                        assessment = self.risk_manager.evaluate(signal, current_price, atr)
+
+                        if assessment.approved:
+                            await self._execute_signal(signal, assessment, current_price)
+
+                        bus.emit_pattern_alert(PatternAlertEvent(
+                            symbol=symbol,
+                            pattern_name=obs.raw.name,
+                            direction=obs.raw.direction,
+                            status="confirmed",
+                            confidence=obs.raw.confidence,
+                            timeframe=obs.raw.timeframe,
+                            target_price=obs.raw.target_price,
+                            observation_id=obs.id,
+                        ))
+
+                    if added > 0:
+                        logger.info(f"[pattern_watchlist] {symbol}: +{added} pattern in osservazione")
+
+                except Exception as e:
+                    logger.debug(f"[pattern_watchlist] {symbol}: {e}")
+
+            pruned = await observer.prune()
+            if pruned:
+                logger.debug(f"[pattern_watchlist] Prune: rimossi {pruned} pattern terminali")
+
+    async def _pattern_position_loop(self):
+        """
+        Controlla pattern di inversione su posizioni aperte (ogni 30s).
+        Pattern bearish su long → valuta chiusura anticipata.
+        Pattern bullish su short → valuta chiusura anticipata.
+        """
+        from indicators.patterns import PatternDetector
+        from core.signal_bus import get_bus, PatternAlertEvent
+        from strategies.base_strategy import TradeSignal
+
+        bus = get_bus()
+
+        while self._running:
+            await asyncio.sleep(settings.pattern.position_scan_interval_s)
+            if not self._running or not self.portfolio.positions:
+                continue
+
+            for symbol, pos in list(self.portfolio.positions.items()):
+                try:
+                    df = await self.data_feed.get_ohlcv(symbol, "1h", limit=60)
+                    if df is None or len(df) < 10:
+                        continue
+
+                    reversal = await asyncio.to_thread(
+                        PatternDetector.detect_reversal, df, pos.direction, "1h"
+                    )
+                    high_conf = [p for p in reversal if p.confidence >= 0.70]
+                    if not high_conf:
+                        continue
+
+                    best = max(high_conf, key=lambda p: p.confidence)
+                    current_price = float(df["close"].iloc[-1])
+
+                    logger.info(
+                        f"[pattern_position] {symbol}: {best.name} ({best.direction}, "
+                        f"conf={best.confidence:.2f}) su posizione {pos.direction.upper()}"
+                    )
+
+                    # Genera segnale di chiusura
+                    close_signal = TradeSignal(
+                        symbol=symbol,
+                        direction="close",
+                        confidence=best.confidence,
+                        strategy_name=f"pattern_exit_{best.name.lower().replace(' ', '_')}",
+                        price=current_price,
+                        timeframe="1h",
+                        metadata={
+                            "pattern_name":  best.name,
+                            "reason":        f"Pattern {best.name} segnala inversione",
+                            "exit_type":     "pattern_reversal",
+                        },
+                    )
+
+                    # Chiudi la posizione tramite portfolio manager
+                    trade = self.portfolio.close_position(
+                        symbol, current_price, f"pattern_exit_{best.name}"
+                    )
+                    if trade:
+                        await notifier.notify_trade(
+                            symbol, "close", trade["quantity"], current_price, trade["pnl"]
+                        )
+                        self.risk_manager.update_portfolio(
+                            equity=self.portfolio.total_equity,
+                            positions={
+                                s: {"risk_usd": p.risk_usd}
+                                for s, p in self.portfolio.positions.items()
+                            },
+                        )
+                        bus.emit_pattern_alert(PatternAlertEvent(
+                            symbol=symbol,
+                            pattern_name=best.name,
+                            direction=best.direction,
+                            status="confirmed",
+                            confidence=best.confidence,
+                            timeframe="1h",
+                            target_price=best.target_price,
+                        ))
+                        logger.info(
+                            f"[pattern_position] {symbol}: chiusura anticipata per {best.name} "
+                            f"| PnL={trade.get('pnl', 0):+.2f}"
+                        )
+
+                except Exception as e:
+                    logger.debug(f"[pattern_position] {symbol}: {e}")
 
     async def _nightly_retrain_loop(self):
         """

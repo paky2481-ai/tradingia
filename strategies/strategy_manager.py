@@ -20,6 +20,7 @@ from strategies.technical_strategy import (
     BreakoutStrategy,
     ScalpingStrategy,
 )
+from strategies.pattern_strategy import PatternStrategy
 from config.settings import settings
 from utils.logger import get_logger
 
@@ -35,11 +36,12 @@ class StrategyManager:
     def __init__(self):
         # All available strategies, keyed by name
         self._strategy_map: Dict[str, BaseStrategy] = {
-            "ai_ensemble":     AIStrategy(timeframe=settings.primary_timeframe),
-            "trend_following": TrendFollowingStrategy(timeframe="1h"),
-            "mean_reversion":  MeanReversionStrategy(timeframe="1h"),
-            "breakout":        BreakoutStrategy(timeframe="1d"),
-            "scalping":        ScalpingStrategy(),
+            "ai_ensemble":         AIStrategy(timeframe=settings.primary_timeframe),
+            "trend_following":     TrendFollowingStrategy(timeframe="1h"),
+            "mean_reversion":      MeanReversionStrategy(timeframe="1h"),
+            "breakout":            BreakoutStrategy(timeframe="1d"),
+            "scalping":            ScalpingStrategy(),
+            "pattern_recognition": PatternStrategy(timeframe=settings.primary_timeframe),
         }
 
         # Lazy-load AutoConfig to avoid heavy imports at startup

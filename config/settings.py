@@ -182,6 +182,34 @@ class TimeframeSelectorSettings(BaseSettings):
         env_prefix = "TFSELECTOR_"
 
 
+class PatternSettings(BaseSettings):
+    """
+    Configurazione per il modulo di riconoscimento pattern.
+
+    Pattern candlestick (1-3 candele) e chart pattern (10-60 barre).
+    Due thread separati: watchlist (apertura) e posizioni aperte (chiusura).
+    """
+    enabled: bool = True
+    candlestick_enabled: bool = True
+    chart_patterns_enabled: bool = True
+
+    # Confidenza minima per entrare in osservazione
+    min_confidence: float = 0.60
+    # Confidenza minima per generare TradeSignal confermato
+    min_signal_confidence: float = 0.65
+
+    # Ciclo di vita osservazione
+    ttl_bars: int = 10              # barre max prima di expire (senza conferma)
+    max_per_symbol: int = 8         # max pattern in osservazione contemporaneamente
+
+    # Intervalli loop (secondi)
+    watchlist_scan_interval_s: int = 300    # ogni 5 min — scansione watchlist
+    position_scan_interval_s: int = 30     # ogni 30s — controllo posizioni aperte
+
+    class Config:
+        env_prefix = "PATTERN_"
+
+
 class NotificationSettings(BaseSettings):
     telegram_token: str = ""
     telegram_chat_id: str = ""
@@ -258,6 +286,7 @@ class Settings(BaseSettings):
     fundamental: FundamentalSettings = Field(default_factory=FundamentalSettings)
     autoconfig: AutoConfigSettings = Field(default_factory=AutoConfigSettings)
     tf_selector: TimeframeSelectorSettings = Field(default_factory=TimeframeSelectorSettings)
+    pattern: PatternSettings = Field(default_factory=PatternSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 
