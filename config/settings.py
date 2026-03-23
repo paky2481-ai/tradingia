@@ -62,8 +62,12 @@ class DataSettings(BaseSettings):
     # Yahoo Finance (free, stocks/forex/crypto/commodities)
     yfinance_enabled: bool = True
 
-    # Alpha Vantage (requires free API key)
+    # Alpha Vantage — https://www.alphavantage.co/support/#api-key (free, 25 req/day)
     alpha_vantage_key: str = ""
+
+    # Financial Modeling Prep — https://financialmodelingprep.com/developer/docs (free, 250 req/day)
+    # La chiave "demo" funziona per dati di base su simboli popolari senza registrazione
+    fmp_api_key: str = "demo"
 
     # Data cache
     cache_dir: str = str(BASE_DIR / "data" / "cache")
@@ -134,15 +138,15 @@ class FundamentalSettings(BaseSettings):
     good_roe: float = 0.15
     max_debt_equity: float = 2.0
     good_growth: float = 0.10
-    # Central bank rates (overridable via env)
-    rate_usd: float = 5.50
-    rate_eur: float = 4.25
-    rate_gbp: float = 5.25
-    rate_jpy: float = 0.10
-    rate_aud: float = 4.35
-    rate_cad: float = 5.00
-    rate_chf: float = 1.75
-    rate_nzd: float = 5.50
+    # Tassi banche centrali (aggiornati Marzo 2026 — override via env FUND_RATE_XXX)
+    rate_usd: float = 4.25   # Fed Funds Rate
+    rate_eur: float = 2.50   # ECB Deposit Rate
+    rate_gbp: float = 4.50   # BoE Base Rate
+    rate_jpy: float = 0.50   # BoJ Policy Rate
+    rate_aud: float = 4.10   # RBA Cash Rate
+    rate_cad: float = 3.25   # BoC Target Rate
+    rate_chf: float = 0.50   # SNB Policy Rate
+    rate_nzd: float = 3.75   # RBNZ OCR
 
     class Config:
         env_prefix = "FUND_"
