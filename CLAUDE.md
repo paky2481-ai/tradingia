@@ -29,10 +29,10 @@ Sistema di trading algoritmico AI-driven con GUI desktop PyQt6.
 ### Stack tecnico
 - **Python**: 3.14
 - **GUI**: PyQt6 + pyqtgraph + qasync
-- **Dati**: yfinance, ccxt, SQLite + SQLAlchemy
+- **Dati**: yfinance → Alpha Vantage → FMP (fallback chain), ccxt, SQLite + SQLAlchemy
 - **AI/ML**: scikit-learn (GBM), PyTorch (LSTM), MetaLearner (SGD)
-- **Analisi**: Hurst Exponent, FFT Cycle Detection, Analisi Fondamentale
-- **Strategie**: Trend Following, Mean Reversion, Breakout, Scalping, AI Ensemble
+- **Analisi**: Hurst Exponent, FFT Cycle Detection, Analisi Fondamentale multi-source
+- **Strategie**: Trend Following, Mean Reversion, Breakout, Scalping, AI Ensemble, Pattern Recognition
 - **Risk**: Kelly Criterion, Max Drawdown 15%, Position Sizing
 
 ### Struttura cartelle
@@ -62,10 +62,17 @@ python main.py trade      # avvia loop di trading
 python main.py backtest   # esegui backtesting
 ```
 
+### Completato (sprint recenti)
+- [x] Pattern Recognition — rilevamento, osservazione, backtesting (T1→T9)
+- [x] TimeframeSelector — selezione automatica TF via Hurst+FFT+autocorr
+- [x] FundamentalFeed multi-source — fallback yfinance → Alpha Vantage → FMP
+- [x] Training iniziale massiccio + retraining notturno automatico
+- [x] BacktestPanel GUI con progress bar e grafici equity
+
 ### Lavori in corso
 - [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky)
-- [ ] Validazione algoritmi Hurst + FFT (Tom)
-- [ ] Review strategie e risk management (Chloe)
+- [ ] Validazione statistica pattern su mercati reali (Tom + Chloe)
+- [ ] Ottimizzazione soglie confidenza per asset class (Tom)
 
 ---
 
