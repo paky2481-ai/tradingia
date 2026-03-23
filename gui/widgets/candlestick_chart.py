@@ -334,11 +334,13 @@ class CandlestickChart(QWidget):
         self._vol_item.set_data(self._df)
         self._update_ma_lines()
 
-        # Auto-range to last 120 bars
+        # Mostra gli ultimi 120 bar; l'asse Y si auto-adatta alla finestra visibile
         n = len(self._df)
         visible_start = max(0, n - 120)
+        # setAutoVisible(y=True): l'asse Y si adatta solo alle candele visibili,
+        # NON a tutto il dataset — evita la compressione che rende le candele "doppie"
+        self._price_plot.getViewBox().setAutoVisible(y=True)
         self._price_plot.setXRange(visible_start - 1, n + 1, padding=0.02)
-        self._price_plot.autoRange()
 
     def update_last_bar(self, bar: dict):
         """Update the last candle with a live tick (call from polling thread)."""
@@ -365,12 +367,12 @@ class CandlestickChart(QWidget):
         closes = self._df["close"].values
         x = np.arange(len(closes), dtype=float)
 
-        def _ma(n):
-            if len(closes) < n:
+        def _ma(period: int) -> np.ndarray:
+            if len(closes) < period:
                 return np.full_like(closes, np.nan, dtype=float)
-            result = np.full_like(closes, np.nan, dtype=float)
-            for i in range(n - 1, len(closes)):
-                result[i] = closes[i - n + 1:i + 1].mean()
+            kernel = np.ones(period) / period
+            full = np.convolve(closes, kernel, mode="full")[:len(closes)]
+            result = np.where(x < period - 1, np.nan, full)
             return result
 
         ma20  = _ma(20)

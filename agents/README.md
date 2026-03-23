@@ -13,6 +13,7 @@ Claude li legge all'inizio di ogni sessione per attivare i 3 assistenti speciali
 | **Paky** | Ingegnere del Software | `paky.md` |
 | **Tom** | Super Genio Matematico | `tom.md` |
 | **Chloe** | Agente Finanziario / Trading AI | `chloe.md` |
+| **Marco** | GUI / Grafica / Data Visualization | `marco.md` |
 
 ---
 
@@ -72,5 +73,4 @@ Lista dei file/cartelle su cui lavora.
 |------|----------------|
 | **Alex** | DevOps / Deployment / Docker |
 | **Nina** | QA Engineer / Testing / Debugging |
-| **Marco** | UX Designer / Data Visualization |
 | **Sara** | Data Engineer / Pipeline dati |
