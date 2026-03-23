@@ -83,7 +83,8 @@ class MetaLearner(BaseModel):
             tol=None,
             warm_start=True,
             random_state=42,
-            class_weight="balanced",
+            # class_weight="balanced" incompatibile con partial_fit:
+            # sklearn non può calcolare i pesi bilanciati senza l'intera Y
             learning_rate="adaptive",
             eta0=0.01,
         )
