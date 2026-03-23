@@ -17,15 +17,16 @@ import pandas as pd
 
 
 # ── Central bank rates (%) – update via FundamentalSettings env vars ─────────
+# Aggiornati a Marzo 2026. Override tramite env: FUND_RATE_USD, FUND_RATE_EUR, ecc.
 _CB_RATES: Dict[str, float] = {
-    "USD": 5.50,   # Fed Funds Rate
-    "EUR": 4.25,   # ECB
-    "GBP": 5.25,   # BoE
-    "JPY": 0.10,   # BoJ
-    "AUD": 4.35,   # RBA
-    "CAD": 5.00,   # BoC
-    "CHF": 1.75,   # SNB
-    "NZD": 5.50,   # RBNZ
+    "USD": 4.25,   # Fed Funds Rate  (tagliato da 5.50 → 4.25 nel 2024-2025)
+    "EUR": 2.50,   # ECB Deposit Rate (tagliato da 4.25 → 2.50)
+    "GBP": 4.50,   # BoE Base Rate   (tagliato da 5.25 → 4.50)
+    "JPY": 0.50,   # BoJ Policy Rate (alzato da 0.10 → 0.50)
+    "AUD": 4.10,   # RBA Cash Rate   (tagliato da 4.35 → 4.10)
+    "CAD": 3.25,   # BoC Target Rate (tagliato da 5.00 → 3.25)
+    "CHF": 0.50,   # SNB Policy Rate (tagliato da 1.75 → 0.50)
+    "NZD": 3.75,   # RBNZ OCR        (tagliato da 5.50 → 3.75)
 }
 
 # Forex symbol → (base_currency, quote_currency)
