@@ -12,8 +12,10 @@ Aggiornamento:
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
+from PyQt6 import uic
 from PyQt6.QtCore import Qt, QTimer, pyqtSlot
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import (
@@ -24,6 +26,8 @@ from PyQt6.QtWidgets import (
 from core.signal_bus import get_bus, PatternAlertEvent
 from core.pattern_observer import get_pattern_observer
 from utils.logger import get_logger
+
+_UI = Path(__file__).parent.parent / "ui" / "pattern_panel.ui"
 
 logger = get_logger.bind(name="gui.pattern_panel")
 
@@ -47,69 +51,25 @@ class PatternPanel(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._rows: dict[str, int] = {}   # observation_id → row index
-        self._setup_ui()
+        uic.loadUi(str(_UI), self)
+        self._apply_styles()
+        self._connect_signals()
         self._connect_bus()
         self._start_polling()
 
     # ── UI setup ───────────────────────────────────────────────────────────
 
-    def _setup_ui(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(6, 6, 6, 6)
-        root.setSpacing(6)
-
-        # ── Header ────────────────────────────────────────────────────────
-        header = QHBoxLayout()
-
-        title = QLabel("Pattern in Osservazione")
-        title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:13px;")
-        header.addWidget(title)
-
-        header.addStretch()
-
-        self._lbl_count = QLabel("0 pattern")
+    def _apply_styles(self):
+        self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:13px;")
         self._lbl_count.setStyleSheet("color:#8b949e; font-size:11px;")
-        header.addWidget(self._lbl_count)
-
-        # Filtro per status
-        self._status_filter = QComboBox()
-        self._status_filter.addItems(["Tutti", "forming", "confirmed", "failed", "expired"])
-        self._status_filter.setFixedWidth(100)
         self._status_filter.setStyleSheet(
             "background:#21262d; color:#e6edf3; border:1px solid #30363d; "
             "border-radius:4px; padding:2px 6px; font-size:11px;"
         )
-        self._status_filter.currentTextChanged.connect(self._refresh_table)
-        header.addWidget(self._status_filter)
-
-        btn_clear = QPushButton("Pulisci terminati")
-        btn_clear.setFixedHeight(26)
-        btn_clear.setStyleSheet(
+        self._btn_clear.setStyleSheet(
             "background:#21262d; color:#8b949e; border:1px solid #30363d; "
             "border-radius:4px; padding:2px 8px; font-size:11px;"
         )
-        btn_clear.clicked.connect(self._clear_terminal)
-        header.addWidget(btn_clear)
-
-        root.addLayout(header)
-
-        # ── Tabella ────────────────────────────────────────────────────────
-        self._table = QTableWidget(0, len(_COLUMNS))
-        self._table.setHorizontalHeaderLabels(_COLUMNS)
-        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setAlternatingRowColors(False)
-        self._table.verticalHeader().setVisible(False)
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Interactive
-        )
-
-        # Larghezze colonne
-        widths = [70, 170, 80, 80, 55, 50, 70, 90]
-        for i, w in enumerate(widths):
-            self._table.setColumnWidth(i, w)
-
         self._table.setStyleSheet("""
             QTableWidget {
                 background:#0d1117; color:#e6edf3;
@@ -125,8 +85,14 @@ class PatternPanel(QWidget):
                 padding:4px 6px; font-size:11px;
             }
         """)
-        self._table.setRowHeight(0, 26)
-        root.addWidget(self._table)
+        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        widths = [70, 170, 80, 80, 55, 50, 70, 90]
+        for i, w in enumerate(widths):
+            self._table.setColumnWidth(i, w)
+
+    def _connect_signals(self):
+        self._status_filter.currentTextChanged.connect(self._refresh_table)
+        self._btn_clear.clicked.connect(self._clear_terminal)
 
     # ── Bus connection ─────────────────────────────────────────────────────
 

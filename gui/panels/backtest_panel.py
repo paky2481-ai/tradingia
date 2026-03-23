@@ -7,11 +7,13 @@ mostrando equity curve, metriche e log dei trade in tempo reale.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
+from PyQt6 import uic
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot, QObject
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -20,6 +22,8 @@ from PyQt6.QtWidgets import (
     QHeaderView, QSplitter, QGroupBox, QLineEdit, QFrame,
 )
 from PyQt6.QtGui import QColor, QFont
+
+_UI = Path(__file__).parent.parent / "ui" / "backtest_panel.ui"
 
 try:
     import pyqtgraph as pg
@@ -193,145 +197,67 @@ class BacktestPanel(QWidget):
         self._thread: Optional[QThread] = None
         self._result: Optional[BacktestResult] = None
 
-        self._build_ui()
+        uic.loadUi(str(_UI), self)
+        self._apply_styles()
+        self._build_metrics_grid()
+        self._build_chart_content()
+
+        # Post-load tweaks
+        self._tf_combo.setCurrentText("1h")
+        self._splitter.setSizes([340, 220])
+
+        # Connect signals
+        self._btn_run.clicked.connect(self._on_run_clicked)
+        self._btn_export.clicked.connect(self._on_export_clicked)
 
     # ── UI ───────────────────────────────────────────────────────────────────
 
-    def _build_ui(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
-        root.setSpacing(6)
-
-        root.addLayout(self._build_controls())
-        root.addWidget(self._build_progress())
-
-        splitter = QSplitter(Qt.Orientation.Vertical)
-
-        top = QWidget()
-        top_layout = QHBoxLayout(top)
-        top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.setSpacing(6)
-        top_layout.addWidget(self._build_metrics(), stretch=1)
-        top_layout.addWidget(self._build_chart(), stretch=3)
-        splitter.addWidget(top)
-        splitter.addWidget(self._build_trade_log())
-        splitter.setSizes([340, 220])
-
-        root.addWidget(splitter)
-
-    def _build_controls(self) -> QHBoxLayout:
-        row = QHBoxLayout()
-        row.setSpacing(8)
-
-        # Simbolo
-        row.addWidget(QLabel("Simbolo:"))
-        self._sym_input = QLineEdit("AAPL")
-        self._sym_input.setFixedWidth(90)
-        self._sym_input.setStyleSheet(
+    def _apply_styles(self):
+        _input = (
             "background:#161b22; border:1px solid #30363d; border-radius:4px; "
             "color:#e6edf3; padding:3px 6px;"
         )
-        row.addWidget(self._sym_input)
-
-        # Strategia
-        row.addWidget(QLabel("Strategia:"))
-        self._strat_combo = QComboBox()
-        self._strat_combo.addItems(_STRATEGIES)
-        self._strat_combo.setStyleSheet(
-            "background:#161b22; border:1px solid #30363d; border-radius:4px; "
-            "color:#e6edf3; padding:3px 6px;"
-        )
-        row.addWidget(self._strat_combo)
-
-        # Timeframe
-        row.addWidget(QLabel("Timeframe:"))
-        self._tf_combo = QComboBox()
-        self._tf_combo.addItems(_TIMEFRAMES)
-        self._tf_combo.setCurrentText("1h")
-        self._tf_combo.setStyleSheet(self._strat_combo.styleSheet())
-        row.addWidget(self._tf_combo)
-
-        # Finestra
-        row.addWidget(QLabel("Finestra (giorni):"))
-        self._days_spin = QSpinBox()
-        self._days_spin.setRange(30, 730)
-        self._days_spin.setValue(180)
-        self._days_spin.setStyleSheet(
-            "background:#161b22; border:1px solid #30363d; border-radius:4px; "
-            "color:#e6edf3; padding:3px 6px;"
-        )
-        row.addWidget(self._days_spin)
-
-        # Capitale
-        row.addWidget(QLabel("Capitale (€):"))
-        self._cap_spin = QDoubleSpinBox()
-        self._cap_spin.setRange(100, 10_000_000)
-        self._cap_spin.setValue(10_000)
-        self._cap_spin.setSingleStep(1000)
-        self._cap_spin.setDecimals(0)
-        self._cap_spin.setStyleSheet(self._days_spin.styleSheet())
-        row.addWidget(self._cap_spin)
-
-        row.addStretch()
-
-        # Bottone avvia
-        self._btn_run = QPushButton("▶  Avvia Backtest")
-        self._btn_run.setFixedHeight(32)
-        self._btn_run.setStyleSheet(
-            "background:#238636; color:white; border:none; border-radius:6px; "
-            "font-weight:bold; padding:0 16px;"
-        )
-        self._btn_run.clicked.connect(self._on_run_clicked)
-        row.addWidget(self._btn_run)
-
-        # Bottone esporta
-        self._btn_export = QPushButton("↓  Esporta CSV")
-        self._btn_export.setFixedHeight(32)
-        self._btn_export.setEnabled(False)
-        self._btn_export.setStyleSheet(
-            "background:#21262d; color:#8b949e; border:1px solid #30363d; "
-            "border-radius:6px; padding:0 12px;"
-        )
-        self._btn_export.clicked.connect(self._on_export_clicked)
-        row.addWidget(self._btn_export)
-
-        return row
-
-    def _build_progress(self) -> QWidget:
-        w = QWidget()
-        layout = QHBoxLayout(w)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-
-        self._progress = QProgressBar()
-        self._progress.setRange(0, 100)
-        self._progress.setValue(0)
-        self._progress.setVisible(False)
-        self._progress.setFixedHeight(6)
-        self._progress.setStyleSheet(
-            "QProgressBar { background:#21262d; border:none; border-radius:3px; }"
-            "QProgressBar::chunk { background:#238636; border-radius:3px; }"
-        )
-        layout.addWidget(self._progress)
-
-        self._lbl_status = QLabel("")
-        self._lbl_status.setStyleSheet("color:#8b949e; font-size:11px;")
-        self._lbl_status.setFixedWidth(300)
-        layout.addWidget(self._lbl_status)
-
-        return w
-
-    def _build_metrics(self) -> QWidget:
-        group = QGroupBox("Metriche")
-        group.setStyleSheet(
+        _gb = (
             "QGroupBox { color:#8b949e; font-size:11px; border:1px solid #21262d; "
             "border-radius:6px; margin-top:8px; padding-top:6px; }"
             "QGroupBox::title { subcontrol-origin:margin; left:8px; }"
         )
-        grid = QGridLayout(group)
+        self._sym_input.setStyleSheet(_input)
+        self._strat_combo.setStyleSheet(_input)
+        self._tf_combo.setStyleSheet(_input)
+        self._days_spin.setStyleSheet(_input)
+        self._cap_spin.setStyleSheet(_input)
+        self._btn_run.setStyleSheet(
+            "background:#238636; color:white; border:none; border-radius:6px; "
+            "font-weight:bold; padding:0 16px;"
+        )
+        self._btn_export.setStyleSheet(
+            "background:#21262d; color:#8b949e; border:1px solid #30363d; "
+            "border-radius:6px; padding:0 12px;"
+        )
+        self._progress.setStyleSheet(
+            "QProgressBar { background:#21262d; border:none; border-radius:3px; }"
+            "QProgressBar::chunk { background:#238636; border-radius:3px; }"
+        )
+        self._lbl_status.setStyleSheet("color:#8b949e; font-size:11px;")
+        self._metrics_group.setStyleSheet(_gb)
+        self._chart_group.setStyleSheet(_gb)
+        self._log_group.setStyleSheet(_gb)
+        self._trade_table.setStyleSheet(
+            "QTableWidget { background:#0d1117; alternate-background-color:#161b22; "
+            "color:#e6edf3; gridline-color:#21262d; border:none; font-size:11px; }"
+            "QHeaderView::section { background:#161b22; color:#8b949e; "
+            "border:none; padding:4px; font-size:11px; }"
+        )
+        self._trade_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+
+    def _build_metrics_grid(self):
+        """Popola _metrics_group (QGroupBox senza layout) con la griglia di _MetricBox."""
+        grid = QGridLayout(self._metrics_group)
         grid.setSpacing(6)
         grid.setContentsMargins(8, 12, 8, 8)
-
         metrics = [
             ("Rendimento",    "_m_return"),
             ("Rendim. Ann.",  "_m_ann_return"),
@@ -351,18 +277,10 @@ class BacktestPanel(QWidget):
             setattr(self, attr, box)
             grid.addWidget(box, idx // 2, idx % 2)
 
-        return group
-
-    def _build_chart(self) -> QWidget:
-        group = QGroupBox("Equity Curve")
-        group.setStyleSheet(
-            "QGroupBox { color:#8b949e; font-size:11px; border:1px solid #21262d; "
-            "border-radius:6px; margin-top:8px; padding-top:6px; }"
-            "QGroupBox::title { subcontrol-origin:margin; left:8px; }"
-        )
-        layout = QVBoxLayout(group)
+    def _build_chart_content(self):
+        """Popola _chart_group (QGroupBox senza layout) con pg.PlotWidget."""
+        layout = QVBoxLayout(self._chart_group)
         layout.setContentsMargins(4, 12, 4, 4)
-
         if _PG_OK:
             pg.setConfigOption("background", "#0d1117")
             pg.setConfigOption("foreground", "#8b949e")
@@ -372,8 +290,6 @@ class BacktestPanel(QWidget):
             self._plot_widget.getAxis("bottom").setLabel("Barre")
             self._plot_widget.setMinimumHeight(180)
             layout.addWidget(self._plot_widget)
-
-            # Curva equity (verde) + benchmark buy&hold (grigio)
             self._equity_line = self._plot_widget.plot(
                 pen=pg.mkPen("#3fb950", width=2), name="Strategia"
             )
@@ -381,7 +297,7 @@ class BacktestPanel(QWidget):
                 pen=pg.mkPen("#8b949e", width=1, style=Qt.PenStyle.DashLine),
                 name="Buy & Hold"
             )
-            legend = self._plot_widget.addLegend(offset=(10, 10))
+            self._plot_widget.addLegend(offset=(10, 10))
         else:
             lbl = QLabel("pyqtgraph non installato\n(pip install pyqtgraph)")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -390,41 +306,6 @@ class BacktestPanel(QWidget):
             self._plot_widget = None
             self._equity_line = None
             self._bnh_line = None
-
-        return group
-
-    def _build_trade_log(self) -> QWidget:
-        group = QGroupBox("Trade Log")
-        group.setStyleSheet(
-            "QGroupBox { color:#8b949e; font-size:11px; border:1px solid #21262d; "
-            "border-radius:6px; margin-top:8px; padding-top:6px; }"
-            "QGroupBox::title { subcontrol-origin:margin; left:8px; }"
-        )
-        layout = QVBoxLayout(group)
-        layout.setContentsMargins(4, 12, 4, 4)
-
-        cols = ["#", "Simbolo", "Dir.", "Entrata", "Uscita",
-                "P. Entrata", "P. Uscita", "Qty", "P&L €", "P&L %",
-                "Motivo", "Barre"]
-        self._trade_table = QTableWidget(0, len(cols))
-        self._trade_table.setHorizontalHeaderLabels(cols)
-        self._trade_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.ResizeToContents
-        )
-        self._trade_table.horizontalHeader().setStretchLastSection(True)
-        self._trade_table.setAlternatingRowColors(True)
-        self._trade_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._trade_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
-        self._trade_table.setStyleSheet(
-            "QTableWidget { background:#0d1117; alternate-background-color:#161b22; "
-            "color:#e6edf3; gridline-color:#21262d; border:none; font-size:11px; }"
-            "QHeaderView::section { background:#161b22; color:#8b949e; "
-            "border:none; padding:4px; font-size:11px; }"
-        )
-        layout.addWidget(self._trade_table)
-        return group
 
     # ── Slot ─────────────────────────────────────────────────────────────────
 

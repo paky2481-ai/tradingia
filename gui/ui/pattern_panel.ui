@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PatternPanel</class>
+ <widget class="QWidget" name="PatternPanel">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>720</width><height>420</height></rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
+   <property name="spacing"><number>6</number></property>
+
+   <!-- ── Header ──────────────────────────────────────────────────────── -->
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <property name="spacing"><number>8</number></property>
+     <item>
+      <widget class="QLabel" name="_lbl_title">
+       <property name="text"><string>Pattern in Osservazione</string></property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="_lbl_count">
+       <property name="text"><string>0 pattern</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="_status_filter">
+       <property name="minimumWidth"><number>100</number></property>
+       <property name="maximumWidth"><number>100</number></property>
+       <item><property name="text"><string>Tutti</string></property></item>
+       <item><property name="text"><string>forming</string></property></item>
+       <item><property name="text"><string>confirmed</string></property></item>
+       <item><property name="text"><string>failed</string></property></item>
+       <item><property name="text"><string>expired</string></property></item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="_btn_clear">
+       <property name="text"><string>Pulisci terminati</string></property>
+       <property name="minimumHeight"><number>26</number></property>
+       <property name="maximumHeight"><number>26</number></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- ── Tabella pattern ─────────────────────────────────────────────── -->
+   <item>
+    <widget class="QTableWidget" name="_table">
+     <property name="columnCount"><number>8</number></property>
+     <property name="alternatingRowColors"><bool>false</bool></property>
+     <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+     <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+     <attribute name="verticalHeaderVisible"><bool>false</bool></attribute>
+     <attribute name="horizontalHeaderStretchLastSection"><bool>true</bool></attribute>
+     <column><property name="text"><string>Symbol</string></property></column>
+     <column><property name="text"><string>Pattern</string></property></column>
+     <column><property name="text"><string>Direzione</string></property></column>
+     <column><property name="text"><string>Status</string></property></column>
+     <column><property name="text"><string>Conf%</string></property></column>
+     <column><property name="text"><string>TF</string></property></column>
+     <column><property name="text"><string>Da (min)</string></property></column>
+     <column><property name="text"><string>Target</string></property></column>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
