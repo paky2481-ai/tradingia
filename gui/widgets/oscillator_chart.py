@@ -68,7 +68,8 @@ class OscillatorChart(QWidget):
         layout.addWidget(self._header)
 
         # pyqtgraph plot
-        self._gw = pg.GraphicsLayoutWidget(background="#0d1117")
+        self._gw = pg.GraphicsLayoutWidget()
+        self._gw.setBackground("#0d1117")
         self._gw.setMinimumHeight(80)
         self._gw.setMaximumHeight(120)
         layout.addWidget(self._gw)

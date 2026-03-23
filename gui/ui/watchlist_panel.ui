@@ -7,7 +7,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing"><number>0</number></property>
-   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
 
    <!-- ── Header ─────────────────────────────────────────────────────── -->
    <item>
@@ -15,7 +14,6 @@
      <property name="minimumHeight"><number>44</number></property>
      <property name="maximumHeight"><number>44</number></property>
      <layout class="QHBoxLayout" name="headerLayout">
-      <property name="contentsMargins"><rect><left>10</left><top>0</top><right>10</right><bottom>0</bottom></rect></property>
       <property name="spacing"><number>6</number></property>
       <item>
        <widget class="QLabel" name="label_section">
@@ -44,7 +42,6 @@
    <item>
     <widget class="QWidget" name="tabBar">
      <layout class="QHBoxLayout" name="tabLayout">
-      <property name="contentsMargins"><rect><left>8</left><top>4</top><right>8</right><bottom>4</bottom></rect></property>
       <property name="spacing"><number>4</number></property>
       <item>
        <widget class="QPushButton" name="_btn_tab_stocks">
@@ -92,7 +89,6 @@
    <item>
     <widget class="QWidget" name="searchBar">
      <layout class="QHBoxLayout" name="searchLayout">
-      <property name="contentsMargins"><rect><left>8</left><top>6</top><right>8</right><bottom>6</bottom></rect></property>
       <property name="spacing"><number>6</number></property>
       <item>
        <widget class="QLineEdit" name="_search">

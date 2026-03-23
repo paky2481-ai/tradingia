@@ -322,6 +322,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = str(BASE_DIR / ".env")
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
     @property
     def all_symbols(self) -> List[str]:

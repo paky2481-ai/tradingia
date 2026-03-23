@@ -7,7 +7,6 @@
   </property>
   <layout class="QVBoxLayout" name="rootLayout">
    <property name="spacing"><number>8</number></property>
-   <property name="contentsMargins"><rect><left>8</left><top>8</top><right>8</right><bottom>8</bottom></rect></property>
 
    <!-- ── Header: title + state ─────────────────────────────────────── -->
    <item>
@@ -53,7 +52,6 @@
     <widget class="QFrame" name="metricsFrame">
      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
      <layout class="QGridLayout" name="metricsLayout">
-      <property name="contentsMargins"><rect><left>10</left><top>8</top><right>10</right><bottom>8</bottom></rect></property>
       <property name="spacing"><number>4</number></property>
 
       <item row="0" column="0">
@@ -125,7 +123,6 @@
     <widget class="QGroupBox" name="scanGroup">
      <property name="title"><string>Ultimi segnali</string></property>
      <layout class="QVBoxLayout" name="scanGroupLayout">
-      <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
       <property name="spacing"><number>2</number></property>
       <item>
        <widget class="QScrollArea" name="scrollScan">
@@ -134,7 +131,6 @@
         <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
         <widget class="QWidget" name="_scan_container">
          <layout class="QVBoxLayout" name="scanContainerLayout">
-          <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
           <property name="spacing"><number>1</number></property>
          </layout>
         </widget>
@@ -149,7 +145,6 @@
     <widget class="QGroupBox" name="alertGroup">
      <property name="title"><string>Trend Alerts</string></property>
      <layout class="QVBoxLayout" name="alertGroupLayout">
-      <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
       <property name="spacing"><number>2</number></property>
       <item>
        <widget class="QScrollArea" name="scrollAlert">
@@ -158,7 +153,6 @@
         <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
         <widget class="QWidget" name="_alert_container">
          <layout class="QVBoxLayout" name="alertContainerLayout">
-          <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
           <property name="spacing"><number>3</number></property>
          </layout>
         </widget>

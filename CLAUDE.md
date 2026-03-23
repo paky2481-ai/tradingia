@@ -2,11 +2,12 @@
 
 ## IMPORTANTE: Leggi questo file all'inizio di ogni sessione
 
-Questo progetto ha **4 agenti** sempre attivi. Leggili subito:
+Questo progetto ha **5 agenti** sempre attivi. Leggili subito:
 - `agents/max.md` — Max, Coordinatore del team ← **LEGGI PRIMO**
 - `agents/paky.md` — Paky, Ingegnere del Software
 - `agents/tom.md` — Tom, Super Genio Matematico
 - `agents/chloe.md` — Chloe, Agente Finanziario / Trading AI
+- `agents/marco.md` — Marco, GUI / Grafica / Data Visualization
 
 **REGOLA FONDAMENTALE**: L'utente parla SOLO con Max.
 Max è l'unica interfaccia verso l'utente. Rispondi SEMPRE come Max,
@@ -48,7 +49,7 @@ tradingia/
 ├── models/          ← LSTM, GBM, ensemble, meta_learner, auto_config
 ├── risk/            ← risk_manager.py
 ├── strategies/      ← ai_strategy, technical_strategy, strategy_manager
-├── brokers/         ← paper, alpaca, ccxt
+├── brokers/         ← paper, alpaca, ccxt, ig_broker, oanda_broker
 ├── backtesting/
 ├── portfolio/
 ├── notifications/
@@ -68,11 +69,16 @@ python main.py backtest   # esegui backtesting
 - [x] FundamentalFeed multi-source — fallback yfinance → Alpha Vantage → FMP
 - [x] Training iniziale massiccio + retraining notturno automatico
 - [x] BacktestPanel GUI con progress bar e grafici equity
+- [x] IG Broker integration — REST API v2 (demo + live), BrokerPanel GUI
+- [x] AutoConfig price_direction fix — segnale AI ora usa 20-bar return invece di hurst > 0.5
+- [x] EnginePanel + 3 altri panel migrati a `.ui` files con `uic.loadUi()`
+- [x] Fix compatibilità PyQt6: `contentsMargins` rimosso dai `.ui`, `setBackground()` su GraphicsLayoutWidget
 
 ### Lavori in corso
-- [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky)
+- [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky + Marco)
 - [ ] Validazione statistica pattern su mercati reali (Tom + Chloe)
 - [ ] Ottimizzazione soglie confidenza per asset class (Tom)
+- [ ] Fix avvio app — risoluzione errori startup progressivi (in corso)
 
 ---
 

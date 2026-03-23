@@ -33,6 +33,9 @@ in modo efficiente senza framerate drops.
 
 ### PyQt6 / Qt Designer
 - Workflow `.ui` ↔ `uic.loadUi()` — tutti i 4 panel esistenti usano questo sistema
+- **PyQt6 uic — regole di compatibilità** (scoperte in produzione, NON derogare):
+  - `contentsMargins` NON supporta `<rect>` né `<margins>` nei `.ui` → rimuovere da `.ui`, impostare via `layout.setContentsMargins(l,t,r,b)` nel `.py` dopo `loadUi()`
+  - `GraphicsLayoutWidget(background=...)` non accettato → `gw.setBackground("#color")` separato
 - `QDockWidget` + `tabifyDockWidget` per layout a tab
 - `QStyleSheet` dark theme GitHub-style (colori del progetto: `#0d1117`, `#161b22`, etc.)
 - `QSplitter`, `QSizePolicy`, layout responsivi

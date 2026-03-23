@@ -36,6 +36,10 @@ class DataPanel(QWidget):
 
         uic.loadUi(str(_UI), self)
 
+        # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
+        self.headerLayout.setContentsMargins(10, 0, 10, 0)
+        self.bodyLayout.setContentsMargins(12, 12, 12, 12)
+
         # Set default timeframe selection
         self._tf_combo.setCurrentText("1h")
 
