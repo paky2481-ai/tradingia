@@ -81,8 +81,12 @@ class PatternObserver:
     async def ingest(self, symbol: str, patterns: List[RawPattern]) -> int:
         """
         Inserisce i pattern in osservazione, evitando duplicati (stesso nome + TF).
+        Usa le soglie di confidenza calibrate per asset class.
         Ritorna il numero di nuovi pattern inseriti.
         """
+        asset_class = settings.asset_type_map.get(symbol, "stock")
+        min_conf, _, _ = settings.pattern.for_asset_class(asset_class)
+
         async with self._lock:
             existing = self._obs.setdefault(symbol, [])
             active_names = {
@@ -93,7 +97,7 @@ class PatternObserver:
             added = 0
             for raw in patterns:
                 key = (raw.name, raw.timeframe)
-                if key not in active_names and raw.confidence >= settings.pattern.min_confidence:
+                if key not in active_names and raw.confidence >= min_conf:
                     existing.append(PatternObservation(
                         id=str(uuid.uuid4()),
                         symbol=symbol,
@@ -104,8 +108,8 @@ class PatternObserver:
                     active_names.add(key)
                     added += 1
                     logger.debug(
-                        f"[{symbol}] Pattern in osservazione: {raw.name} "
-                        f"({raw.direction}, conf={raw.confidence:.2f})"
+                        f"[{symbol}/{asset_class}] Pattern in osservazione: {raw.name} "
+                        f"({raw.direction}, conf={raw.confidence:.2f}, min={min_conf:.2f})"
                     )
 
             # Cap: tieni solo i più recenti se superano il limite
@@ -148,8 +152,10 @@ class PatternObserver:
                     logger.debug(f"[{symbol}] {raw.name} FAILED (price={price:.5f} > inv={raw.invalidation_price:.5f})")
                     continue
 
-                # ── Scadenza: TTL barre superato ─────────────────────────
-                if obs.bars_since_detection >= settings.pattern.ttl_bars:
+                # ── Scadenza: TTL barre per asset class ──────────────────
+                asset_class = settings.asset_type_map.get(symbol, "stock")
+                _, _, ttl = settings.pattern.for_asset_class(asset_class)
+                if obs.bars_since_detection >= ttl:
                     obs.status = EXPIRED
                     logger.debug(f"[{symbol}] {raw.name} EXPIRED after {obs.bars_since_detection} bars")
                     continue

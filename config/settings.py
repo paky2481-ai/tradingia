@@ -5,7 +5,7 @@ Supports stocks, forex, crypto, commodities, indices
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 import os
 from pathlib import Path
 
@@ -188,14 +188,16 @@ class PatternSettings(BaseSettings):
 
     Pattern candlestick (1-3 candele) e chart pattern (10-60 barre).
     Due thread separati: watchlist (apertura) e posizioni aperte (chiusura).
+
+    Le soglie globali sono il fallback. Le soglie per asset class
+    (asset_class_overrides) sovrascrivono per i simboli riconosciuti.
     """
     enabled: bool = True
     candlestick_enabled: bool = True
     chart_patterns_enabled: bool = True
 
-    # Confidenza minima per entrare in osservazione
+    # Soglie globali di fallback (usate se l'asset class è sconosciuta)
     min_confidence: float = 0.60
-    # Confidenza minima per generare TradeSignal confermato
     min_signal_confidence: float = 0.65
 
     # Ciclo di vita osservazione
@@ -205,6 +207,33 @@ class PatternSettings(BaseSettings):
     # Intervalli loop (secondi)
     watchlist_scan_interval_s: int = 300    # ogni 5 min — scansione watchlist
     position_scan_interval_s: int = 30     # ogni 30s — controllo posizioni aperte
+
+    # Soglie per asset class — override le soglie globali.
+    # Calibrate da Chloe in base alla microstructura di ogni mercato:
+    #   stock    — daily/weekly pattern più affidabili, conferma lenta
+    #   index    — chart pattern eccellenti, meno rumore degli stock
+    #   forex    — mean-reverting, conferma media, pattern su 4h/daily
+    #   crypto   — alta volatilità, rumore elevato, soglie più alte e TTL breve
+    #   commodity — fundamentals-driven, TA meno affidabile → soglie conservative
+    asset_class_overrides: Dict[str, Any] = Field(default_factory=lambda: {
+        "stock":     {"min_confidence": 0.62, "min_signal_confidence": 0.65, "ttl_bars": 12},
+        "index":     {"min_confidence": 0.60, "min_signal_confidence": 0.63, "ttl_bars": 15},
+        "forex":     {"min_confidence": 0.65, "min_signal_confidence": 0.68, "ttl_bars": 8},
+        "crypto":    {"min_confidence": 0.72, "min_signal_confidence": 0.75, "ttl_bars": 6},
+        "commodity": {"min_confidence": 0.67, "min_signal_confidence": 0.70, "ttl_bars": 10},
+    })
+
+    def for_asset_class(self, asset_class: str) -> tuple:
+        """
+        Ritorna (min_confidence, min_signal_confidence, ttl_bars) per asset class.
+        Usa le soglie globali come fallback se l'asset class non è configurata.
+        """
+        ov = self.asset_class_overrides.get(asset_class, {})
+        return (
+            ov.get("min_confidence",        self.min_confidence),
+            ov.get("min_signal_confidence", self.min_signal_confidence),
+            ov.get("ttl_bars",              self.ttl_bars),
+        )
 
     class Config:
         env_prefix = "PATTERN_"

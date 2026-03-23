@@ -54,11 +54,19 @@ class PatternStrategy(BaseStrategy):
         signals: List[TradeSignal] = []
 
         try:
+            # Soglie calibrate per asset class del simbolo
+            asset_class = settings.asset_type_map.get(symbol, "stock")
+            min_conf, min_sig_conf, _ = settings.pattern.for_asset_class(asset_class)
+
+            # Soglia "istantanea" per candlestick di alta confidenza:
+            # +0.10 sopra min_signal_confidence dell'asset class, mai sotto 0.75
+            instant_threshold = max(min_sig_conf + 0.10, 0.75)
+
             # Rileva pattern sull'ultimo df
             raw_patterns = PatternDetector.detect_all(df, self.timeframe)
             raw_filtered = [
                 p for p in raw_patterns
-                if p.confidence >= settings.pattern.min_confidence
+                if p.confidence >= min_conf
             ]
 
             # Recupera pattern già confermati (non consumati) dall'observer
@@ -71,15 +79,15 @@ class PatternStrategy(BaseStrategy):
 
             current_price = float(df["close"].iloc[-1])
             for obs in confirmed_in_observer:
-                if obs.raw.confidence >= settings.pattern.min_signal_confidence:
+                if obs.raw.confidence >= min_sig_conf:
                     sig = observer.to_trade_signal(obs, current_price)
                     signals.append(sig)
                     observer._delivered.add(obs.id)
 
             # Aggiungi anche pattern di altissima confidenza rilevati ora
-            # (che non sono ancora nell'observer — es. Marubozu > 0.85)
+            # (che non sono ancora nell'observer — es. Marubozu oltre soglia istantanea)
             for raw in raw_filtered:
-                if raw.confidence >= 0.80 and raw.bars_involved <= 3:
+                if raw.confidence >= instant_threshold and raw.bars_involved <= 3:
                     direction = "buy" if raw.direction == "bullish" else \
                                "sell" if raw.direction == "bearish" else None
                     if direction:
