@@ -66,12 +66,28 @@ def backtest(symbol, strategy, timeframe, capital):
 
 
 @cli.command()
-@click.option("--symbols", default="AAPL,MSFT,BTC-USD,ETH-USD", help="Comma-separated symbols")
+@click.option("--symbols", default="AAPL,MSFT,BTC-USD,ETH-USD", help="Simboli separati da virgola")
 @click.option("--timeframe", default="1h")
-def train(symbols, timeframe):
-    """Train AI models on historical data."""
+@click.option("--full", "mode", flag_value="full", default=False,
+              help="Training iniziale completo: usa tutti i dati storici disponibili")
+@click.option("--incremental", "mode", flag_value="incremental", default=True,
+              help="Retraining incrementale su ultimi N giorni (default)")
+@click.option("--days", default=None, type=int,
+              help="Giorni di dati per --incremental (sovrascrive il valore in config)")
+def train(symbols, timeframe, mode, days):
+    """
+    Addestra i modelli AI sui dati storici.
+
+    \b
+    Esempi:
+      python main.py train                             # incrementale, simboli default
+      python main.py train --full                      # training completo da zero
+      python main.py train --full --symbols "AAPL,BTC-USD"
+      python main.py train --incremental --days 30     # ultimi 30 giorni
+    """
     symbol_list = [s.strip() for s in symbols.split(",")]
-    asyncio.run(_run_training(symbol_list, timeframe))
+    is_incremental = (mode != "full")
+    asyncio.run(_run_training(symbol_list, timeframe, incremental=is_incremental, days=days))
 
 
 @cli.command()
@@ -208,10 +224,26 @@ async def _run_backtest(symbol: str, strategy_name: str, timeframe: str, capital
     await data_feed.close()
 
 
-async def _run_training(symbols, timeframe):
+async def _run_training(symbols, timeframe, incremental: bool = True, days: int = None):
     from core.orchestrator import TradingOrchestrator
+
     orch = TradingOrchestrator()
-    await orch.train_all_models(symbols, timeframe)
+
+    # Sovrascrive il valore config se --days è specificato
+    if days is not None:
+        settings.ml.incremental_train_days = days
+
+    mode_label = "INCREMENTALE" if incremental else "COMPLETO (tutti i dati storici)"
+    click.echo(f"\n{'='*52}")
+    click.echo(f"  TradingIA — Training AI")
+    click.echo(f"  Modalità:  {mode_label}")
+    click.echo(f"  Simboli:   {', '.join(symbols)}")
+    click.echo(f"  Timeframe: {timeframe}")
+    if incremental:
+        click.echo(f"  Giorni:    {settings.ml.incremental_train_days}")
+    click.echo(f"{'='*52}\n")
+
+    await orch.retrain_all_models(symbols=symbols, timeframe=timeframe, incremental=incremental)
     await orch.data_feed.close()
 
 

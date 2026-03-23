@@ -96,6 +96,15 @@ class MLSettings(BaseSettings):
     models_dir: str = str(BASE_DIR / "models" / "saved")
     min_confidence: float = 0.6               # minimum signal confidence
 
+    # Training modes
+    # full_train_limit=0 → scarica tutto il disponibile (730d per 1h, max per 1d)
+    full_train_limit: int = 0
+    # giorni di dati per il retraining incrementale (nightly)
+    incremental_train_days: int = 90
+    # retraining notturno automatico
+    nightly_retrain_enabled: bool = True
+    nightly_retrain_hour: int = 2              # ora UTC (default: 02:05)
+
     class Config:
         env_prefix = "ML_"
 

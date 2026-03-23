@@ -4,7 +4,7 @@ Coordinates: data feed → indicators → AI models → strategies → risk → 
 """
 
 import asyncio
-from datetime import datetime, time
+from datetime import datetime, timedelta, time
 from typing import Dict, List, Optional
 
 from config.settings import settings
@@ -52,11 +52,14 @@ class TradingOrchestrator:
                 return
 
         self._running = True
-        await asyncio.gather(
+        loops = [
             self._main_loop(),
             self._position_monitor_loop(),
             self._daily_reset_loop(),
-        )
+        ]
+        if settings.ml.nightly_retrain_enabled:
+            loops.append(self._nightly_retrain_loop())
+        await asyncio.gather(*loops)
 
     async def stop(self):
         self._running = False
@@ -268,18 +271,108 @@ class TradingOrchestrator:
 
     # ── Model training ─────────────────────────────────────────────────────
 
-    async def train_all_models(self, symbols: List[str] = None, timeframe: str = "1h"):
-        """Train AI models for given symbols."""
+    async def retrain_all_models(
+        self,
+        symbols: List[str] = None,
+        timeframe: str = "1h",
+        incremental: bool = True,
+    ):
+        """
+        Addestra / aggiorna i modelli AI per tutti i simboli dati.
+
+        incremental=False (--full):
+            Scarica il massimo disponibile (limit=0) e riaddestra da zero.
+        incremental=True (default / nightly):
+            Scarica gli ultimi N giorni e aggiorna i pesi esistenti.
+        """
         from models.ensemble_model import EnsembleModel
+        from models.indicator_selector import IndicatorSelector
 
         targets = symbols or settings.stock_symbols[:5] + settings.crypto_symbols[:3]
-        logger.info(f"Training models for {len(targets)} symbols...")
+        mode_label = "INCREMENTALE" if incremental else "COMPLETO"
+        logger.info(
+            f"[Training {mode_label}] {len(targets)} simboli | timeframe={timeframe}"
+        )
+
+        if incremental:
+            # Ore → barre: 90 giorni × 24h per "1h", 90 giorni per "1d", ecc.
+            hours_per_bar = {"1m": 1/60, "5m": 1/12, "15m": 1/4, "30m": 1/2,
+                             "1h": 1, "4h": 4, "1d": 24, "1w": 168}
+            h = hours_per_bar.get(timeframe, 1)
+            limit = int(settings.ml.incremental_train_days * 24 / h)
+        else:
+            limit = 0   # full download
+
+        selector = IndicatorSelector()
 
         for symbol in targets:
-            df = await self.data_feed.get_ohlcv(symbol, timeframe, limit=5000)
-            if df is None or len(df) < 300:
-                logger.warning(f"Skipping {symbol}: insufficient data")
-                continue
-            model = EnsembleModel(name=f"ensemble_{symbol.replace('/', '_').replace('=', '_')}")
-            metrics = await asyncio.to_thread(model.train, df)
-            logger.info(f"Trained {symbol}: {metrics}")
+            safe_name = symbol.replace("/", "_").replace("=", "_").replace("^", "")
+            try:
+                df = await self.data_feed.get_ohlcv(symbol, timeframe, limit=limit)
+                if df is None or len(df) < 200:
+                    logger.warning(f"[Training] Salto {symbol}: dati insufficienti ({len(df) if df is not None else 0} barre)")
+                    continue
+
+                model = EnsembleModel(name=f"ensemble_{safe_name}")
+
+                if incremental:
+                    # Carica pesi esistenti prima di aggiornare
+                    model.load()
+
+                metrics = await asyncio.to_thread(model.train, df)
+                model.save()
+
+                # Aggiorna IndicatorSelector con le nuove importances del GBM
+                if model.rf_model.model is not None:
+                    asset_type = settings.asset_type_map.get(symbol, "stock")
+                    selector.load_from_gbm_model(
+                        model.rf_model.model,
+                        asset_type=asset_type,
+                    )
+                    selector.save()
+
+                logger.info(f"[Training] {symbol} OK | barre={len(df)} | {metrics}")
+
+            except Exception as e:
+                logger.error(f"[Training] Errore su {symbol}: {e}", exc_info=True)
+
+        logger.info(f"[Training {mode_label}] Completato per {len(targets)} simboli")
+
+    async def train_all_models(self, symbols: List[str] = None, timeframe: str = "1h"):
+        """Compatibilità: delega a retrain_all_models(incremental=False)."""
+        await self.retrain_all_models(symbols=symbols, timeframe=timeframe, incremental=False)
+
+    # ── Nightly retrain loop ────────────────────────────────────────────────
+
+    async def _nightly_retrain_loop(self):
+        """
+        Loop in background: ogni notte alle settings.ml.nightly_retrain_hour (UTC)
+        esegue un retraining incrementale di tutti i modelli.
+        """
+        while self._running:
+            now = datetime.utcnow()
+            target = now.replace(
+                hour=settings.ml.nightly_retrain_hour,
+                minute=5, second=0, microsecond=0,
+            )
+            if target <= now:
+                target += timedelta(days=1)
+
+            wait_secs = (target - now).total_seconds()
+            logger.info(
+                f"[Nightly retrain] Prossimo aggiornamento: {target.strftime('%Y-%m-%d %H:%M')} UTC "
+                f"(tra {wait_secs/3600:.1f}h)"
+            )
+            await asyncio.sleep(wait_secs)
+
+            if not self._running:
+                break
+
+            logger.info("[Nightly retrain] Avvio retraining incrementale notturno...")
+            try:
+                await self.retrain_all_models(
+                    timeframe=settings.primary_timeframe,
+                    incremental=True,
+                )
+            except Exception as e:
+                logger.error(f"[Nightly retrain] Errore: {e}", exc_info=True)
