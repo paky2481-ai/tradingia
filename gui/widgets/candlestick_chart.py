@@ -53,6 +53,22 @@ class CandlestickItem(pg.GraphicsObject):
         self.informViewBoundsChanged()
         self.update()
 
+    def dataBounds(self, ax, frac=1.0, orthoRange=None):
+        """Called by pyqtgraph setAutoVisible() to get visible data range."""
+        if self._data is None or self._data.empty:
+            return None, None
+        df = self._data
+        if ax == 0:
+            return 0, len(df) - 1
+        if orthoRange is not None:
+            x0, x1 = int(max(0, orthoRange[0])), int(min(len(df) - 1, orthoRange[1]))
+            visible = df.iloc[x0:x1 + 1]
+            if visible.empty:
+                return None, None
+        else:
+            visible = df
+        return float(visible["low"].min()), float(visible["high"].max())
+
     def _render(self):
         if self._data is None or self._data.empty:
             return
@@ -63,14 +79,17 @@ class CandlestickItem(pg.GraphicsObject):
 
         df = self._data
         n = len(df)
-        w = 0.4  # half-candle width
+        w = 0.3  # half-candle width
 
         min_price = df["low"].min()
         max_price = df["high"].max()
         self._bounds = QRectF(0, min_price, n, max_price - min_price)
 
-        pen_bull = QPen(_hex(C_BULL), 1)
-        pen_bear = QPen(_hex(C_BEAR), 1)
+        # width=0 → cosmetic pen: sempre 1px fisico, indipendente dallo zoom/scala.
+        # Se si usa width=1 in coordinate dati, per forex (scala ~10000 px/unit)
+        # il pen diventa 10000px e le barre coprono tutto il grafico.
+        pen_bull = QPen(_hex(C_BULL), 0)
+        pen_bear = QPen(_hex(C_BEAR), 0)
         brush_bull = QBrush(_hex(C_BULL))
         brush_bear = QBrush(_hex(C_BEAR))
         brush_doji = QBrush(Qt.BrushStyle.NoBrush)
@@ -128,13 +147,28 @@ class VolumeItem(pg.GraphicsObject):
         self.informViewBoundsChanged()
         self.update()
 
+    def dataBounds(self, ax, frac=1.0, orthoRange=None):
+        if self._data is None or self._data.empty:
+            return None, None
+        df = self._data
+        if ax == 0:
+            return 0, len(df) - 1
+        if orthoRange is not None:
+            x0, x1 = int(max(0, orthoRange[0])), int(min(len(df) - 1, orthoRange[1]))
+            visible = df.iloc[x0:x1 + 1]
+            if visible.empty:
+                return None, None
+        else:
+            visible = df
+        return float(visible["volume"].min()), float(visible["volume"].max())
+
     def _render(self):
         if self._data is None or self._data.empty:
             return
 
         df = self._data
         n = len(df)
-        w = 0.4
+        w = 0.3
         max_vol = df["volume"].max()
         self._bounds = QRectF(0, 0, n, max_vol)
 
@@ -224,10 +258,9 @@ class CandlestickChart(QWidget):
         layout.addWidget(self._graphics_layout)
 
         # ── Time axis (shared, at bottom) ──────────────────────────────
+        # Non impostare tickFont via setStyle: pyqtgraph crea internamente un
+        # font con size=-1 che genera "QFont::setPointSize <= 0" warning su Qt6.
         self._time_axis = TimeAxisItem(orientation="bottom")
-        self._time_axis.setStyle(
-            tickFont=pg.QtGui.QFont("Monospace", 9),
-        )
 
         # ── Price plot ─────────────────────────────────────────────────
         self._price_plot = self._graphics_layout.addPlot(
@@ -276,6 +309,10 @@ class CandlestickChart(QWidget):
 
         # Mouse move for crosshair
         self._price_plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
+
+        # Auto-update Y range when user pans/zooms (manual because setAutoVisible
+        # doesn't work with custom GraphicsObject items lacking dataBounds)
+        self._price_plot.getViewBox().sigXRangeChanged.connect(self._on_x_range_changed)
 
     def _style_plot(self, plot: pg.PlotItem, show_xaxis: bool = True):
         plot.setMenuEnabled(False)
@@ -334,13 +371,13 @@ class CandlestickChart(QWidget):
         self._vol_item.set_data(self._df)
         self._update_ma_lines()
 
-        # Mostra gli ultimi 120 bar; l'asse Y si auto-adatta alla finestra visibile
+        # Mostra gli ultimi 120 bar
         n = len(self._df)
         visible_start = max(0, n - 120)
-        # setAutoVisible(y=True): l'asse Y si adatta solo alle candele visibili,
-        # NON a tutto il dataset — evita la compressione che rende le candele "doppie"
-        self._price_plot.getViewBox().setAutoVisible(y=True)
         self._price_plot.setXRange(visible_start - 1, n + 1, padding=0.02)
+        # Imposta il range Y manualmente sulle candele visibili
+        # (setAutoVisible non funziona con GraphicsObject custom privi di dataBounds)
+        self._set_y_range(visible_start, n - 1)
 
     def update_last_bar(self, bar: dict):
         """Update the last candle with a live tick (call from polling thread)."""
@@ -386,6 +423,26 @@ class CandlestickChart(QWidget):
         self._ma20_line.setData(x[mask20],   ma20[mask20])
         self._ma50_line.setData(x[mask50],   ma50[mask50])
         self._ma200_line.setData(x[mask200], ma200[mask200])
+
+    def _set_y_range(self, i0: int, i1: int):
+        """Set price plot Y range to fit bars in index range [i0, i1]."""
+        if self._df is None or self._df.empty:
+            return
+        i0 = max(0, i0)
+        i1 = min(len(self._df) - 1, i1)
+        if i0 > i1:
+            return
+        visible = self._df.iloc[i0:i1 + 1]
+        y_min = float(visible["low"].min())
+        y_max = float(visible["high"].max())
+        margin = (y_max - y_min) * 0.06
+        self._price_plot.setYRange(y_min - margin, y_max + margin, padding=0)
+
+    def _on_x_range_changed(self, _vb, x_range):
+        """Called when user pans/zooms — keep Y fitted to visible bars."""
+        if self._df is None:
+            return
+        self._set_y_range(int(x_range[0]), int(x_range[1]))
 
     def _on_mouse_moved(self, pos):
         if not self._price_plot.sceneBoundingRect().contains(pos):

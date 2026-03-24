@@ -16,7 +16,6 @@
   </property>
 
   <layout class="QVBoxLayout" name="rootLayout">
-   <property name="contentsMargins"><rect><left>8</left><top>8</top><right>8</right><bottom>8</bottom></rect></property>
    <property name="spacing"><number>6</number></property>
 
    <!-- ── Controls row ────────────────────────────────────────────────── -->
@@ -134,7 +133,6 @@
      <!-- Top pane: metrics + equity chart -->
      <widget class="QWidget" name="_top_pane">
       <layout class="QHBoxLayout" name="topPaneLayout">
-       <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
        <property name="spacing"><number>6</number></property>
        <item>
         <!-- _metrics_group: nessun layout, creato in Python (_build_metrics_grid) -->
@@ -165,7 +163,6 @@
      <widget class="QGroupBox" name="_log_group">
       <property name="title"><string>Trade Log</string></property>
       <layout class="QVBoxLayout" name="logLayout">
-       <property name="contentsMargins"><rect><left>4</left><top>12</top><right>4</right><bottom>4</bottom></rect></property>
        <item>
         <widget class="QTableWidget" name="_trade_table">
          <property name="columnCount"><number>12</number></property>

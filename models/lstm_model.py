@@ -20,13 +20,20 @@ try:
     import torch.nn as nn
     from torch.utils.data import DataLoader, TensorDataset
     TORCH_AVAILABLE = True
-except ImportError:
+except Exception as _torch_err:
     torch = None  # type: ignore
     nn = None  # type: ignore
     DataLoader = None  # type: ignore
     TensorDataset = None  # type: ignore
     TORCH_AVAILABLE = False
-    logger.warning("PyTorch not installed — LSTM model disabled. Run: pip install torch")
+    _torch_err_msg = str(_torch_err)
+    if "1114" in _torch_err_msg or "c10.dll" in _torch_err_msg:
+        logger.warning(
+            f"PyTorch DLL error — probabilmente versione CUDA senza CUDA installato. "
+            f"Fix: pip install torch --index-url https://download.pytorch.org/whl/cpu --force-reinstall"
+        )
+    else:
+        logger.warning(f"PyTorch non disponibile — LSTM disabilitato: {_torch_err_msg}")
 
 LSTM_FEATURES = [
     "returns", "log_returns", "rsi_14", "macd_hist",

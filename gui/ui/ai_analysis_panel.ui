@@ -16,7 +16,6 @@
   </property>
 
   <layout class="QVBoxLayout" name="rootLayout">
-   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
    <property name="spacing"><number>0</number></property>
 
    <!-- ── Header ──────────────────────────────────────────────────────── -->
@@ -25,7 +24,6 @@
      <property name="minimumHeight"><number>36</number></property>
      <property name="maximumHeight"><number>36</number></property>
      <layout class="QHBoxLayout" name="headerLayout">
-      <property name="contentsMargins"><rect><left>8</left><top>6</top><right>8</right><bottom>6</bottom></rect></property>
       <property name="spacing"><number>6</number></property>
       <item>
        <widget class="QLabel" name="_lbl_title">
@@ -77,7 +75,6 @@
        <rect><x>0</x><y>0</y><width>278</width><height>520</height></rect>
       </property>
       <layout class="QVBoxLayout" name="contentLayout">
-       <property name="contentsMargins"><rect><left>0</left><top>4</top><right>0</right><bottom>8</bottom></rect></property>
        <property name="spacing"><number>0</number></property>
        <!-- Le sezioni (_sec_regime, _sec_fundamental, ecc.) vengono
             inserite qui a runtime da _setup_ui() in Python -->

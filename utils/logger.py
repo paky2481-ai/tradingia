@@ -38,3 +38,12 @@ logger.add(
 )
 
 get_logger = logger
+
+
+def attach_test_server_sink() -> None:
+    """Aggiunge il sink loguru → TestServer (chiamato da app.py dopo avvio server)."""
+    try:
+        from core.test_server import test_server
+        logger.add(test_server.loguru_sink, level="DEBUG", format="{message}")
+    except Exception as e:
+        logger.warning(f"TestServer sink non agganciato: {e}")

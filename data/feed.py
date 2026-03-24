@@ -147,6 +147,38 @@ class YFinanceFeed:
             logger.error(f"YFinance error for {symbol}: {e}")
             return None
 
+    async def fetch_since(
+        self,
+        symbol: str,
+        timeframe: str,
+        since: "datetime",
+    ) -> Optional[pd.DataFrame]:
+        """Incremental download: only bars from `since` to now."""
+        interval = self._FULL_PERIOD_MAP.get(timeframe, ("730d", "1d"))[1]
+        try:
+            df = await asyncio.to_thread(self._download_since, symbol, since, interval)
+            if df is None or df.empty:
+                return None
+            if timeframe == "4h":
+                df = resample_ohlcv(df, "4h")
+            return df
+        except Exception as e:
+            logger.debug(f"YFinance fetch_since error for {symbol}: {e}")
+            return None
+
+    def _download_since(self, symbol: str, since: "datetime", interval: str) -> pd.DataFrame:
+        start_str = since.strftime("%Y-%m-%d")
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(start=start_str, interval=interval, auto_adjust=True)
+        if df.empty:
+            return df
+        df.columns = [c.lower() for c in df.columns]
+        df = df[["open", "high", "low", "close", "volume"]].copy()
+        df.index = pd.to_datetime(df.index, utc=True)
+        df.index.name = "timestamp"
+        df.dropna(inplace=True)
+        return df
+
     def _download(self, symbol: str, period: str, interval: str) -> pd.DataFrame:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period=period, interval=interval, auto_adjust=True)
@@ -165,22 +197,25 @@ class YFinanceFeed:
             info = await asyncio.to_thread(self._get_quote, symbol)
             return info
         except Exception as e:
-            logger.error(f"Quote error for {symbol}: {e}")
+            logger.debug(f"Quote error for {symbol}: {e}")
             return None
 
     def _get_quote(self, symbol: str) -> Dict:
-        ticker = yf.Ticker(symbol)
-        info = ticker.fast_info
-        return {
-            "symbol": symbol,
-            "price": getattr(info, "last_price", None),
-            "open": getattr(info, "open", None),
-            "high": getattr(info, "day_high", None),
-            "low": getattr(info, "day_low", None),
-            "volume": getattr(info, "last_volume", None),
-            "market_cap": getattr(info, "market_cap", None),
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.fast_info
+            return {
+                "symbol": symbol,
+                "price": getattr(info, "last_price", None),
+                "open": getattr(info, "open", None),
+                "high": getattr(info, "day_high", None),
+                "low": getattr(info, "day_low", None),
+                "volume": getattr(info, "last_volume", None),
+                "market_cap": getattr(info, "market_cap", None),
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        except Exception:
+            return {"symbol": symbol, "price": None, "timestamp": datetime.utcnow().isoformat()}
 
 
 class CCXTFeed:
@@ -274,40 +309,85 @@ class UniversalDataFeed:
                 self._ohlcv_store = False   # disabled
         return self._ohlcv_store if self._ohlcv_store else None
 
+    # TTL: quanto spesso aggiornare i dati da rete (non troppo frequente)
+    _REFRESH_TTL = {
+        "1m":  timedelta(minutes=2),
+        "5m":  timedelta(minutes=10),
+        "15m": timedelta(minutes=20),
+        "30m": timedelta(minutes=30),
+        "1h":  timedelta(hours=1),
+        "4h":  timedelta(hours=2),
+        "1d":  timedelta(hours=6),
+        "1wk": timedelta(hours=12),
+    }
+
     async def get_ohlcv(
         self,
         symbol: str,
         timeframe: str = "1h",
-        limit: int = 500,
+        limit: int = 0,
     ) -> Optional[pd.DataFrame]:
+        """
+        Fetch OHLCV data.
+        limit=0 (default) → restituisce TUTTA la storia disponibile.
+        limit>0 → restituisce le ultime N barre.
+        """
         asset_type = self.get_asset_type(symbol)
-        logger.debug(f"Fetching {symbol} ({asset_type}) [{timeframe}]")
+        store = self._get_ohlcv_store()
+        logger.debug(f"Fetching {symbol} ({asset_type}) [{timeframe}] limit={limit or 'ALL'}")
 
-        # ── 1. Try ccxt for crypto with API keys configured ────────────
+        def _tail(df: pd.DataFrame) -> pd.DataFrame:
+            """Applica il limite solo se > 0, altrimenti restituisce tutto."""
+            return df if limit == 0 else df.tail(limit)
+
+        # ── 1. ccxt per crypto con API key ──────────────────────────────
         if asset_type == "crypto" and settings.broker.ccxt_api_key:
-            df = await self.ccxt_feed.fetch(symbol, timeframe, limit)
+            ccxt_limit = limit if limit > 0 else 1000
+            df = await self.ccxt_feed.fetch(symbol, timeframe, ccxt_limit)
             if df is not None:
-                await self._persist(symbol, timeframe, df)
+                if store:
+                    asyncio.create_task(store.store(symbol, timeframe, df))
                 return df
 
-        # ── 2. Try yfinance (checks 5-min pickle cache internally) ─────
+        # ── 2. SQLite come cache primaria ───────────────────────────────
+        if store:
+            last_ts = await store.get_last_timestamp(symbol, timeframe)
+            if last_ts is not None:
+                # Normalizza timezone
+                last_ts_naive = last_ts.replace(tzinfo=None) if getattr(last_ts, "tzinfo", None) else last_ts
+                age = datetime.utcnow() - last_ts_naive
+                ttl = self._REFRESH_TTL.get(timeframe, timedelta(hours=1))
+
+                if age < ttl:
+                    # Dati freschi → SQLite diretto, nessuna rete
+                    db_df = await store.get_raw(symbol, timeframe, limit)
+                    if db_df is not None:
+                        logger.debug(f"SQLite hit: {symbol} {timeframe} ({len(db_df)} bars, age {age})")
+                        return db_df
+                else:
+                    # Dati obsoleti → aggiornamento incrementale
+                    logger.info(f"Incremental update: {symbol} {timeframe} since {last_ts_naive.date()}")
+                    df_new = await self.yf_feed.fetch_since(symbol, timeframe, last_ts_naive)
+                    if df_new is not None and not df_new.empty:
+                        await store.store(symbol, timeframe, df_new)
+                    db_df = await store.get_raw(symbol, timeframe, limit)
+                    if db_df is not None:
+                        return db_df
+
+        # ── 3. Primo download: scarica l'intera storia ──────────────────
+        logger.info(f"First download (full history): {symbol} {timeframe}")
+        df = await self.yf_feed.fetch(symbol, timeframe, limit=0)
+        if df is not None:
+            if store:
+                await store.store(symbol, timeframe, df)
+            return _tail(df)
+
+        # ── 4. Fallback: rispetta il limit originale (0 = storia completa)
         df = await self.yf_feed.fetch(symbol, timeframe, limit)
         if df is not None:
-            await self._persist(symbol, timeframe, df)
-            return df
-
-        # ── 3. Fallback: SQLite long-term store ─────────────────────────
-        store = self._get_ohlcv_store()
-        if store is not None:
-            db_df = await store.get(symbol, timeframe, limit)
-            if db_df is not None:
-                logger.info(
-                    f"Network unavailable — using DB data for {symbol} {timeframe} "
-                    f"({len(db_df)} bars)"
-                )
-                return db_df
-
-        return None
+            if store:
+                asyncio.create_task(store.store(symbol, timeframe, df))
+        return df
 
     async def _persist(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
         """Background task: store bars in SQLite (fire-and-forget)."""

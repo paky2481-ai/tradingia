@@ -15,7 +15,6 @@ import sys
 import os
 
 import click
-import uvicorn
 
 # Ensure project root is in path
 sys.path.insert(0, os.path.dirname(__file__))

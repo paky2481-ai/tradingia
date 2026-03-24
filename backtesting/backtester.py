@@ -36,12 +36,13 @@ class BacktestTrade:
     bars_held: int = 0
 
     def __post_init__(self):
+        safe_entry = max(abs(self.entry_price), 1e-8)  # guard: evita div/0 con penny stock / micro cap
         if self.direction == "buy":
             self.pnl = (self.exit_price - self.entry_price) * self.quantity - self.commission
-            self.pnl_pct = (self.exit_price - self.entry_price) / self.entry_price * 100
+            self.pnl_pct = (self.exit_price - self.entry_price) / safe_entry * 100
         else:
             self.pnl = (self.entry_price - self.exit_price) * self.quantity - self.commission
-            self.pnl_pct = (self.entry_price - self.exit_price) / self.entry_price * 100
+            self.pnl_pct = (self.entry_price - self.exit_price) / safe_entry * 100
 
 
 @dataclass
@@ -343,7 +344,9 @@ class Backtester:
         result.max_drawdown_pct = float(dd.max())
 
         # Sharpe & Sortino — annualizzati con sqrt(bars_per_year)
-        bar_rets = np.diff(eq_arr) / eq_arr[:-1]
+        safe_eq = np.where(eq_arr[:-1] > 1e-8, eq_arr[:-1], 1e-8)  # guard: evita div/0 se equity→0
+        bar_rets = np.diff(eq_arr) / safe_eq
+        bar_rets = bar_rets[np.isfinite(bar_rets)]  # rimuovi inf/NaN residui
         if len(bar_rets) > 1 and bar_rets.std() > 0:
             result.sharpe_ratio = float(bar_rets.mean() / bar_rets.std() * np.sqrt(bars_per_year))
             neg_rets = bar_rets[bar_rets < 0]

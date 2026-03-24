@@ -138,26 +138,84 @@ class OHLCVStore:
                     "stored_at": now,
                 })
 
+            # Batch inserts in chunks: SQLite has a SQLITE_MAX_VARIABLE_NUMBER limit.
+            # 500 bars × 9 columns = 4500 variables → exceeds 999 limit on some builds.
+            # Chunking at 90 rows keeps us well under (90 × 9 = 810 variables).
+            _CHUNK = 90
             async with AsyncSessionLocal() as session:
-                stmt = sqlite_insert(OHLCVBar).values(records)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["symbol", "timeframe", "timestamp"],
-                    set_={
-                        "open":      stmt.excluded.open,
-                        "high":      stmt.excluded.high,
-                        "low":       stmt.excluded.low,
-                        "close":     stmt.excluded.close,
-                        "volume":    stmt.excluded.volume,
-                        "stored_at": stmt.excluded.stored_at,
-                    },
-                )
-                await session.execute(stmt)
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i:i + _CHUNK]
+                    stmt = sqlite_insert(OHLCVBar).values(chunk)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["symbol", "timeframe", "timestamp"],
+                        set_={
+                            "open":      stmt.excluded.open,
+                            "high":      stmt.excluded.high,
+                            "low":       stmt.excluded.low,
+                            "close":     stmt.excluded.close,
+                            "volume":    stmt.excluded.volume,
+                            "stored_at": stmt.excluded.stored_at,
+                        },
+                    )
+                    await session.execute(stmt)
                 await session.commit()
 
             logger.debug(f"OHLCVStore: stored {len(records)} bars for {symbol} {timeframe}")
 
         except Exception as e:
             logger.warning(f"OHLCVStore.store error ({symbol} {timeframe}): {e}")
+
+    async def get_last_timestamp(
+        self,
+        symbol: str,
+        timeframe: str,
+    ) -> Optional[datetime]:
+        """Return timestamp of the most recent stored bar, or None."""
+        try:
+            await _ensure_db()
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(func.max(OHLCVBar.timestamp))
+                    .where(
+                        OHLCVBar.symbol == symbol,
+                        OHLCVBar.timeframe == timeframe,
+                    )
+                )
+                return result.scalar()
+        except Exception as e:
+            logger.debug(f"get_last_timestamp error ({symbol} {timeframe}): {e}")
+            return None
+
+    async def get_raw(
+        self,
+        symbol: str,
+        timeframe: str,
+        limit: int = 0,
+    ) -> Optional[pd.DataFrame]:
+        """Return the last `limit` bars without TTL check (always from DB).
+        limit=0 means no limit — returns the entire history.
+        """
+        try:
+            await _ensure_db()
+            async with AsyncSessionLocal() as session:
+                q = (
+                    select(OHLCVBar)
+                    .where(
+                        OHLCVBar.symbol == symbol,
+                        OHLCVBar.timeframe == timeframe,
+                    )
+                    .order_by(OHLCVBar.timestamp.desc())
+                )
+                if limit > 0:
+                    q = q.limit(limit)
+                result = await session.execute(q)
+                rows = result.scalars().all()
+                if not rows:
+                    return None
+            return self._rows_to_df(rows[::-1])
+        except Exception as e:
+            logger.debug(f"get_raw error ({symbol} {timeframe}): {e}")
+            return None
 
     async def purge_old(self, keep_days: int = 30) -> int:
         """

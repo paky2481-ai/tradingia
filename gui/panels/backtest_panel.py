@@ -326,6 +326,14 @@ class BacktestPanel(QWidget):
             f"Download {symbol} [{tf}] · {days} giorni..."
         )
 
+        # Cleanup thread/worker precedenti (già terminati per il check sopra)
+        if self._thread is not None:
+            self._thread.deleteLater()
+            self._thread = None
+        if self._worker is not None:
+            self._worker.deleteLater()
+            self._worker = None
+
         # Setup worker + thread
         self._worker = _BacktestWorker(symbol, strategy, tf, capital, days)
         self._thread = QThread(self)
@@ -337,7 +345,7 @@ class BacktestPanel(QWidget):
         self._worker.error.connect(self._on_error)
         self._worker.finished.connect(self._thread.quit)
         self._worker.error.connect(self._thread.quit)
-        self._thread.finished.connect(lambda: self._set_running(False))
+        self._thread.finished.connect(self._on_thread_done)  # named slot, no lambda
 
         self._thread.start()
 
@@ -356,6 +364,10 @@ class BacktestPanel(QWidget):
         )
         self._display_result(result)
         self._btn_export.setEnabled(True)
+
+    @pyqtSlot()
+    def _on_thread_done(self):
+        self._set_running(False)
 
     @pyqtSlot(str)
     def _on_error(self, msg: str):

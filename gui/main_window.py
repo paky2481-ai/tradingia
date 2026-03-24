@@ -31,6 +31,7 @@ from gui.panels.engine_panel import EnginePanel
 from gui.panels.positions_panel import PositionsPanel
 from gui.panels.backtest_panel import BacktestPanel
 from gui.panels.pattern_panel import PatternPanel
+from gui.panels.broker_panel import BrokerPanel
 from core.signal_bus import get_bus
 
 
@@ -127,6 +128,15 @@ class TradingMainWindow(QMainWindow):
             min_width=240, max_width=340,
         )
         self.tabifyDockWidget(self._dock_ai, self._dock_data)
+
+        # ── Broker Panel (destra, tabbed con AI/Dati) ───────────────────
+        self._broker_panel = BrokerPanel()
+        self._dock_broker  = self._make_dock(
+            "Broker", self._broker_panel,
+            Qt.DockWidgetArea.RightDockWidgetArea,
+            min_width=240, max_width=360,
+        )
+        self.tabifyDockWidget(self._dock_data, self._dock_broker)
         self._dock_ai.raise_()
 
         # ── Positions Panel (basso) ─────────────────────────────────────
@@ -203,6 +213,7 @@ class TradingMainWindow(QMainWindow):
             ("Watchlist", "_dock_watchlist", True),
             ("AI",        "_dock_ai",        True),
             ("Dati",      "_dock_data",      True),
+            ("Broker",    "_dock_broker",    False),
             ("Posizioni", "_dock_positions", True),
             ("Log",       "_dock_log",       False),
             ("Backtest",  "_dock_backtest",  False),

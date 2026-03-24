@@ -122,7 +122,7 @@ class DataPanel(QWidget):
 
         try:
             from data.feed import data_feed
-            df = await data_feed.get_ohlcv(symbol, timeframe, limit=500)
+            df = await data_feed.get_ohlcv(symbol, timeframe, limit=0)
             if df is None or df.empty:
                 self._set_status(f"No data found for {symbol}.", error=True)
             else:

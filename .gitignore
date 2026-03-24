@@ -1,6 +1,8 @@
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*.pyc
 *.pyo
 *.pyd
 *.egg
@@ -12,8 +14,15 @@ build/
 
 # Virtual environments
 .venv/
+.venv312/
 venv/
 env/
+
+# Windows DLL / binari nativi (torch.dll, ecc. — non committare mai)
+*.dll
+*.lib
+*.exp
+*.pdb
 
 # Database files
 *.db

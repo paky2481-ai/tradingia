@@ -4,7 +4,23 @@
       "Bash(where python3:*)",
       "Bash(where python:*)",
       "Bash(ls /c/Python*/python.exe)",
-      "Read(//c/Users/thisi/AppData/**)"
+      "Read(//c/Users/thisi/AppData/**)",
+      "Bash(grep -r \"QFont\\\\|tickFont\" C:UsersthisiOneDriveDokumentGitHubtradingia/gui --include=*.py)",
+      "Bash(.venv312/Scripts/python.exe -c \"import sys; print\\(''Python:'', sys.version\\)\")",
+      "Bash(cmd.exe /c \"cd /d \\\\\"C:\\\\Users\\\\thisi\\\\OneDrive\\\\Dokument\\\\GitHub\\\\tradingia\\\\\" && .venv312\\\\Scripts\\\\python.exe -c \\\\\"import sys; print\\(sys.version\\)\\\\\"\" 2>&1)",
+      "Bash(cmd.exe /c \"C:\\\\Users\\\\thisi\\\\OneDrive\\\\Dokument\\\\GitHub\\\\tradingia\\\\.venv312\\\\Scripts\\\\python.exe -c \\\\\"import sys; print\\(sys.version\\)\\\\\"\" 2>&1)",
+      "Bash(cmd.exe /c \"C:\\\\Users\\\\thisi\\\\OneDrive\\\\Dokument\\\\GitHub\\\\tradingia\\\\.venv312\\\\Scripts\\\\python.exe --version\" 2>&1)",
+      "Bash(python:*)",
+      "Bash(py --version)",
+      "Skill(update-config)",
+      "Bash(powershell -Command \"cd C:\\\\dev\\\\tradingia; python main.py gui 2>&1 | Select-Object -First 50\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python main.py gui 2>&1 | Select-Object -First 50\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python -c \\\\\"import sys; print\\(sys.version\\)\\\\\" 2>&1\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python -c \\\\\"import sys; sys.path.insert\\(0, '.'\\); from core.test_server import test_server; from utils.logger import attach_test_server_sink; print\\('Import OK - PORT:', 7779\\)\\\\\" 2>&1\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_import_test.py 2>&1\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_import_test.py > C:\\\\dev\\\\tradingia\\\\scripts\\\\_test_out.txt 2>&1; Get-Content C:\\\\dev\\\\tradingia\\\\scripts\\\\_test_out.txt\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Remove-Item 'C:\\\\dev\\\\tradingia\\\\scripts\\\\_import_test.py', 'C:\\\\dev\\\\tradingia\\\\scripts\\\\_test_out.txt' -ErrorAction SilentlyContinue\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; git ls-files --error-unmatch .venv312/ 2>&1 | Select-Object -First 3\")"
     ]
   }
 }

@@ -6,7 +6,6 @@
    <rect><x>0</x><y>0</y><width>720</width><height>420</height></rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
    <property name="spacing"><number>6</number></property>
 
    <!-- ── Header ──────────────────────────────────────────────────────── -->

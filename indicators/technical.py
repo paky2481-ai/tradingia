@@ -137,10 +137,9 @@ class TechnicalIndicators:
         loss = -delta.clip(upper=0)
         avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
         avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
-        rs = avg_gain / avg_loss
+        rs = avg_gain / (avg_loss + 1e-14)  # guard: evita inf/NaN con avg_loss=0
         rsi = 100 - (100 / (1 + rs))
-        # avg_gain>0, avg_loss=0 → rs=inf → RSI=100 (corretto, già gestito)
-        # avg_gain=0, avg_loss=0 → rs=NaN → RSI=NaN → deve essere 50 (mercato piatto)
+        # avg_gain=0, avg_loss=0 → mercato piatto → RSI=50
         flat = (avg_gain < 1e-10) & (avg_loss < 1e-10)
         rsi[flat] = 50.0
         return rsi
@@ -171,7 +170,7 @@ class TechnicalIndicators:
         tp = (high + low + close) / 3
         ma = tp.rolling(period).mean()
         md = tp.rolling(period).apply(lambda x: np.mean(np.abs(x - x.mean())), raw=True)
-        return (tp - ma) / (0.015 * md)
+        return (tp - ma) / (0.015 * md + 1e-10)  # guard: evita div/0 con mercato piatto
 
     @staticmethod
     def williams_r(
@@ -280,7 +279,7 @@ class TechnicalIndicators:
         volume: pd.Series,
     ) -> pd.Series:
         tp = (high + low + close) / 3
-        return (tp * volume).cumsum() / volume.cumsum()
+        return (tp * volume).cumsum() / (volume.cumsum() + 1e-10)  # guard: evita div/0 se volume=0
 
     @staticmethod
     def cmf(

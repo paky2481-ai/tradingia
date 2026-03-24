@@ -54,12 +54,20 @@ def run(autorun: bool = False, capital: float = 1000.0, mode: str = "paper"):
             except Exception as e:
                 print(f"[WARN] DB init: {e}")
 
+            # Avvia TestServer per testing autonomo (127.0.0.1:7779)
+            try:
+                from core.test_server import test_server
+                await test_server.start()
+                from utils.logger import attach_test_server_sink
+                attach_test_server_sink()
+            except Exception as e:
+                print(f"[WARN] TestServer non avviato: {e}")
+
             # Avvia engine se richiesto
             if autorun:
                 from core.engine import TradingEngine
                 engine = TradingEngine(capital=capital, mode=mode)
                 window.set_engine(engine)
-                # Avvia in background (il loop gestisce tutto)
                 asyncio.ensure_future(engine.run())
 
         loop.run_until_complete(_start())
