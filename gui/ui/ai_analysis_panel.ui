@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ai_analysis_panel.ui
+  Struttura statica del pannello AI Analysis.
+  Il contenuto dinamico (sezioni regime, fundamental, indicators, ecc.)
+  viene popolato interamente in Python da _fill_* e _Section widgets.
+  _scroll_content è il container QWidget dentro la QScrollArea;
+  il suo layout (QVBoxLayout) è accessibile in Python come
+  self._scroll_content.layout() → usato come self._content_layout.
+-->
+<ui version="4.0">
+ <class>AIAnalysisPanel</class>
+ <widget class="QWidget" name="AIAnalysisPanel">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>280</width><height>600</height></rect>
+  </property>
+
+  <layout class="QVBoxLayout" name="rootLayout">
+   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
+   <property name="spacing"><number>0</number></property>
+
+   <!-- ── Header ──────────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QWidget" name="_header">
+     <property name="minimumHeight"><number>36</number></property>
+     <property name="maximumHeight"><number>36</number></property>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="contentsMargins"><rect><left>8</left><top>6</top><right>8</right><bottom>6</bottom></rect></property>
+      <property name="spacing"><number>6</number></property>
+      <item>
+       <widget class="QLabel" name="_lbl_title">
+        <property name="text"><string>AI Analysis</string></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="headerSpacer">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="_chk_auto">
+        <property name="text"><string>Auto</string></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ── Run button ───────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QPushButton" name="_btn_run">
+     <property name="text"><string>Run AI Analysis</string></property>
+    </widget>
+   </item>
+
+   <!-- ── Progress bar ─────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QProgressBar" name="_progress">
+     <property name="minimum"><number>0</number></property>
+     <property name="maximum"><number>0</number></property>
+     <property name="visible"><bool>false</bool></property>
+     <property name="minimumHeight"><number>3</number></property>
+     <property name="maximumHeight"><number>3</number></property>
+     <property name="textVisible"><bool>false</bool></property>
+    </widget>
+   </item>
+
+   <!-- ── Scroll area (contenuto dinamico) ──────────────────────────────── -->
+   <item>
+    <widget class="QScrollArea" name="_scroll_area">
+     <property name="widgetResizable"><bool>true</bool></property>
+     <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+     <widget class="QWidget" name="_scroll_content">
+      <property name="geometry">
+       <rect><x>0</x><y>0</y><width>278</width><height>520</height></rect>
+      </property>
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="contentsMargins"><rect><left>0</left><top>4</top><right>0</right><bottom>8</bottom></rect></property>
+       <property name="spacing"><number>0</number></property>
+       <!-- Le sezioni (_sec_regime, _sec_fundamental, ecc.) vengono
+            inserite qui a runtime da _setup_ui() in Python -->
+      </layout>
+     </widget>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

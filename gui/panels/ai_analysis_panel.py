@@ -14,9 +14,11 @@ Shows the full AI analysis for the currently loaded symbol:
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+from PyQt6 import uic
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QFont
 from PyQt6.QtWidgets import (
@@ -24,6 +26,8 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame, QSizePolicy, QProgressBar,
     QGridLayout, QCheckBox,
 )
+
+_UI = Path(__file__).parent.parent / "ui" / "ai_analysis_panel.ui"
 
 
 # ── Reusable small widgets ────────────────────────────────────────────────────
@@ -139,75 +143,44 @@ class AIAnalysisPanel(QWidget):
         self._auto_enabled: bool = True
         self._running: bool = False
 
-        self._setup_ui()
+        uic.loadUi(str(_UI), self)
+        self._apply_styles()
+        self._build_dynamic_content()
+        self._connect_signals()
 
     # ── UI Setup ──────────────────────────────────────────────────────────
 
-    def _setup_ui(self):
+    def _apply_styles(self):
         self.setStyleSheet("background:#0d1117; color:#e6edf3;")
-        main = QVBoxLayout(self)
-        main.setContentsMargins(0, 0, 0, 0)
-        main.setSpacing(0)
-
-        # ── Header ────────────────────────────────────────────────────
-        header = QWidget()
-        header.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
-        hl = QHBoxLayout(header)
-        hl.setContentsMargins(8, 6, 8, 6)
-        title = QLabel("AI Analysis")
-        title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:12px;")
-        hl.addWidget(title, 1)
-
-        self._chk_auto = QCheckBox("Auto")
-        self._chk_auto.setChecked(True)
+        self._header.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
+        self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:12px;")
         self._chk_auto.setStyleSheet("color:#8b949e; font-size:10px;")
-        self._chk_auto.toggled.connect(self._on_auto_toggled)
-        hl.addWidget(self._chk_auto)
-        main.addWidget(header)
-
-        # ── Run button ─────────────────────────────────────────────────
-        self._btn_run = QPushButton("Run AI Analysis")
         self._btn_run.setStyleSheet(
             "QPushButton { background:#238636; color:#fff; border:none; "
             "padding:6px; font-size:11px; }"
             "QPushButton:hover { background:#2ea043; }"
             "QPushButton:disabled { background:#161b22; color:#484f58; }"
         )
-        self._btn_run.clicked.connect(self._on_run_clicked)
-        main.addWidget(self._btn_run)
-
-        # ── Progress bar ───────────────────────────────────────────────
-        self._progress = QProgressBar()
-        self._progress.setRange(0, 0)
-        self._progress.setFixedHeight(3)
         self._progress.setStyleSheet(
             "QProgressBar { background:#161b22; border:none; }"
             "QProgressBar::chunk { background:#388bfd; }"
         )
-        self._progress.hide()
-        main.addWidget(self._progress)
-
-        # ── Scrollable content ─────────────────────────────────────────
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(
+        self._scroll_area.setStyleSheet(
             "QScrollArea { border:none; background:#0d1117; }"
             "QScrollBar:vertical { background:#161b22; width:6px; }"
             "QScrollBar::handle:vertical { background:#30363d; border-radius:3px; }"
         )
+        self._scroll_content.setStyleSheet("background:#0d1117;")
 
-        content = QWidget()
-        content.setStyleSheet("background:#0d1117;")
-        self._content_layout = QVBoxLayout(content)
-        self._content_layout.setContentsMargins(0, 4, 0, 8)
-        self._content_layout.setSpacing(0)
+    def _build_dynamic_content(self):
+        """Aggiunge sezioni dinamiche e label vuota al layout dello scroll content."""
+        self._content_layout = self._scroll_content.layout()
 
-        # Pre-create sections
-        self._sec_regime = _Section("Regime & Cycles")
+        self._sec_regime      = _Section("Regime & Cycles")
         self._sec_fundamental = _Section("Fundamental Score")
-        self._sec_indicators = _Section("AI-Selected Indicators")
-        self._sec_strategy = _Section("Active Strategy")
-        self._sec_signal = _Section("AI Signal")
+        self._sec_indicators  = _Section("AI-Selected Indicators")
+        self._sec_strategy    = _Section("Active Strategy")
+        self._sec_signal      = _Section("AI Signal")
 
         for sec in [
             self._sec_regime, self._sec_fundamental,
@@ -216,16 +189,17 @@ class AIAnalysisPanel(QWidget):
             self._content_layout.addWidget(sec)
 
         self._content_layout.addStretch(1)
-        scroll.setWidget(content)
-        main.addWidget(scroll, 1)
 
-        # ── Empty state ────────────────────────────────────────────────
         self._lbl_empty = QLabel("Load a symbol and click\n\"Run AI Analysis\"")
         self._lbl_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_empty.setStyleSheet("color:#484f58; font-size:11px; padding:16px;")
         self._content_layout.insertWidget(0, self._lbl_empty)
 
         self._hide_sections()
+
+    def _connect_signals(self):
+        self._chk_auto.toggled.connect(self._on_auto_toggled)
+        self._btn_run.clicked.connect(self._on_run_clicked)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -311,7 +285,9 @@ class AIAnalysisPanel(QWidget):
         hl = QHBoxLayout(hurst_row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
-        hl.addWidget(QLabel("Hurst").also(lambda l: l.setStyleSheet("color:#8b949e; font-size:11px;")))
+        lbl_hurst = QLabel("Hurst")
+        lbl_hurst.setStyleSheet("color:#8b949e; font-size:11px;")
+        hl.addWidget(lbl_hurst)
         bar = _BarWidget(value=hurst * 2 - 1, symmetric=False)  # map 0-1 → 0-1 bar
         bar.set_value(hurst)
         hl.addWidget(bar, 1)
@@ -443,11 +419,3 @@ class AIAnalysisPanel(QWidget):
             self._sec_indicators, self._sec_strategy, self._sec_signal,
         ]:
             sec.show()
-
-
-# Monkey-patch QLabel for fluent helper used above
-def _also(self, fn):
-    fn(self)
-    return self
-
-QLabel.also = _also  # type: ignore
