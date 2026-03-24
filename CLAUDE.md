@@ -2,11 +2,12 @@
 
 ## IMPORTANTE: Leggi questo file all'inizio di ogni sessione
 
-Questo progetto ha **4 agenti** sempre attivi. Leggili subito:
+Questo progetto ha **5 agenti** sempre attivi. Leggili subito:
 - `agents/max.md` — Max, Coordinatore del team ← **LEGGI PRIMO**
 - `agents/paky.md` — Paky, Ingegnere del Software
 - `agents/tom.md` — Tom, Super Genio Matematico
 - `agents/chloe.md` — Chloe, Agente Finanziario / Trading AI
+- `agents/marco.md` — Marco, GUI / Grafica / Data Visualization
 
 **REGOLA FONDAMENTALE**: L'utente parla SOLO con Max.
 Max è l'unica interfaccia verso l'utente. Rispondi SEMPRE come Max,
@@ -16,9 +17,9 @@ Max riferisce i risultati degli altri agenti all'utente con il prefisso **[Max]*
 citando brevemente quale agente ha svolto il lavoro:
 es. "[Max] Ho passato il task a Paky — ecco il risultato: ..."
 
-Gli altri agenti (Paky, Tom, Chloe) lavorano in background e non parlano
+Gli altri agenti (Paky, Tom, Chloe, Marco) lavorano in background e non parlano
 direttamente con l'utente a meno che non sia Max a passare esplicitamente
-la parola con: "Paky, vuoi spiegare tu questa parte?"
+la parola con: "Marco, vuoi spiegare tu questa parte?"
 
 ---
 
@@ -38,7 +39,7 @@ Sistema di trading algoritmico AI-driven con GUI desktop PyQt6.
 ### Struttura cartelle
 ```
 tradingia/
-├── agents/          ← file agenti (Paky, Tom, Chloe)
+├── agents/          ← file agenti (Max, Paky, Tom, Chloe, Marco)
 ├── config/          ← settings.py (pydantic)
 ├── core/            ← orchestrator.py (main loop)
 ├── data/            ← feed.py, fundamental.py
@@ -68,9 +69,25 @@ python main.py backtest   # esegui backtesting
 - [x] FundamentalFeed multi-source — fallback yfinance → Alpha Vantage → FMP
 - [x] Training iniziale massiccio + retraining notturno automatico
 - [x] BacktestPanel GUI con progress bar e grafici equity
+- [x] Nuovo agente Marco (GUI/Grafica/DataViz) — `agents/marco.md`
+- [x] Fix candlestick "doppie" — `autoRange()` → `setAutoVisible(y=True)` + `setXRange()`
+- [x] MA lines: loop O(n²) → `np.convolve` (50× più veloce)
+- [x] `.ui` file per tutti i 7 panel GUI (pattern, backtest, ai_analysis aggiunti)
+- [x] Refactor 3 panel a `uic.loadUi()`: PatternPanel, BacktestPanel, AIAnalysisPanel
+- [x] Fix `LogPanel`: `QTextEdit` → `QPlainTextEdit` + `appendHtml()`
+- [x] Rimosso monkey-patch `QLabel.also()` da AIAnalysisPanel
+
+### Note tecniche GUI (Marco)
+- Tutti i 7 panel usano `uic.loadUi()` — i `.ui` sono in `gui/ui/`
+- `_metrics_group` e `_chart_group` in `backtest_panel.ui` sono QGroupBox **senza layout**:
+  il layout viene creato a runtime in `_build_metrics_grid()` / `_build_chart_content()`
+- `AIAnalysisPanel`: il contenuto scrollabile (`_Section` widgets) è creato in Python,
+  non nel `.ui` — accedere tramite `self._scroll_content.layout()`
+- Candlestick: `setAutoVisible(y=True)` fa sì che l'asse Y si adatti solo alle
+  candele visibili nella finestra X (non all'intero dataset)
 
 ### Lavori in corso
-- [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky)
+- [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky + Marco)
 - [ ] Validazione statistica pattern su mercati reali (Tom + Chloe)
 - [ ] Ottimizzazione soglie confidenza per asset class (Tom)
 
