@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  backtest_panel.ui
+  Nota: _metrics_group e _chart_group sono QGroupBox senza layout interno.
+  Il layout viene creato dinamicamente in Python:
+    - _metrics_group → QGridLayout con _MetricBox widgets
+    - _chart_group   → QVBoxLayout con pg.PlotWidget
+  Questo perché _MetricBox è un widget custom e pg.PlotWidget
+  richiede configurazione runtime (setConfigOption, legend, etc.)
+-->
+<ui version="4.0">
+ <class>BacktestPanel</class>
+ <widget class="QWidget" name="BacktestPanel">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>900</width><height>600</height></rect>
+  </property>
+
+  <layout class="QVBoxLayout" name="rootLayout">
+   <property name="contentsMargins"><rect><left>8</left><top>8</top><right>8</right><bottom>8</bottom></rect></property>
+   <property name="spacing"><number>6</number></property>
+
+   <!-- ── Controls row ────────────────────────────────────────────────── -->
+   <item>
+    <layout class="QHBoxLayout" name="controlsLayout">
+     <property name="spacing"><number>8</number></property>
+
+     <item><widget class="QLabel" name="lbl_sym"><property name="text"><string>Simbolo:</string></property></widget></item>
+     <item>
+      <widget class="QLineEdit" name="_sym_input">
+       <property name="text"><string>AAPL</string></property>
+       <property name="minimumWidth"><number>90</number></property>
+       <property name="maximumWidth"><number>90</number></property>
+      </widget>
+     </item>
+
+     <item><widget class="QLabel" name="lbl_strat"><property name="text"><string>Strategia:</string></property></widget></item>
+     <item>
+      <widget class="QComboBox" name="_strat_combo">
+       <item><property name="text"><string>trend_following</string></property></item>
+       <item><property name="text"><string>mean_reversion</string></property></item>
+       <item><property name="text"><string>breakout</string></property></item>
+       <item><property name="text"><string>scalping</string></property></item>
+       <item><property name="text"><string>ai_ensemble</string></property></item>
+      </widget>
+     </item>
+
+     <item><widget class="QLabel" name="lbl_tf"><property name="text"><string>Timeframe:</string></property></widget></item>
+     <item>
+      <widget class="QComboBox" name="_tf_combo">
+       <item><property name="text"><string>1m</string></property></item>
+       <item><property name="text"><string>5m</string></property></item>
+       <item><property name="text"><string>15m</string></property></item>
+       <item><property name="text"><string>1h</string></property></item>
+       <item><property name="text"><string>4h</string></property></item>
+       <item><property name="text"><string>1d</string></property></item>
+      </widget>
+     </item>
+
+     <item><widget class="QLabel" name="lbl_days"><property name="text"><string>Finestra (giorni):</string></property></widget></item>
+     <item>
+      <widget class="QSpinBox" name="_days_spin">
+       <property name="minimum"><number>30</number></property>
+       <property name="maximum"><number>730</number></property>
+       <property name="value"><number>180</number></property>
+      </widget>
+     </item>
+
+     <item><widget class="QLabel" name="lbl_cap"><property name="text"><string>Capitale (€):</string></property></widget></item>
+     <item>
+      <widget class="QDoubleSpinBox" name="_cap_spin">
+       <property name="minimum"><double>100.000000</double></property>
+       <property name="maximum"><double>10000000.000000</double></property>
+       <property name="singleStep"><double>1000.000000</double></property>
+       <property name="decimals"><number>0</number></property>
+       <property name="value"><double>10000.000000</double></property>
+      </widget>
+     </item>
+
+     <item>
+      <spacer name="controlsSpacer">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+      </spacer>
+     </item>
+
+     <item>
+      <widget class="QPushButton" name="_btn_run">
+       <property name="text"><string>▶  Avvia Backtest</string></property>
+       <property name="minimumHeight"><number>32</number></property>
+       <property name="maximumHeight"><number>32</number></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="_btn_export">
+       <property name="text"><string>↓  Esporta CSV</string></property>
+       <property name="enabled"><bool>false</bool></property>
+       <property name="minimumHeight"><number>32</number></property>
+       <property name="maximumHeight"><number>32</number></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- ── Progress row ────────────────────────────────────────────────── -->
+   <item>
+    <layout class="QHBoxLayout" name="progressLayout">
+     <property name="spacing"><number>6</number></property>
+     <item>
+      <widget class="QProgressBar" name="_progress">
+       <property name="minimum"><number>0</number></property>
+       <property name="maximum"><number>100</number></property>
+       <property name="value"><number>0</number></property>
+       <property name="visible"><bool>false</bool></property>
+       <property name="minimumHeight"><number>6</number></property>
+       <property name="maximumHeight"><number>6</number></property>
+       <property name="textVisible"><bool>false</bool></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="_lbl_status">
+       <property name="text"><string/></property>
+       <property name="minimumWidth"><number>300</number></property>
+       <property name="maximumWidth"><number>300</number></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- ── Splitter ────────────────────────────────────────────────────── -->
+   <item>
+    <widget class="QSplitter" name="_splitter">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+
+     <!-- Top pane: metrics + equity chart -->
+     <widget class="QWidget" name="_top_pane">
+      <layout class="QHBoxLayout" name="topPaneLayout">
+       <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
+       <property name="spacing"><number>6</number></property>
+       <item>
+        <!-- _metrics_group: nessun layout, creato in Python (_build_metrics_grid) -->
+        <widget class="QGroupBox" name="_metrics_group">
+         <property name="title"><string>Metriche</string></property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>1</horstretch><verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <!-- _chart_group: nessun layout, creato in Python (_build_chart_content) -->
+        <widget class="QGroupBox" name="_chart_group">
+         <property name="title"><string>Equity Curve</string></property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>3</horstretch><verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- Bottom pane: trade log -->
+     <widget class="QGroupBox" name="_log_group">
+      <property name="title"><string>Trade Log</string></property>
+      <layout class="QVBoxLayout" name="logLayout">
+       <property name="contentsMargins"><rect><left>4</left><top>12</top><right>4</right><bottom>4</bottom></rect></property>
+       <item>
+        <widget class="QTableWidget" name="_trade_table">
+         <property name="columnCount"><number>12</number></property>
+         <property name="alternatingRowColors"><bool>true</bool></property>
+         <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+         <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+         <attribute name="horizontalHeaderStretchLastSection"><bool>true</bool></attribute>
+         <column><property name="text"><string>#</string></property></column>
+         <column><property name="text"><string>Simbolo</string></property></column>
+         <column><property name="text"><string>Dir.</string></property></column>
+         <column><property name="text"><string>Entrata</string></property></column>
+         <column><property name="text"><string>Uscita</string></property></column>
+         <column><property name="text"><string>P. Entrata</string></property></column>
+         <column><property name="text"><string>P. Uscita</string></property></column>
+         <column><property name="text"><string>Qty</string></property></column>
+         <column><property name="text"><string>P&amp;L €</string></property></column>
+         <column><property name="text"><string>P&amp;L %</string></property></column>
+         <column><property name="text"><string>Motivo</string></property></column>
+         <column><property name="text"><string>Barre</string></property></column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
