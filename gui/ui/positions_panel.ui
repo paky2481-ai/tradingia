@@ -7,14 +7,12 @@
   </property>
   <layout class="QVBoxLayout" name="rootLayout">
    <property name="spacing"><number>0</number></property>
-   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
 
    <!-- ── Posizioni aperte ───────────────────────────────────────────── -->
    <item>
     <widget class="QGroupBox" name="posGroup">
      <property name="title"><string>Posizioni Aperte</string></property>
      <layout class="QVBoxLayout" name="posLayout">
-      <property name="contentsMargins"><rect><left>4</left><top>6</top><right>4</right><bottom>4</bottom></rect></property>
 
       <!-- Positions table -->
       <item>
@@ -54,7 +52,6 @@
     <widget class="QGroupBox" name="manualGroup">
      <property name="title"><string>Apri Trade Manuale</string></property>
      <layout class="QGridLayout" name="manualLayout">
-      <property name="contentsMargins"><rect><left>8</left><top>8</top><right>8</right><bottom>8</bottom></rect></property>
       <property name="spacing"><number>6</number></property>
 
       <!-- Row 0: Strumento -->
@@ -141,7 +138,6 @@
     <widget class="QGroupBox" name="logGroup">
      <property name="title"><string>Trade Recenti</string></property>
      <layout class="QVBoxLayout" name="logLayout">
-      <property name="contentsMargins"><rect><left>6</left><top>6</top><right>6</right><bottom>6</bottom></rect></property>
       <item>
        <widget class="QTableWidget" name="_trade_log">
         <property name="maximumHeight"><number>140</number></property>

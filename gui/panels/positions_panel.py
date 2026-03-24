@@ -64,6 +64,11 @@ class PositionsPanel(QWidget):
 
         uic.loadUi(str(_UI), self)
 
+        # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
+        self.posLayout.setContentsMargins(4, 6, 4, 4)
+        self.manualLayout.setContentsMargins(8, 8, 8, 8)
+        self.logLayout.setContentsMargins(6, 6, 6, 6)
+
         self._setup_table()
         self._setup_form()
         self._setup_connections()

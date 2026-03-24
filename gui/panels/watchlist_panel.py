@@ -73,6 +73,11 @@ class WatchlistPanel(QWidget):
 
         uic.loadUi(str(_UI), self)
 
+        # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
+        self.headerLayout.setContentsMargins(10, 0, 10, 0)
+        self.tabLayout.setContentsMargins(8, 4, 8, 4)
+        self.searchLayout.setContentsMargins(8, 6, 8, 6)
+
         # Build tab_buttons dict from named widgets loaded by uic
         self._tab_buttons: Dict[str, "QPushButton"] = {
             "Stocks":  self._btn_tab_stocks,

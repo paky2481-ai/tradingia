@@ -49,7 +49,7 @@ tradingia/
 ├── models/          ← LSTM, GBM, ensemble, meta_learner, auto_config
 ├── risk/            ← risk_manager.py
 ├── strategies/      ← ai_strategy, technical_strategy, strategy_manager
-├── brokers/         ← paper, alpaca, ccxt
+├── brokers/         ← paper, alpaca, ccxt, ig_broker, oanda_broker
 ├── backtesting/
 ├── portfolio/
 ├── notifications/
@@ -85,11 +85,16 @@ python main.py backtest   # esegui backtesting
   non nel `.ui` — accedere tramite `self._scroll_content.layout()`
 - Candlestick: `setAutoVisible(y=True)` fa sì che l'asse Y si adatti solo alle
   candele visibili nella finestra X (non all'intero dataset)
+- [x] IG Broker integration — REST API v2 (demo + live), BrokerPanel GUI
+- [x] AutoConfig price_direction fix — segnale AI ora usa 20-bar return invece di hurst > 0.5
+- [x] EnginePanel + 3 altri panel migrati a `.ui` files con `uic.loadUi()`
+- [x] Fix compatibilità PyQt6: `contentsMargins` rimosso dai `.ui`, `setBackground()` su GraphicsLayoutWidget
 
 ### Lavori in corso
 - [ ] GUI drag-and-drop con pyqtgraph DockArea (Paky + Marco)
 - [ ] Validazione statistica pattern su mercati reali (Tom + Chloe)
 - [ ] Ottimizzazione soglie confidenza per asset class (Tom)
+- [ ] Fix avvio app — risoluzione errori startup progressivi (in corso)
 
 ---
 

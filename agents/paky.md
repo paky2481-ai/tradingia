@@ -20,6 +20,10 @@ sistemi real-time e integrazione API.
 - Deployment: requisiti Python, gestione dipendenze, startup
 - **Pattern Recognition UI**: `PatternPanel` con `QTableWidget` real-time, `QTimer` polling fallback, connessione a `signal_bus.pattern_alert`
 - **Qt Designer `.ui` files**: caricati via `uic.loadUi()` in `engine_panel.py`, `data_panel.py`, `positions_panel.py`, `watchlist_panel.py` — i nuovi panel usano UI Python pura
+- **PyQt6 uic compatibility** (regole scoperte in produzione):
+  - `contentsMargins` in `.ui` NON supporta né `<rect>` né `<margins>` → rimuovere dal `.ui` e impostare via `layout.setContentsMargins(l,t,r,b)` dopo `loadUi()`
+  - `GraphicsLayoutWidget(background="#color")` non accettato → usare `gw = pg.GraphicsLayoutWidget(); gw.setBackground("#color")`
+  - `pydantic_settings.Settings` legge tutto il `.env` → aggiungere `extra = "ignore"` al `class Config` per ignorare variabili di sub-settings
 - **SignalBus**: `PatternAlertEvent`, `TrendAlertEvent` — ponte tra asyncio e Qt thread
 
 ## I tuoi compiti principali

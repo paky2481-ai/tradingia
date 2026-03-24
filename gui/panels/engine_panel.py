@@ -54,6 +54,12 @@ class EnginePanel(QWidget):
 
         uic.loadUi(str(_UI), self)
 
+        # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
+        self.rootLayout.setContentsMargins(8, 8, 8, 8)
+        self.metricsLayout.setContentsMargins(10, 8, 10, 8)
+        self.scanGroupLayout.setContentsMargins(6, 6, 6, 6)
+        self.alertGroupLayout.setContentsMargins(6, 6, 6, 6)
+
         # Get layout references from named container widgets
         self._scan_layout   = self._scan_container.layout()
         self._alert_layout  = self._alert_container.layout()

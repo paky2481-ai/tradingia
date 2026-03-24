@@ -7,7 +7,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing"><number>0</number></property>
-   <property name="contentsMargins"><rect><left>0</left><top>0</top><right>0</right><bottom>0</bottom></rect></property>
 
    <!-- ── Header ─────────────────────────────────────────────────────── -->
    <item>
@@ -15,7 +14,6 @@
      <property name="minimumHeight"><number>44</number></property>
      <property name="maximumHeight"><number>44</number></property>
      <layout class="QHBoxLayout" name="headerLayout">
-      <property name="contentsMargins"><rect><left>10</left><top>0</top><right>10</right><bottom>0</bottom></rect></property>
       <item>
        <widget class="QLabel" name="label_section">
         <property name="text"><string>Data</string></property>
@@ -36,7 +34,6 @@
     <widget class="QWidget" name="body">
      <layout class="QVBoxLayout" name="bodyLayout">
       <property name="spacing"><number>12</number></property>
-      <property name="contentsMargins"><rect><left>12</left><top>12</top><right>12</right><bottom>12</bottom></rect></property>
 
       <!-- Symbol group -->
       <item>
