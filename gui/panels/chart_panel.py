@@ -109,6 +109,7 @@ class ChartPanel(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
+        self._chart.bar_hovered.connect(self._on_bar_hovered)
         layout.addWidget(self._chart)
 
         # ── Oscillator sub-chart (AI-selected, hidden by default) ──────
@@ -182,6 +183,8 @@ class ChartPanel(QWidget):
         else:
             self._oscillator.set_oscillator(column_name, df[column_name])
 
+        # Link oscillator X-axis to main price plot so zoom/pan stays in sync
+        self._oscillator.link_x_axis(self._chart._price_plot)
         self._oscillator.show()
 
     def update_live_tick(self, bar: dict, symbol: str):
@@ -204,6 +207,14 @@ class ChartPanel(QWidget):
         })
 
     # ── Internals ─────────────────────────────────────────────────────────
+
+    def _on_bar_hovered(self, bar: dict):
+        """Update OHLCV info bar from chart crosshair hover."""
+        self._lbl_open.setText( f"<span style='color:#484f58'>O</span> {bar['open']:.4f}")
+        self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {bar['high']:.4f}")
+        self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {bar['low']:.4f}")
+        self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {bar['close']:.4f}")
+        self._lbl_vol.setText(  f"<span style='color:#484f58'>V</span> {int(bar['volume']):,}")
 
     def _update_ohlcv_labels(self, row):
         o = row.get("open", row["open"] if "open" in row.index else None)

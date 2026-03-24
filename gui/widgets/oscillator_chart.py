@@ -111,11 +111,12 @@ class OscillatorChart(QWidget):
         display = _DISPLAY_NAMES.get(name, name.upper())
         self._header.setText(f"  {display}")
 
-        vals = values.dropna().values.astype(float)
+        series_clean = values.dropna()
+        vals = series_clean.values.astype(float)
         if len(vals) == 0:
             return
 
-        x = np.arange(len(vals))
+        x = series_clean.index.values.astype(float)
         color = _COLORS.get(name, _COLORS["default"])
         levels = _LEVELS.get(name, (None, None, 0.0))
         ob, os_, mid = levels
@@ -175,7 +176,7 @@ class OscillatorChart(QWidget):
         if n == 0:
             return
 
-        x = np.arange(n)
+        x = hist.index.values.astype(float)
 
         # Histogram bars (green positive, red negative)
         for i in range(n):

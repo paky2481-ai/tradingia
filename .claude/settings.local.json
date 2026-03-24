@@ -23,7 +23,13 @@
       "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; git ls-files --error-unmatch .venv312/ 2>&1 | Select-Object -First 3\")",
       "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; git rm -r --cached **/__pycache__/ 2>&1 | Measure-Object -Line | Select-Object -ExpandProperty Lines\")",
       "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; git rm -r --cached --ignore-unmatch */__pycache__ 2>&1 | Select-Object -Last 5\")",
-      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_git_clean.py > scripts/_git_out.txt 2>&1\")"
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_git_clean.py > scripts/_git_out.txt 2>&1\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Remove-Item 'C:\\\\dev\\\\tradingia\\\\scripts\\\\_git_clean.py', 'C:\\\\dev\\\\tradingia\\\\scripts\\\\_git_out.txt' -ErrorAction SilentlyContinue; Write-Output 'done'\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_run_tests.py > scripts/_run_tests_out.txt 2>&1\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Get-ChildItem 'C:\\\\dev\\\\tradingia' -Filter '*.db' -Recurse | Select-Object FullName, Length\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location 'C:\\\\dev\\\\tradingia'; python scripts/_reset_and_test.py > scripts/_reset_out.txt 2>&1\")",
+      "Bash(python.exe -c \"print\\('OK'\\)\" 2>&1)",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Remove-Item 'C:\\\\dev\\\\tradingia\\\\scripts\\\\_run_tests.py','C:\\\\dev\\\\tradingia\\\\scripts\\\\_run_tests_out.txt','C:\\\\dev\\\\tradingia\\\\scripts\\\\_reset_and_test.py','C:\\\\dev\\\\tradingia\\\\scripts\\\\_reset_out.txt' -ErrorAction SilentlyContinue\")"
     ]
   }
 }

@@ -10,7 +10,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QPainter, QPicture, QPen, QBrush, QColor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 
@@ -221,6 +221,22 @@ class TimeAxisItem(pg.AxisItem):
         return strings
 
 
+class VolumeAxisItem(pg.AxisItem):
+    """Y-axis for volume that formats large numbers as K/M instead of SI notation."""
+
+    def tickStrings(self, values, scale, spacing):
+        result = []
+        for v in values:
+            av = abs(v)
+            if av >= 1_000_000:
+                result.append(f"{v / 1_000_000:.1f}M")
+            elif av >= 1_000:
+                result.append(f"{v / 1_000:.0f}K")
+            else:
+                result.append(f"{int(v)}")
+        return result
+
+
 class CandlestickChart(QWidget):
     """
     Complete candlestick chart widget with:
@@ -231,6 +247,9 @@ class CandlestickChart(QWidget):
     - Mouse wheel zoom + pan
     - Real-time update via update_last_bar()
     """
+
+    # Emitted on mouse hover with bar data dict
+    bar_hovered = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -294,7 +313,14 @@ class CandlestickChart(QWidget):
         self._price_plot.addItem(self._price_label, ignoreBounds=True)
 
         # ── Volume plot ────────────────────────────────────────────────
-        self._vol_plot = self._graphics_layout.addPlot(row=1, col=0)
+        self._vol_time_axis = TimeAxisItem(orientation="bottom")
+        self._vol_plot = self._graphics_layout.addPlot(
+            row=1, col=0,
+            axisItems={
+                "bottom": self._vol_time_axis,
+                "left":   VolumeAxisItem(orientation="left"),
+            },
+        )
         self._vol_plot.setMaximumHeight(90)
         self._style_plot(self._vol_plot, show_xaxis=True)
         self._vol_plot.setXLink(self._price_plot)
@@ -363,9 +389,11 @@ class CandlestickChart(QWidget):
         if ts_col:
             ts = pd.to_datetime(self._df[ts_col])
             if timeframe in ("1d", "1wk", "1mo"):
-                self._time_axis.set_timestamps(ts.dt.strftime("%Y-%m-%d").tolist())
+                labels = ts.dt.strftime("%Y-%m-%d").tolist()
             else:
-                self._time_axis.set_timestamps(ts.dt.strftime("%m-%d %H:%M").tolist())
+                labels = ts.dt.strftime("%m-%d %H:%M").tolist()
+            self._time_axis.set_timestamps(labels)
+            self._vol_time_axis.set_timestamps(labels)
 
         self._candle_item.set_data(self._df)
         self._vol_item.set_data(self._df)
@@ -374,9 +402,12 @@ class CandlestickChart(QWidget):
         # Mostra gli ultimi 120 bar
         n = len(self._df)
         visible_start = max(0, n - 120)
+
+        # Limit panning to actual data range
+        self._price_plot.getViewBox().setLimits(xMin=-1, xMax=n)
+
         self._price_plot.setXRange(visible_start - 1, n + 1, padding=0.02)
         # Imposta il range Y manualmente sulle candele visibili
-        # (setAutoVisible non funziona con GraphicsObject custom privi di dataBounds)
         self._set_y_range(visible_start, n - 1)
 
     def update_last_bar(self, bar: dict):
@@ -453,4 +484,23 @@ class CandlestickChart(QWidget):
         self._v_line.setPos(x)
         self._h_line.setPos(y)
         self._price_label.setPos(x, y)
-        self._price_label.setText(f" {y:.4f}")
+
+        idx = int(round(x))
+        if self._df is not None and 0 <= idx < len(self._df):
+            row = self._df.iloc[idx]
+            timestamps = self._time_axis._timestamps
+            date_str = timestamps[idx] if idx < len(timestamps) else ""
+            self._price_label.setText(
+                f" {date_str}  O:{row['open']:.4f}  H:{row['high']:.4f}"
+                f"  L:{row['low']:.4f}  C:{row['close']:.4f}"
+            )
+            self.bar_hovered.emit({
+                "date":   date_str,
+                "open":   float(row["open"]),
+                "high":   float(row["high"]),
+                "low":    float(row["low"]),
+                "close":  float(row["close"]),
+                "volume": float(row.get("volume", 0)),
+            })
+        else:
+            self._price_label.setText(f" {y:.4f}")
