@@ -6,8 +6,8 @@ Usage:
     python main.py trade          # Live/paper trading
     python main.py backtest       # Run backtests
     python main.py train          # Train AI models
-    python main.py dashboard      # Launch dashboard only
     python main.py scan           # One-shot signal scan
+    python main.py gui            # Launch desktop GUI
 """
 
 import asyncio
@@ -35,21 +35,19 @@ def cli():
 @click.option("--paper", is_flag=True, default=True, help="Paper trading mode (default)")
 @click.option("--live", is_flag=True, default=False, help="Live trading (requires broker API keys)")
 @click.option("--broker", type=click.Choice(["paper", "alpaca", "ccxt"]), default="paper")
-@click.option("--port", default=8080, help="Dashboard port")
-def trade(paper, live, broker, port):
-    """Start the trading engine with live dashboard."""
+def trade(paper, live, broker):
+    """Start the trading engine."""
     paper_mode = not live
     click.echo(f"\n{'='*50}")
     click.echo(f"  TradingIA v{settings.version}")
-    click.echo(f"  Mode: {'PAPER' if paper_mode else '🔴 LIVE'}")
+    click.echo(f"  Mode: {'PAPER' if paper_mode else 'LIVE'}")
     click.echo(f"  Broker: {broker}")
-    click.echo(f"  Dashboard: http://localhost:{port}")
     click.echo(f"{'='*50}\n")
 
     if not paper_mode:
         click.confirm("⚠️  LIVE TRADING MODE — real money at risk. Continue?", abort=True)
 
-    asyncio.run(_run_trading(paper_mode, broker, port))
+    asyncio.run(_run_autoengine(1000.0, "live" if live else "paper"))
 
 
 @cli.command()
@@ -87,15 +85,6 @@ def train(symbols, timeframe, mode, days):
     symbol_list = [s.strip() for s in symbols.split(",")]
     is_incremental = (mode != "full")
     asyncio.run(_run_training(symbol_list, timeframe, incremental=is_incremental, days=days))
-
-
-@cli.command()
-@click.option("--port", default=8080)
-def dashboard(port):
-    """Launch dashboard only (no trading)."""
-    from dashboard.api import create_app
-    app = create_app()
-    uvicorn.run(app, host=settings.dashboard.host, port=port, log_level="warning")
 
 
 @cli.command()
@@ -165,31 +154,6 @@ def scan(symbols):
 
 
 # ── Async runners ──────────────────────────────────────────────────────────
-
-async def _run_trading(paper_mode: bool, broker_type: str, port: int):
-    broker = _create_broker(broker_type)
-
-    from core.orchestrator import TradingOrchestrator
-    from dashboard.api import create_app, manager
-
-    orchestrator = TradingOrchestrator(broker=broker, paper_mode=paper_mode)
-    orchestrator._ws_broadcast = manager.broadcast
-
-    app = create_app(orchestrator)
-
-    config = uvicorn.Config(
-        app,
-        host=settings.dashboard.host,
-        port=port,
-        log_level="warning",
-    )
-    server = uvicorn.Server(config)
-
-    await asyncio.gather(
-        orchestrator.start(),
-        server.serve(),
-    )
-
 
 async def _run_backtest(symbol: str, strategy_name: str, timeframe: str, capital: float):
     from data.feed import data_feed

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QRectF, pyqtSignal
-from PyQt6.QtGui import QPainter, QPicture, QPen, QBrush, QColor
+from PyQt6.QtGui import QPainter, QPicture, QPen, QBrush, QColor, QFont
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 
 # ── Colors ────────────────────────────────────────────────────────────────
@@ -288,6 +288,10 @@ class CandlestickChart(QWidget):
         )
         self._price_plot.setMinimumHeight(260)
         self._style_plot(self._price_plot, show_xaxis=False)
+        self._price_plot.showAxis("right")
+        self._price_plot.getAxis("right").setWidth(55)
+        self._price_plot.getAxis("right").setPen(pg.mkPen(C_GRID))
+        self._price_plot.getAxis("right").setTextPen(pg.mkPen(C_TEXT))
 
         # Candlestick item
         self._candle_item = CandlestickItem()
@@ -308,8 +312,17 @@ class CandlestickChart(QWidget):
         self._price_plot.addItem(self._v_line, ignoreBounds=True)
         self._price_plot.addItem(self._h_line, ignoreBounds=True)
 
-        # Crosshair price label
-        self._price_label = pg.TextItem("", color=C_CURSOR, anchor=(0, 1))
+        # Right-axis cursor price label (yellow box, segue cursore sull'asse Y)
+        self._cursor_price_label = pg.TextItem("", anchor=(0, 0.5), color="#0d1117")
+        self._cursor_price_label.fill = pg.mkBrush("#e3b341")
+        _font_price = QFont("monospace", 9)
+        self._cursor_price_label.setFont(_font_price)
+        self._price_plot.addItem(self._cursor_price_label, ignoreBounds=True)
+
+        # OHLC tooltip (segue cursore, sfondo scuro, font leggibile)
+        self._price_label = pg.TextItem("", anchor=(0, 1), color="#e6edf3")
+        self._price_label.fill = pg.mkBrush(13, 17, 23, 210)
+        self._price_label.setFont(QFont("monospace", 9))
         self._price_plot.addItem(self._price_label, ignoreBounds=True)
 
         # ── Volume plot ────────────────────────────────────────────────
@@ -478,21 +491,28 @@ class CandlestickChart(QWidget):
     def _on_mouse_moved(self, pos):
         if not self._price_plot.sceneBoundingRect().contains(pos):
             return
-        mouse_point = self._price_plot.getViewBox().mapSceneToView(pos)
+        vb = self._price_plot.getViewBox()
+        mouse_point = vb.mapSceneToView(pos)
         x = mouse_point.x()
         y = mouse_point.y()
         self._v_line.setPos(x)
         self._h_line.setPos(y)
-        self._price_label.setPos(x, y)
+
+        # Label prezzo sull'asse Y destro (segue solo il cursore verticale)
+        x_range = vb.viewRange()[0]
+        self._cursor_price_label.setPos(x_range[1], y)
+        self._cursor_price_label.setText(f" {y:.2f} ")
 
         idx = int(round(x))
         if self._df is not None and 0 <= idx < len(self._df):
             row = self._df.iloc[idx]
             timestamps = self._time_axis._timestamps
             date_str = timestamps[idx] if idx < len(timestamps) else ""
+            # OHLC tooltip vicino al cursore (in alto a sinistra rispetto al cursore)
+            self._price_label.setPos(x, y)
             self._price_label.setText(
-                f" {date_str}  O:{row['open']:.4f}  H:{row['high']:.4f}"
-                f"  L:{row['low']:.4f}  C:{row['close']:.4f}"
+                f"  {date_str}   C: {row['close']:.2f}"
+                f"   O: {row['open']:.2f}   H: {row['high']:.2f}   L: {row['low']:.2f}  "
             )
             self.bar_hovered.emit({
                 "date":   date_str,
@@ -503,4 +523,5 @@ class CandlestickChart(QWidget):
                 "volume": float(row.get("volume", 0)),
             })
         else:
-            self._price_label.setText(f" {y:.4f}")
+            self._price_label.setPos(x, y)
+            self._price_label.setText(f"  {y:.4f}  ")

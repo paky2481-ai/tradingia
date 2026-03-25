@@ -16,9 +16,25 @@ import asyncio
 import sys
 import os
 
+# Pre-load torch BEFORE PyQt6 — evita conflitti DLL su Windows (c10.dll)
+try:
+    import torch  # noqa: F401
+except Exception:
+    pass
+
+from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
 import qasync
+
+
+def _qt_message_handler(msg_type, context, message):
+    """Sopprime il warning pyqtgraph/Qt6 sui font con pointSize=-1."""
+    if "setPointSize" in message and "Point size <= 0" in message:
+        return
+    # Tutti gli altri messaggi: comportamento default (stampa su stderr)
+    if msg_type == QtMsgType.QtFatalMsg:
+        raise RuntimeError(message)
 
 from gui.styles import load_stylesheet
 from gui.main_window import TradingMainWindow
@@ -27,6 +43,7 @@ from gui.main_window import TradingMainWindow
 def run(autorun: bool = False, capital: float = 1000.0, mode: str = "paper"):
     """Lancia l'applicazione desktop."""
     os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
+    qInstallMessageHandler(_qt_message_handler)
 
     app = QApplication(sys.argv)
     app.setApplicationName("TradingIA")

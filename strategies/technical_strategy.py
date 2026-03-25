@@ -207,6 +207,7 @@ class ScalpingStrategy(BaseStrategy):
     name = "scalping"
 
     def __init__(self, *args, **kwargs):
+        kwargs.pop("timeframe", None)  # ScalpingStrategy usa sempre 5m
         super().__init__(*args, timeframe="5m", **kwargs)
 
     def generate_signals(self, symbol: str, df: pd.DataFrame) -> List[TradeSignal]:

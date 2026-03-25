@@ -179,9 +179,13 @@ class ChartPanel(QWidget):
             return
 
         if column_name == "macd_hist" and "macd" in df.columns and "macd_signal" in df.columns:
-            self._oscillator.set_macd(df["macd"], df["macd_signal"], df["macd_hist"])
+            self._oscillator.set_macd(
+                df["macd"].reset_index(drop=True),
+                df["macd_signal"].reset_index(drop=True),
+                df["macd_hist"].reset_index(drop=True),
+            )
         else:
-            self._oscillator.set_oscillator(column_name, df[column_name])
+            self._oscillator.set_oscillator(column_name, df[column_name].reset_index(drop=True))
 
         # Link oscillator X-axis to main price plot so zoom/pan stays in sync
         self._oscillator.link_x_axis(self._chart._price_plot)

@@ -21,19 +21,28 @@ try:
     from torch.utils.data import DataLoader, TensorDataset
     TORCH_AVAILABLE = True
 except Exception as _torch_err:
+    import sys as _sys
     torch = None  # type: ignore
     nn = None  # type: ignore
     DataLoader = None  # type: ignore
     TensorDataset = None  # type: ignore
     TORCH_AVAILABLE = False
     _torch_err_msg = str(_torch_err)
-    if "1114" in _torch_err_msg or "c10.dll" in _torch_err_msg:
+    _py_ver = f"Python {_sys.version_info.major}.{_sys.version_info.minor}"
+    if "1114" in _torch_err_msg or ".dll" in _torch_err_msg:
         logger.warning(
-            f"PyTorch DLL error — probabilmente versione CUDA senza CUDA installato. "
-            f"Fix: pip install torch --index-url https://download.pytorch.org/whl/cpu --force-reinstall"
+            f"PyTorch DLL error ({_py_ver}) — LSTM disabilitato. "
+            f"Usa .venv312 (Python 3.12 + torch CPU): {_torch_err_msg}"
+        )
+    elif isinstance(_torch_err, ImportError):
+        logger.warning(
+            f"PyTorch non installato ({_py_ver}) — LSTM disabilitato. "
+            f"Installa: pip install torch --index-url https://download.pytorch.org/whl/cpu"
         )
     else:
-        logger.warning(f"PyTorch non disponibile — LSTM disabilitato: {_torch_err_msg}")
+        logger.warning(
+            f"PyTorch non disponibile ({_py_ver}) — LSTM disabilitato: {_torch_err_msg}"
+        )
 
 LSTM_FEATURES = [
     "returns", "log_returns", "rsi_14", "macd_hist",

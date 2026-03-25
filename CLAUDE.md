@@ -56,11 +56,18 @@ tradingia/
 └── main.py
 ```
 
+### Virtual environment
+**SEMPRE usare `.venv312`** (Python 3.12 + torch CPU):
+```
+C:\dev\tradingia\.venv312\Scripts\python.exe
+```
+Il `python` di sistema è 3.14 e ha torch DLL rotto — non usarlo.
+
 ### Entry point
 ```bash
-python main.py gui        # avvia GUI desktop
-python main.py trade      # avvia loop di trading
-python main.py backtest   # esegui backtesting
+.venv312\Scripts\python.exe main.py gui        # avvia GUI desktop
+.venv312\Scripts\python.exe main.py trade      # avvia loop di trading
+.venv312\Scripts\python.exe main.py backtest   # esegui backtesting
 ```
 
 ### Completato (sprint recenti)

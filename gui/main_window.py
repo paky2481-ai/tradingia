@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import Qt, QSize, QTimer, QSettings
 from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtWidgets import (
     QMainWindow, QDockWidget, QWidget, QLabel,

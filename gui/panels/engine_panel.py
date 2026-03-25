@@ -272,8 +272,10 @@ class EnginePanel(QWidget):
             if self._engine:
                 asyncio.ensure_future(self._engine.stop())
         else:
-            if self._engine:
-                asyncio.ensure_future(self._engine.run())
+            if self._engine is None:
+                from core.engine import TradingEngine
+                self._engine = TradingEngine(capital=1000.0, mode="paper")
+            asyncio.ensure_future(self._engine.run())
 
     def set_engine(self, engine):
         """Chiamato da app.py per collegare l'engine al pannello."""

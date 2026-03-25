@@ -253,15 +253,6 @@ class NotificationSettings(BaseSettings):
         env_prefix = "NOTIFY_"
 
 
-class DashboardSettings(BaseSettings):
-    host: str = "0.0.0.0"
-    port: int = 8080
-    debug: bool = False
-    secret_key: str = "tradingia-secret-change-in-prod"
-
-    class Config:
-        env_prefix = "DASHBOARD_"
-
 
 class Settings(BaseSettings):
     # General
@@ -317,7 +308,7 @@ class Settings(BaseSettings):
     tf_selector: TimeframeSelectorSettings = Field(default_factory=TimeframeSelectorSettings)
     pattern: PatternSettings = Field(default_factory=PatternSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
-    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+
 
     class Config:
         env_file = str(BASE_DIR / ".env")
