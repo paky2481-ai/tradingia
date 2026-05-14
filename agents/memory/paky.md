@@ -7,6 +7,7 @@
 
 - 2026-05-14: Audit completo startup app — tutti i bug documentati in CLAUDE.md risultano già risolti nel codice corrente. Nessun problema attivo allo startup (verifica statica).
 - 2026-05-14: Verificato che pydantic_settings ha `extra="ignore"` solo sulla Config principale (riga 313-316). Le sub-config non ce l'hanno, ma funziona perché ogni sub usa `env_prefix` specifico.
+- 2026-05-14: Creato `gui/state/app_state.py` (AppState singleton, 11 properties con guard, bridge `connect_signal_bus`). `_on_engine_status` aggancia anche `open_positions` e `mode` da `EngineStatusEvent` (campi presenti nel dataclass).
 
 ## Lezioni apprese (permanenti)
 
@@ -27,7 +28,7 @@
 ## Task aperti
 
 - [ ] Implementare nuova struttura `gui/main_window.py` con QStackedWidget + ActivityBar (vedi piano)
-- [ ] Creare `gui/state/app_state.py` come singleton stato globale
+- [x] Creare `gui/state/app_state.py` come singleton stato globale
 - [ ] Fix stati pulsanti positions/broker collegandoli a `AppState`
 - [ ] DockArea drag-and-drop con pyqtgraph (oggi: workspace switching invece di dock)
 
