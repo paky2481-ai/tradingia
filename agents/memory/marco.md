@@ -8,6 +8,8 @@
 - 2026-05-14: Audit GUI completo — identificati problemi: 4 dock bottom compressi a 360px, 3 dock right ristretti, font Segoe UI inconsistente (13px QSS vs 10px app.py), QTabBar senza stile QSS.
 - 2026-05-14: Fix candlestick "doppie": `autoRange()` → `setAutoVisible(y=True)` + `setXRange()`.
 - 2026-05-14: Fix performance MA lines: loop O(n²) → `np.convolve` (50× più veloce).
+- 2026-05-14: Creati 4 widget MVP libreria `gui/widgets/info/` (Sparkline+area gradient, KPIBadge, RegimePill, Gauge con halo marker) + `gui/styles/dark.qss` 1203 righe Bloomberg-grade. `load_stylesheet()` aggiornato con fallback su `dark_theme.qss`.
+- 2026-05-14: Completati 3 deliverable gate review Fase 1 — HelpIcon (già presente dal task precedente), TopBar Bloomberg 42px (già presente), DashboardWorkspace 807 LOC con _WatchlistPanel, _PositionsPanel, _CenterPanel (3 Gauge cards), _AIPanel, QTimer demo liveness 2s.
 
 ## Lezioni apprese (permanenti)
 
@@ -28,11 +30,14 @@
 
 ## Task aperti
 
-- [ ] Creare libreria `gui/widgets/info/` con 12 micro-componenti (vedi piano)
-- [ ] Mockup design `TopBar` con 8 KPI badge
-- [ ] Riprogettare `WatchlistPanel` con sparkline per riga
-- [ ] DockArea drag-and-drop con pyqtgraph (collab. con Paky) — ora sostituito da QStackedWidget workspace switching nel piano
-- [ ] Definire QSS unificato `gui/styles/dark.qss` con `qdarkstyle` come base
+- [x] Creare libreria `gui/widgets/info/` — 4 widget MVP creati (Sparkline, KPIBadge, RegimePill, Gauge)
+- [x] Definire QSS unificato `gui/styles/dark.qss` — DONE (1203 righe, copertura completa)
+- [x] Implementare `TopBar` con 8 KPI badge usando KPIBadge + sparkline — DONE (425 LOC)
+- [x] Creare `HelpIcon` riutilizzabile con tooltip + MessageBox dark-styled — DONE (99 LOC)
+- [x] Creare `DashboardWorkspace` MVP per gate review — DONE (807 LOC, liveness demo 2s)
+- [ ] Restanti 8 micro-componenti: ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMiniChart, NumericTable
+- [ ] Riprogettare `WatchlistPanel` full (pannello esistente) con sparkline per riga
+- [ ] Integrare DashboardWorkspace in MainWindow (a cura di Paky)
 
 ## Workflow
 
