@@ -8,6 +8,7 @@
 - 2026-05-14: Audit GUI completo — identificati problemi: 4 dock bottom compressi a 360px, 3 dock right ristretti, font Segoe UI inconsistente (13px QSS vs 10px app.py), QTabBar senza stile QSS.
 - 2026-05-14: Fix candlestick "doppie": `autoRange()` → `setAutoVisible(y=True)` + `setXRange()`.
 - 2026-05-14: Fix performance MA lines: loop O(n²) → `np.convolve` (50× più veloce).
+- 2026-05-14: Creati 4 widget MVP libreria `gui/widgets/info/` (Sparkline+area gradient, KPIBadge, RegimePill, Gauge con halo marker) + `gui/styles/dark.qss` 1203 righe Bloomberg-grade. `load_stylesheet()` aggiornato con fallback su `dark_theme.qss`.
 
 ## Lezioni apprese (permanenti)
 
@@ -28,11 +29,12 @@
 
 ## Task aperti
 
-- [ ] Creare libreria `gui/widgets/info/` con 12 micro-componenti (vedi piano)
-- [ ] Mockup design `TopBar` con 8 KPI badge
+- [x] Creare libreria `gui/widgets/info/` — 4 widget MVP creati (Sparkline, KPIBadge, RegimePill, Gauge)
+- [x] Definire QSS unificato `gui/styles/dark.qss` — DONE (1203 righe, copertura completa)
+- [ ] Restanti 8 micro-componenti: ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMiniChart, NumericTable
+- [ ] Implementare `TopBar` con 8 KPI badge usando KPIBadge + sparkline
 - [ ] Riprogettare `WatchlistPanel` con sparkline per riga
 - [ ] DockArea drag-and-drop con pyqtgraph (collab. con Paky) — ora sostituito da QStackedWidget workspace switching nel piano
-- [ ] Definire QSS unificato `gui/styles/dark.qss` con `qdarkstyle` come base
 
 ## Workflow
 
