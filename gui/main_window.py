@@ -17,11 +17,10 @@ AppState bridge:
 from __future__ import annotations
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QKeySequence
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
-    QShortcut,
     QStatusBar,
     QStackedWidget,
     QVBoxLayout,
