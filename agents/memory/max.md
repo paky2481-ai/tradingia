@@ -8,6 +8,10 @@
 - 2026-05-14: Avviato refactor radicale GUI + sistema agenti. Piano completo in `/root/.claude/plans/la-gui-pessima-delegated-bentley.md`.
 - 2026-05-14: Accettata sfida utente "GUI perfetta o mobile". Definiti criteri di accettazione misurabili + gate review dopo fase 3.
 - 2026-05-14: Decisi modelli agenti — Max=opus, Paky/Tom/Chloe/Marco=sonnet.
+- 2026-05-14: GUI Fase 1 completata (PR #11, #12 mergiati). Demo TopBar + DashboardWorkspace + 5 info widget MVP + dark.qss 1203 LOC.
+- 2026-05-14: Bug fix QShortcut (PR #13 mergiato) — `QShortcut` sta in `PyQt6.QtGui`, NON `QtWidgets`. Aggiunto quality gate non derogabile agli agent Paky/Marco: real import test + istanziazione widget prima di chiudere ogni task GUI.
+- 2026-05-14: **Gate review SUPERATO** — utente ha lanciato l'app, conferma "così mi piace". Qt vince, Path B mobile non attivato. Procedere con Fase 1.5 Polish (3 ondate) poi Fasi 2-6.
+- 2026-05-14: Difetti gate review documentati in `docs/SPRINT.md` (15 difetti, 3 ondate). Punto di ripartenza per nuova sessione: Fase 1.5 Ondata 1 (Marco).
 
 ## Lezioni apprese (permanenti)
 
@@ -21,9 +25,16 @@
 
 ## Task aperti
 
-- [ ] Esecuzione piano refactor GUI fase per fase
-- [ ] Gate review dopo fase 3 (decisione Qt vs mobile)
-- [ ] Validazione statistica pattern recognition (Tom + Chloe)
+- [ ] **Fase 1.5 — Polish difetti gate review** (vedi `docs/SPRINT.md`):
+  - Ondata 1: layout fixes (Marco, ~30 min)
+  - Ondata 2: AI Panel destro restyling (Marco, ~45 min)
+  - Ondata 3: polish finale tooltip/icon/centering (Paky+Marco, ~30 min)
+- [ ] Fase 2 — 5 workspaces rimanenti (order_ticket, analysis, backtest, patterns, settings)
+- [ ] Fase 3 — ActivityBar verticale + persistenza workspace in QSettings
+- [ ] Fase 4 — 8 info widget rimanenti (ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable)
+- [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali SignalBus (Tom emit + Paky wire + Marco render)
+- [ ] Fase 6 — Fix stati pulsanti via AppState in tutti i panel
+- [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico pre-esistente, da rivalutare dopo refactor GUI completo
 
 ## Workflow
 
