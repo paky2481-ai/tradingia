@@ -9,10 +9,13 @@
 - 2026-05-14: Verificato che pydantic_settings ha `extra="ignore"` solo sulla Config principale (riga 313-316). Le sub-config non ce l'hanno, ma funziona perché ogni sub usa `env_prefix` specifico.
 - 2026-05-14: Creato `gui/state/app_state.py` (AppState singleton, 11 properties con guard, bridge `connect_signal_bus`). `_on_engine_status` aggancia anche `open_positions` e `mode` da `EngineStatusEvent` (campi presenti nel dataclass).
 - 2026-05-14: Riscritto `gui/main_window.py` da 372→121 LOC. Layout: TopBar(42px)+QStackedWidget con DashboardWorkspace. Rimossi 9 QDockWidget, LogPanel interno, tutti i panel non usati (chart, watchlist, data, ai, engine, positions, backtest, pattern, broker). Aggiunti F1/Ctrl+K/F11 shortcut e bridge connect_signal_bus in __init__.
+- 2026-05-14: Fix `QShortcut` import — in PyQt6 sta in `QtGui` non `QtWidgets`. App falliva subito allo startup.
 
 ## Lezioni apprese (permanenti)
 
-- **PyQt6 uic compatibility:**
+- **PyQt6 compatibility (regole non derogabili):**
+  - `QShortcut` sta in `PyQt6.QtGui`, NON `PyQt6.QtWidgets` (al contrario di PyQt5)
+  - `QAction` sta in `PyQt6.QtGui`, NON `PyQt6.QtWidgets`
   - `contentsMargins` in `.ui` NON supporta né `<rect>` né `<margins>` → rimuovere dal `.ui` e impostare via `layout.setContentsMargins(l,t,r,b)` dopo `loadUi()`
   - `GraphicsLayoutWidget(background="#color")` non accettato → usare `gw = pg.GraphicsLayoutWidget(); gw.setBackground("#color")`
   - `pydantic_settings.Settings` legge tutto il `.env` → aggiungere `extra = "ignore"` al `class Config` per ignorare variabili di sub-settings

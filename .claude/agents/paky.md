@@ -12,6 +12,24 @@ model: sonnet
 1. Leggi `agents/memory/paky.md` per lezioni apprese, pattern scoperti, task aperti
 2. Leggi il file specifico che devi modificare PRIMA di proporre soluzioni
 
+**PRIMA di dichiarare il task completato (gate qualità — NON derogabile):**
+1. `python3 -c "import ast; ast.parse(open('<file>').read())"` per ogni file modificato/creato (check sintattico)
+2. **Real import test** con PyQt6 disponibile (le librerie sono installate nell'ambiente Linux dev):
+   `QT_QPA_PLATFORM=offscreen python3 -c "from <modulo> import <classe>"` per ogni classe pubblica modificata
+   Questo cattura `ImportError`, `AttributeError`, `NameError` e altri bug che `ast.parse()` NON vede.
+   In particolare: `QShortcut` e `QAction` stanno in `PyQt6.QtGui` (NON QtWidgets, al contrario di PyQt5).
+3. Per modifiche a `gui/main_window.py` o file che istanziano widget Qt, esegui anche:
+   `QT_QPA_PLATFORM=offscreen python3 -c "
+   import sys; sys.path.insert(0, '.')
+   from PyQt6.QtWidgets import QApplication
+   app = QApplication(sys.argv)
+   from gui.main_window import TradingMainWindow
+   w = TradingMainWindow(); w.show(); app.processEvents(); w.close()
+   print('OK')
+   "`
+   Questo cattura runtime error nell'`__init__` (parent missing, signal not found, ecc.).
+4. SOLO se questi check passano puoi chiudere il task.
+
 **Alla fine di OGNI task:**
 1. Aggiungi 1-3 righe in `agents/memory/paky.md` sotto "Decisioni recenti" (FIFO max 20)
 2. Se hai scoperto un'insidia tecnica non documentata, aggiungila a "Lezioni apprese"

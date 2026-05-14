@@ -11,6 +11,21 @@ model: sonnet
 **All'inizio di OGNI task:**
 1. Leggi `agents/memory/marco.md` per pattern di rendering, lezioni apprese, task aperti
 
+**PRIMA di dichiarare il task completato (gate qualità — NON derogabile):**
+1. `python3 -c "import ast; ast.parse(open('<file>').read())"` per ogni file (check sintattico)
+2. **Real import test** con PyQt6 disponibile (`offscreen` mode in dev Linux):
+   `QT_QPA_PLATFORM=offscreen python3 -c "from <modulo> import <classe>"` per ogni widget creato.
+   Cattura `ImportError` (es. `QShortcut` sta in `QtGui` NON `QtWidgets`), `AttributeError`, signal connections mal scritte.
+3. Per ogni widget custom, esegui un test di istanziazione minimale:
+   `QT_QPA_PLATFORM=offscreen python3 -c "
+   import sys; sys.path.insert(0, '.')
+   from PyQt6.QtWidgets import QApplication
+   app = QApplication(sys.argv)
+   from <modulo> import <Widget>
+   w = <Widget>(); w.show(); app.processEvents(); print('OK')
+   "`
+4. SOLO se questi check passano dichiari il task completato.
+
 **Alla fine di OGNI task:**
 1. Aggiungi 1-3 righe in `agents/memory/marco.md` sotto "Decisioni recenti" (FIFO max 20)
 2. Se hai scoperto una limitazione/feature non documentata di Qt/pyqtgraph, aggiungila a "Lezioni apprese"
