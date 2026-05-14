@@ -27,7 +27,8 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **🚦 Gate Review — Qt VINCE** (PR #12 + #13 mergiati)
 - [x] **Quality gate agenti**: Paky e Marco ora hanno regola obbligatoria di real import test + istanziazione widget prima di chiudere task (commit d13075c)
 - [ ] **Fase 1.5 — Polish difetti gate review** (3 ondate, dettaglio sotto)
-- [ ] Fase 2 — Workspaces rimanenti (5 file in `gui/workspaces/`)
+- [ ] **Fase 1.6 — Internazionalizzazione (IT default + EN opzionale)** ← NUOVO REQUISITO UTENTE
+- [ ] Fase 2 — Workspaces rimanenti (5 file in `gui/workspaces/`) — DEVONO usare `tr()` da subito
 - [ ] Fase 3 — ActivityBar verticale sinistra per switch workspace
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
@@ -106,6 +107,185 @@ Difetti identificati nello screenshot del gate review (2026-05-14, app live su W
     - Fix: in `_BrokerPill` (top_bar.py), allineare pallino con `Qt.AlignVCenter` + padding asimmetrico
 
 15. **CHART AREA placeholder** — non è un difetto della fase 1, ma il prossimo lavoro (Fase 2) deve integrare `CandlestickChart` esistente al posto del placeholder
+
+---
+
+## 🌐 Fase 1.6 — Internazionalizzazione IT/EN (~3 ore)
+
+**Requisito utente (2026-05-14)**: *"Tutto in italiano predefinito con settaggio anche in inglese. Lasciamo in inglese solo i nomi tecnici riconosciuti."*
+
+**Agente delegato**: Paky (infrastruttura) + Marco (audit testi UI + sostituzione)
+
+### 1.6.1 — Decidere convenzione "nomi tecnici riconosciuti"
+
+Lista stabile di termini che **restano sempre in inglese** anche in modalità IT (perché ambigui o brutti se tradotti):
+
+**Acronimi/sigle (sempre)**: AI, ML, LSTM, RNN, RSI, MACD, ATR, FFT, VWAP, OHLC, P&L, TP, SL, BID, ASK, UTC, API, CFD, ETF, EUR, USD, GBP, JPY (ecc. valute), ms, %, €
+
+**Concetti matematici con nome proprio**: Hurst, Kelly, Sharpe, Sortino, Calmar, Markowitz, Black-Litterman, Black-Scholes, Heston, GARCH, ARIMA
+
+**Termini trading riconosciuti in italiano**: long, short, trend, breakout, scalping, swing, watchlist, spread, slippage, drawdown, equity, ticker, broker, leverage, margin, lot, pip
+
+**Tipi di ordine**: BUY, SELL, STOP, LIMIT, MARKET
+
+**Sigle di sistema**: PAPER, LIVE, DEMO, READY, ERROR, IDLE, RUNNING
+
+### 1.6.2 — Termini da TRADURRE in modalità IT
+
+Mapping completo (chiavi semantiche → IT → EN):
+
+| Chiave | Italiano (default) | English |
+|--------|-------------------|---------|
+| `app.title` | TradingIA — Terminale di Trading | TradingIA — Trading Terminal |
+| `workspace.dashboard` | Cruscotto | Dashboard |
+| `workspace.order` | Ordini | Order Ticket |
+| `workspace.analysis` | Analisi | Analysis |
+| `workspace.backtest` | Backtest | Backtest |
+| `workspace.patterns` | Pattern | Patterns |
+| `workspace.settings` | Impostazioni | Settings |
+| `topbar.start` | ▶ AVVIA | ▶ START |
+| `topbar.stop` | ⏸ FERMA | ⏸ STOP |
+| `topbar.equity` | CAPITALE | EQUITY |
+| `topbar.pnl_day` | P&L OGGI | P&L DAY |
+| `topbar.positions` | POSIZIONI | POS |
+| `topbar.win_rate` | VITTORIE | WIN |
+| `topbar.help` | Aiuto | Help |
+| `regime.trending` | IN TREND | TRENDING |
+| `regime.choppy` | LATERALE | CHOPPY |
+| `regime.cycling` | CICLICO | CYCLING |
+| `regime.unknown` | SCONOSCIUTO | UNKNOWN |
+| `dashboard.watchlist` | LISTA STRUMENTI | WATCHLIST |
+| `dashboard.positions_open` | POSIZIONI APERTE | OPEN POSITIONS |
+| `dashboard.no_positions` | Nessuna posizione aperta. Il motore sta scansionando i mercati... | No open positions. The engine is scanning markets... |
+| `dashboard.chart_placeholder` | AREA GRAFICO | CHART AREA |
+| `dashboard.chart_subtitle` | Il grafico a candele verrà integrato qui | Candlestick chart will be integrated here |
+| `dashboard.ai_panel` | ANALISI AI | AI ANALYSIS |
+| `dashboard.confidence` | CONFIDENZA | CONFIDENCE |
+| `dashboard.ai_prediction` | Previsione AI | AI Prediction |
+| `dashboard.history` | STORICO (50 PRED.) | HISTORY (50 PRED.) |
+| `dashboard.strategy_label` | Strategia: | Strategy: |
+| `dashboard.last_signal` | Ultimo segnale: {n}m fa | Last signal: {n}m ago |
+| `gauge.hurst` | ESPONENTE DI HURST | HURST EXPONENT |
+| `gauge.kelly` | KELLY % | KELLY % |
+| `gauge.volatility` | VOLATILITÀ | VOLATILITY |
+| `positions.header.symbol` | STRUMENTO | SYMBOL |
+| `positions.header.dir` | DIR | DIR |
+| `positions.header.entry` | ENTRATA → CORRENTE | ENTRY → CURRENT |
+| `positions.header.pnl` | P&L | P&L |
+| `status.ready` | Pronto | Ready |
+| `status.workspace` | Spazio di lavoro | Workspace |
+| `mode.paper` | PAPER | PAPER |
+| `mode.live` | LIVE | LIVE |
+| `broker.connected` | Connesso · {ms}ms | Connected · {ms}ms |
+| `broker.disconnected` | Disconnesso | Disconnected |
+| `help.f1.title` | TradingIA — Aiuto | TradingIA — Help |
+| `help.f1.body` | F1: questo aiuto · Ctrl+K: cerca · F11: schermo intero. Premi ▶ AVVIA in alto per partire. | F1: this help · Ctrl+K: search · F11: fullscreen. Press ▶ START at the top to begin. |
+| `help.search.title` | Cerca comando | Command palette |
+| `help.search.body` | La palette comandi sarà disponibile nelle prossime versioni. | Command palette will be available in upcoming versions. |
+
+**Tooltip esplicativi** (sezione importante perché lunghi):
+
+| Chiave | Italiano (default) |
+|--------|-------------------|
+| `tooltip.equity` | Capitale totale (cash + valore posizioni aperte). La sparkline mostra l'andamento delle ultime 50 osservazioni. |
+| `tooltip.pnl_day` | Profitto/perdita realizzato + non realizzato di oggi. Resettato a mezzanotte UTC. |
+| `tooltip.positions` | Posizioni attualmente aperte / massimo configurato. |
+| `tooltip.win_rate` | Percentuale di trade chiusi in profitto sugli ultimi 30 giorni. |
+| `tooltip.mode` | PAPER = simulato (nessun rischio). LIVE = soldi reali sul conto broker. |
+| `tooltip.broker` | Latency ping al broker. <50ms ottimo, >200ms degradato. |
+| `tooltip.clock` | Ora UTC corrente. I mercati usano UTC come riferimento. |
+| `help.hurst.body` | Misura la persistenza di un trend. Sotto 0.4 il prezzo tende a tornare alla media (mean-reverting). Vicino a 0.5 è random walk. Sopra 0.6 c'è trend persistente. |
+| `help.kelly.body` | Percentuale ottimale del capitale da rischiare in un singolo trade. Più alta = più aggressivo. Sopra il 5% considerato pericoloso. |
+| `help.volatility.body` | ATR percentile rispetto allo storico 6 mesi. >0.7 = volatilità alta, prudenza. <0.3 = mercato fermo. |
+| `help.confidence.body` | Quanto il modello AI è sicuro della sua previsione. Sopra 0.7 considerato affidabile. |
+
+### 1.6.3 — Architettura i18n
+
+**File nuovi:**
+- `gui/i18n/__init__.py` — esporta `tr()` e `set_language()`
+- `gui/i18n/strings.py` — modulo con dict `IT` e `EN`, funzione `tr(key, **kwargs)` con `.format()` per parametri
+- `gui/i18n/it.py` e `gui/i18n/en.py` — opzionale, se i dict crescono molto
+
+**API minimale**:
+```python
+# gui/i18n/strings.py
+IT = {
+    "topbar.equity": "CAPITALE",
+    "topbar.start": "▶ AVVIA",
+    "help.f1.body": "F1: questo aiuto · Ctrl+K: cerca · F11: schermo intero...",
+    # ...
+}
+EN = {
+    "topbar.equity": "EQUITY",
+    "topbar.start": "▶ START",
+    # ...
+}
+
+_current_dict = IT  # default IT come da requisito
+
+def set_language(code: str) -> None:
+    """code: 'it' | 'en'"""
+    global _current_dict
+    _current_dict = IT if code == "it" else EN
+
+def tr(key: str, **kwargs) -> str:
+    """Traduzione con interpolazione: tr('broker.connected', ms=23) -> 'Connesso · 23ms'"""
+    s = _current_dict.get(key, key)  # fallback alla chiave se manca
+    if kwargs:
+        s = s.format(**kwargs)
+    return s
+```
+
+**Aggiunta a `gui/state/app_state.py`**:
+```python
+language_changed = pyqtSignal(str)
+_language = "it"  # default
+
+@property
+def language(self) -> str:
+    return self._language
+
+@language.setter
+def language(self, v: str):
+    if v != self._language:
+        self._language = v
+        from gui.i18n import set_language
+        set_language(v)
+        self.language_changed.emit(v)
+```
+
+**Persistenza** in `QSettings`:
+```python
+# gui/app.py al boot
+from PyQt6.QtCore import QSettings
+qs = QSettings("TradingIA", "TradingIA")
+lang = qs.value("language", "it", type=str)
+AppState.instance().language = lang
+```
+
+**Selettore lingua** in `SettingsWorkspace` (Fase 2): `QComboBox` con opzioni "Italiano" / "English" → salva in QSettings + chiama `AppState.language = ...` + **richiede restart finestra** per ritradurre i widget statici (oppure ricostruisce dinamicamente — più lavoro).
+
+### 1.6.4 — Strategia di rollout
+
+**Step 1 — Audit testi**: Marco scansiona tutti i file `gui/**/*.py` per stringhe hardcoded ("EQUITY", "WATCHLIST", "CHART AREA", ecc.). Output: lista completa di stringhe da sostituire con `tr()`.
+
+**Step 2 — Crea infrastruttura**: Paky crea `gui/i18n/` con dict IT/EN basati sulla tabella sopra. Aggiunge `language` ad AppState. Boot legge QSettings.
+
+**Step 3 — Sostituzione progressiva**: Marco sostituisce stringhe hardcoded con `tr("key")` in ordine:
+1. `gui/widgets/top_bar.py` (più visibile)
+2. `gui/workspaces/dashboard.py` (più testo)
+3. `gui/main_window.py` (titolo, statusbar, shortcuts help)
+4. Tutti gli altri panel atomici (`gui/panels/*.py`)
+
+**Step 4 — Test**: lancia app in IT (default), verifica visivamente. Cambia setting in EN, riavvia, verifica. Tutti i tooltip in entrambe le lingue.
+
+### 1.6.5 — Vincoli importanti
+
+- **Nessuna libreria pesante**: NIENTE `gettext`, `babel`, `Qt Linguist`. Dict Python puro = semplice + zero deploy overhead.
+- **Fallback alla chiave**: se una chiave manca dal dict, `tr()` ritorna la chiave stessa (es. `"missing.key"` invece di crash). Marco aggiunge la chiave mancante quando la trova in test.
+- **No mix di lingue**: niente "STRATEGY: Trend4H" — o tutto IT ("STRATEGIA: Trend4H") o tutto EN.
+- **Nomi tecnici INVARIATI**: anche in dict IT, "Hurst", "Kelly", "ATR", "LSTM", "long/short" restano in inglese (vedi sezione 1.6.1).
+- **Default IT**: `_current_dict = IT` nel modulo, `qs.value("language", "it")` al boot.
 
 ---
 
