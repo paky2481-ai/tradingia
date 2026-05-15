@@ -61,6 +61,13 @@ def run(autorun: bool = False, capital: float = 1000.0, mode: str = "paper"):
 
     app.setStyleSheet(load_stylesheet())
 
+    # --- Lingua: legge QSettings, imposta AppState (che chiama set_language()) ---
+    from PyQt6.QtCore import QSettings
+    from gui.state.app_state import AppState
+    _qs = QSettings("TradingIA", "TradingIA")
+    _lang = _qs.value("language", "it", type=str)
+    AppState.instance().language = _lang
+
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 

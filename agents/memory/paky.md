@@ -5,6 +5,7 @@
 
 ## Decisioni recenti (max 20, FIFO)
 
+- 2026-05-15: Fase 1.6.2 — creata infrastruttura gui/i18n/ con 136 chiavi IT+EN (stima audit 118 era approssimativa: 57 da SPRINT.md + 79 da audit = 136 reali). AppState.language property + language_changed signal. Boot QSettings persistence in gui/app.py. Test sanità e quality gate Qt: OK.
 - 2026-05-14: Audit completo startup app — tutti i bug documentati in CLAUDE.md risultano già risolti nel codice corrente. Nessun problema attivo allo startup (verifica statica).
 - 2026-05-14: Verificato che pydantic_settings ha `extra="ignore"` solo sulla Config principale (riga 313-316). Le sub-config non ce l'hanno, ma funziona perché ogni sub usa `env_prefix` specifico.
 - 2026-05-14: Creato `gui/state/app_state.py` (AppState singleton, 11 properties con guard, bridge `connect_signal_bus`). `_on_engine_status` aggancia anche `open_positions` e `mode` da `EngineStatusEvent` (campi presenti nel dataclass).
@@ -14,6 +15,8 @@
 
 ## Lezioni apprese (permanenti)
 
+- **Conteggio chiavi i18n**: la stima "50+68=118" nell'audit era approssimativa. Conteggio reale delle righe tabella: 57 (SPRINT.md) + 79 (audit nuove) = 136. Aggiornare il test assert con il valore reale, non la stima del documento.
+- **Encoding UTF-8 su Windows**: `ast.parse(open(file).read())` fallisce su file con emoji/caratteri speciali (▶ ⏸ ● ○ …) perché PowerShell usa cp1252. Usare sempre `open(file, encoding='utf-8')` nei check sintattico su Windows.
 - **PyQt6 compatibility (regole non derogabili):**
   - `QShortcut` sta in `PyQt6.QtGui`, NON `PyQt6.QtWidgets` (al contrario di PyQt5)
   - `QAction` sta in `PyQt6.QtGui`, NON `PyQt6.QtWidgets`
@@ -34,6 +37,7 @@
 
 - [x] Implementare nuova struttura `gui/main_window.py` con QStackedWidget + ActivityBar (vedi piano)
 - [x] Creare `gui/state/app_state.py` come singleton stato globale
+- [x] Creare `gui/i18n/` con 136 chiavi IT+EN, AppState.language + boot QSettings (Fase 1.6.2)
 - [ ] Fix stati pulsanti positions/broker collegandoli a `AppState`
 - [ ] DockArea drag-and-drop con pyqtgraph (oggi: workspace switching invece di dock)
 

@@ -35,6 +35,7 @@ class AppState(QObject):
     current_hurst_changed    = pyqtSignal(float)
     mode_changed             = pyqtSignal(str)   # "paper" | "live"
     broker_latency_changed   = pyqtSignal(int)   # ms
+    language_changed         = pyqtSignal(str)   # "it" | "en"
 
     _instance: "AppState | None" = None
 
@@ -67,6 +68,7 @@ class AppState(QObject):
         self._current_hurst     = 0.5
         self._mode              = "paper"
         self._broker_latency    = 0
+        self._language          = "it"
 
     # ------------------------------------------------------------------
     # Properties con guard di cambio
@@ -201,6 +203,22 @@ class AppState(QObject):
         if v != self._broker_latency:
             self._broker_latency = v
             self.broker_latency_changed.emit(v)
+
+    # ------------------------------------------------------------------
+
+    @property
+    def language(self) -> str:
+        return self._language
+
+    @language.setter
+    def language(self, v: str) -> None:
+        if v not in ("it", "en"):
+            return
+        if v != self._language:
+            self._language = v
+            from gui.i18n import set_language
+            set_language(v)
+            self.language_changed.emit(v)
 
     # ------------------------------------------------------------------
     # Bridge SignalBus → AppState

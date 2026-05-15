@@ -13,6 +13,7 @@
 - 2026-05-14: Applicati 7 fix layout post-review: QGroupBox margin-top 14→10px, QPushButton primary max-height 28px, spacer TopBar spostato prima di mode/broker pill, header colonne _PositionsPanel, _GaugeCard inner QFrame con bordo esplicito, P&L con prefisso €, regime/hurst AppState come unica sorgente di verità.
 - 2026-05-14: Verificati fix 8-11 _AIPanel (Ondata 2): titolo QGroupBox senza separatori spurii, predizione RichText single-label, footer pinned con QFrame border-top, Sparkline hit_miss mode con dot verde/rosso e baseline tratteggiata. Quality gate: DashboardWorkspace import + istanziazione OK.
 - 2026-05-15: Ondata 3 polish finale — tooltip anchor KPIBadge (event() già presente da Ondata 2), asset icon.png 256x256 candela verde su trasparente creato in gui/assets/, centering BrokerPill dot: U+25CF→U+2022 + vertical-align:middle + AlignVCenter. Quality gate import OK.
+- 2026-05-15: Audit i18n completato — 27 file scansionati (9 con stringhe UI rilevanti), 87 stringhe da tradurre, 50 chiavi già in tabella SPRINT.md, 37 NUOVE chiavi da aggiungere.
 
 ## Lezioni apprese (permanenti)
 
