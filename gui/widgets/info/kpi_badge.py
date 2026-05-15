@@ -10,10 +10,10 @@ Design:
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QEvent
 from PyQt6.QtGui import QFont, QFontMetrics
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
+    QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget, QToolTip,
 )
 
 from .sparkline import Sparkline
@@ -195,3 +195,12 @@ class KPIBadge(QWidget):
         text_h = 9 + 1 + 14  # label + spacing + value
         sl_w = self._sparkline.width() + 7 if self._sparkline else 0
         return QSize(sl_w + text_w + 8, text_h + 4)
+
+    def event(self, e: QEvent) -> bool:
+        """Ancora il tooltip al bordo inferiore-sinistro del widget (non al cursore)."""
+        if e.type() == QEvent.Type.ToolTip:
+            if self.toolTip():
+                pos = self.mapToGlobal(self.rect().bottomLeft())
+                QToolTip.showText(pos, self.toolTip(), self)
+                return True
+        return super().event(e)

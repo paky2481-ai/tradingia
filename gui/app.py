@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import os
+from pathlib import Path
 
 # Pre-load torch BEFORE PyQt6 — evita conflitti DLL su Windows (c10.dll)
 try:
@@ -24,7 +25,7 @@ except Exception:
 
 from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 import qasync
 
 
@@ -53,6 +54,10 @@ def run(autorun: bool = False, capital: float = 1000.0, mode: str = "paper"):
     font = QFont("Segoe UI", 10)
     font.setHintingPreference(QFont.HintingPreference.PreferDefaultHinting)
     app.setFont(font)
+
+    icon_path = Path(__file__).parent / "assets" / "icon.png"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     app.setStyleSheet(load_stylesheet())
 

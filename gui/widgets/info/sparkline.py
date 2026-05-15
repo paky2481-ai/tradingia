@@ -30,8 +30,11 @@ class Sparkline(QWidget):
     Mini-chart a linea polilinea ad alta densita visiva.
 
     Parametri costruttore:
-        width, height   dimensioni fisse (default 80x24)
-        color           colore fisso opzionale; se None usa auto bull/bear
+        width, height     dimensioni fisse (default 80x24)
+        color             colore fisso opzionale; se None usa auto bull/bear
+        marker_mode       "default" (linea+area) oppure "hit_miss" (dot colorati)
+                          In modalita hit_miss: valori > 0.5 = hit (verde),
+                          valori <= 0.5 = miss (rosso). Nessuna linea di trend.
 
     API:
         set_values(values)      lista float, normalizzazione interna min/max
@@ -44,11 +47,13 @@ class Sparkline(QWidget):
         width: int = 80,
         height: int = 24,
         color: QColor | None = None,
+        marker_mode: str = "default",
     ) -> None:
         super().__init__(parent)
         self._w = width
         self._h = height
         self._force_color: QColor | None = color
+        self._marker_mode: str = marker_mode
         self._values: list[float] = []
         self._auto_color: QColor = _BULL
 
@@ -117,6 +122,39 @@ class Sparkline(QWidget):
             return QPointF(x, y)
 
         points = [to_pt(i) for i in range(n)]
+
+        # ── Modalita hit_miss: dot colorati per accuracy, nessuna area fill ──
+        if self._marker_mode == "hit_miss":
+            painter.setPen(Qt.PenStyle.NoPen)
+            # Linea di baseline tenue (soglia 0.5) per contesto visivo
+            baseline_mn = min(self._values)
+            baseline_mx = max(self._values)
+            baseline_span = baseline_mx - baseline_mn if baseline_mx != baseline_mn else 1.0
+            threshold_norm = (0.5 - baseline_mn) / baseline_span
+            threshold_norm = max(0.0, min(1.0, threshold_norm))
+            th_y = pad_y + (1.0 - threshold_norm) * draw_h
+            base_pen = QPen(QColor("#30363d"), 1.0, Qt.PenStyle.DashLine)
+            painter.setPen(base_pen)
+            painter.drawLine(
+                QPointF(pad_x, th_y),
+                QPointF(self._w - pad_x, th_y),
+            )
+            painter.setPen(Qt.PenStyle.NoPen)
+            # Dot per ogni punto: verde se hit (>0.5), rosso se miss (<=0.5)
+            dot_r = max(1.8, min(3.0, draw_w / n * 0.6))
+            for i, pt in enumerate(points):
+                val = self._values[i]
+                dot_color = _BULL if val > 0.5 else _BEAR
+                # Alone tenue
+                halo = QColor(dot_color)
+                halo.setAlpha(30)
+                painter.setBrush(QBrush(halo))
+                painter.drawEllipse(pt, dot_r * 1.6, dot_r * 1.6)
+                # Dot pieno
+                painter.setBrush(QBrush(dot_color))
+                painter.drawEllipse(pt, dot_r, dot_r)
+            painter.end()
+            return
 
         # ── 1. Area gradient sotto la linea ──────────────────────────────
         path_fill = QPainterPath()

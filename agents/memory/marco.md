@@ -9,7 +9,10 @@
 - 2026-05-14: Fix candlestick "doppie": `autoRange()` → `setAutoVisible(y=True)` + `setXRange()`.
 - 2026-05-14: Fix performance MA lines: loop O(n²) → `np.convolve` (50× più veloce).
 - 2026-05-14: Creati 4 widget MVP libreria `gui/widgets/info/` (Sparkline+area gradient, KPIBadge, RegimePill, Gauge con halo marker) + `gui/styles/dark.qss` 1203 righe Bloomberg-grade. `load_stylesheet()` aggiornato con fallback su `dark_theme.qss`.
-- 2026-05-14: Completati 3 deliverable gate review Fase 1 — HelpIcon (già presente dal task precedente), TopBar Bloomberg 42px (già presente), DashboardWorkspace 807 LOC con _WatchlistPanel, _PositionsPanel, _CenterPanel (3 Gauge cards), _AIPanel, QTimer demo liveness 2s.
+- 2026-05-14: Completati 3 deliverable gate review Fase 1 — HelpIcon, TopBar Bloomberg 42px, DashboardWorkspace 807 LOC.
+- 2026-05-14: Applicati 7 fix layout post-review: QGroupBox margin-top 14→10px, QPushButton primary max-height 28px, spacer TopBar spostato prima di mode/broker pill, header colonne _PositionsPanel, _GaugeCard inner QFrame con bordo esplicito, P&L con prefisso €, regime/hurst AppState come unica sorgente di verità.
+- 2026-05-14: Verificati fix 8-11 _AIPanel (Ondata 2): titolo QGroupBox senza separatori spurii, predizione RichText single-label, footer pinned con QFrame border-top, Sparkline hit_miss mode con dot verde/rosso e baseline tratteggiata. Quality gate: DashboardWorkspace import + istanziazione OK.
+- 2026-05-15: Ondata 3 polish finale — tooltip anchor KPIBadge (event() già presente da Ondata 2), asset icon.png 256x256 candela verde su trasparente creato in gui/assets/, centering BrokerPill dot: U+25CF→U+2022 + vertical-align:middle + AlignVCenter. Quality gate import OK.
 
 ## Lezioni apprese (permanenti)
 
@@ -20,6 +23,7 @@
 - **Color palette ridotta:** 8 colori semantici (bull/bear/neutral/warn/info/accent/bg/surface) sono sufficienti per qualsiasi trading UI. Più colori = cognitive load.
 - **Font numerico:** sempre monospace tabulare (Roboto Mono / JetBrains Mono) per cifre allineate.
 - **Animazioni:** mai > 200ms, sempre discrete. Flash al tick: 100ms fade. No transitions globali QSS.
+- **QFrame border vs QSS globale:** `QFrame { border: none; }` nel QSS globale NON sovrascrive gli stili inline (specificità inline > QSS). Ma per bordi garantiti su card, usare un QFrame figlio con stylesheet diretta anziché affidarsi a objectName + regola `#ID` (che può confliggersi con re-parenting).
 
 ## Pattern di rendering scoperti
 

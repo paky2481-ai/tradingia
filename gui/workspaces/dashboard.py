@@ -90,6 +90,35 @@ def _random_walk(n: int, start: float, sigma: float) -> list[float]:
     return vals
 
 
+def _make_hit_miss_history(n: int, hit_rate: float = 0.70) -> list[float]:
+    """
+    Genera una sequenza di n valori 0/1 con la hit_rate indicata,
+    distribuita in modo non uniforme per sembrare storico reale.
+    I valori usati: 0.75 per hit (> 0.5), 0.25 per miss (<= 0.5).
+    Questo garantisce la visualizzazione corretta in modalita hit_miss.
+    """
+    result: list[float] = []
+    hits_left = round(n * hit_rate)
+    misses_left = n - hits_left
+    for _ in range(n):
+        if hits_left == 0:
+            result.append(0.25)
+            misses_left -= 1
+        elif misses_left == 0:
+            result.append(0.75)
+            hits_left -= 1
+        else:
+            # Probabilita pesata per evitare alternanza troppo regolare
+            p_hit = hits_left / (hits_left + misses_left)
+            if random.random() < p_hit:
+                result.append(0.75)
+                hits_left -= 1
+            else:
+                result.append(0.25)
+                misses_left -= 1
+    return result
+
+
 def _label(
     text: str,
     size: int = 12,
@@ -269,6 +298,15 @@ class _PositionsPanel(QGroupBox):
         lay.setSpacing(4)
 
         if _POSITIONS_DEMO:
+            # Header colonne
+            header_lbl = QLabel("SIMBOLO    DIR    ENTRY → ATTUALE    P&L")
+            header_lbl.setStyleSheet(
+                f"color:{_MUTED}; font-size:10px; font-family:{_MONO_STACK};"
+                "  background:transparent; border:none; padding:2px 6px;"
+            )
+            lay.addWidget(header_lbl)
+            lay.addWidget(_vsep())
+
             for pos in _POSITIONS_DEMO:
                 lay.addWidget(self._make_row(*pos))
                 if pos is not _POSITIONS_DEMO[-1]:
@@ -316,7 +354,7 @@ class _PositionsPanel(QGroupBox):
 
         # P&L
         pnl_lbl = _label(
-            f"{pnl_sign}{pnl:.2f}",
+            f"€{pnl_sign}{pnl:.2f}",
             size=11, color=pnl_color, bold=True, mono=True,
         )
         pnl_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -360,19 +398,25 @@ class _GaugeCard(QFrame):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("GaugeCard")
-        self.setStyleSheet(
-            "#GaugeCard {"
-            f"  background:{_BG_ELEVATED};"
-            f"  border:1px solid {_BORDER};"
-            "  border-radius:6px;"
-            "  padding:4px;"
-            "}"
-        )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        lay = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Container esplicito con bordo visibile (evita override da QSS globale)
+        inner_frame = QFrame(self)
+        inner_frame.setStyleSheet(
+            "background:#161b22;"
+            "border:1px solid #30363d;"
+            "border-radius:4px;"
+            "padding:4px;"
+        )
+
+        lay = QVBoxLayout(inner_frame)
         lay.setContentsMargins(8, 6, 8, 8)
         lay.setSpacing(4)
+        outer.addWidget(inner_frame)
 
         # Riga titolo + help icon
         header = QHBoxLayout()
@@ -537,7 +581,13 @@ class _AIPanel(QGroupBox):
     Mini AI analysis panel per il gate review.
 
     Mostra: RegimePill, Gauge confidence, predizione corrente,
-    sparkline storia predizioni, strategy info.
+    sparkline storia predizioni (hit_miss mode), strategy footer.
+
+    Fix applicati:
+      8 — QGroupBox titolo senza separatori/border-top spurii (margin solo nel QSS)
+      9 — Predizione come singolo QLabel RichText (no layout a 2 colonne)
+     10 — Strategy/signal in footer QFrame pinned in fondo
+     11 — History sparkline in modalita hit_miss con dati demo 70% accuracy
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -545,16 +595,20 @@ class _AIPanel(QGroupBox):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self.setFixedWidth(280)
 
+        # Fix 8: margin-top 18px lascia spazio al titolo QGroupBox senza
+        # aggiungere separatori espliciti. Nessun QFrame HLine prima del pill.
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(8, 14, 8, 12)
+        lay.setContentsMargins(8, 18, 8, 0)
         lay.setSpacing(8)
 
-        # RegimePill
+        # RegimePill — valori iniziali da AppState (nessun hard-code)
         self._regime_pill = RegimePill()
-        self._regime_pill.set_regime("trending", 0.62)
+        _init_state = AppState.instance()
+        self._regime_pill.set_regime(
+            _init_state.current_regime or "unknown",
+            _init_state.current_hurst,
+        )
         lay.addWidget(self._regime_pill, 0, Qt.AlignmentFlag.AlignLeft)
-
-        lay.addWidget(_vsep())
 
         # Gauge Confidence + HelpIcon
         conf_header = QHBoxLayout()
@@ -594,24 +648,17 @@ class _AIPanel(QGroupBox):
 
         lay.addWidget(_vsep())
 
-        # Predizione corrente
-        pred_row = QHBoxLayout()
-        pred_row.setContentsMargins(0, 0, 0, 0)
-        pred_row.setSpacing(6)
-
-        pred_icon = _label("▲", size=18, color=_BULL, bold=True)
-        pred_row.addWidget(pred_icon)
-
-        pred_right = QVBoxLayout()
-        pred_right.setSpacing(1)
-        self._pred_label = _label("LONG", size=14, color=_BULL, bold=True, mono=True)
-        pred_right.addWidget(self._pred_label)
-        pred_sub = _label("AI Prediction", size=9, color=_MUTED)
-        pred_right.addWidget(pred_sub)
-        pred_row.addLayout(pred_right)
-        pred_row.addStretch(1)
-
-        lay.addLayout(pred_row)
+        # Fix 9: predizione corrente come singolo QLabel RichText.
+        # Icona ▲, testo "LONG", sottotitolo "AI Prediction" su una riga compatta.
+        self._pred_label = QLabel(
+            '<span style="color:#3fb950;font-size:18px;">▲</span>'
+            '&nbsp;<b style="color:#3fb950;font-size:14px;">LONG</b>'
+            '&nbsp;<span style="color:#8b949e;font-size:10px;">AI Prediction</span>'
+        )
+        self._pred_label.setTextFormat(Qt.TextFormat.RichText)
+        self._pred_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._pred_label.setStyleSheet("background:transparent; border:none;")
+        lay.addWidget(self._pred_label)
 
         lay.addWidget(_vsep())
 
@@ -624,27 +671,45 @@ class _AIPanel(QGroupBox):
         )
         lay.addWidget(spark_header)
 
-        self._pred_sparkline = Sparkline(width=240, height=28)
-        pred_history = _random_walk(_SL_LEN, 0.65, 0.04)
-        # Clamp 0-1
-        pred_history = [max(0.0, min(1.0, v)) for v in pred_history]
+        # Fix 11: sparkline in hit_miss mode con ~70% accuracy demo.
+        # Sequenza realistica: 70 hit / 30 miss su 50 campioni, distribuiti
+        # in modo non uniforme per sembrare dati reali (non alterni regolari).
+        self._pred_sparkline = Sparkline(width=240, height=28, marker_mode="hit_miss")
+        pred_history = _make_hit_miss_history(_SL_LEN, hit_rate=0.70)
         self._pred_sparkline.set_values(pred_history)
         lay.addWidget(self._pred_sparkline)
 
-        lay.addWidget(_vsep())
-
-        # Riga info strategy
-        self._strategy_lbl = _label(
-            "Strategy: Trend4H", size=10, color=_TEXT
-        )
-        lay.addWidget(self._strategy_lbl)
-
-        self._signal_lbl = _label(
-            "Last signal: 4m ago", size=10, color=_MUTED
-        )
-        lay.addWidget(self._signal_lbl)
-
+        # Stretch spinge il footer in fondo
         lay.addStretch(1)
+
+        # Fix 10: footer pinned in fondo con bordo top e sfondo leggermente
+        # diverso dal pannello. Strategy + last signal dentro al footer.
+        footer = QFrame()
+        footer.setStyleSheet(
+            f"background:{_BG_BASE};"
+            f"border-top:1px solid {_BORDER};"
+            "border-radius:0px;"
+            "padding:0px;"
+        )
+        footer_lay = QVBoxLayout(footer)
+        footer_lay.setContentsMargins(6, 6, 6, 6)
+        footer_lay.setSpacing(2)
+
+        self._strategy_lbl = QLabel("Strategy: Trend4H")
+        self._strategy_lbl.setStyleSheet(
+            f"font-size:9px; color:{_TEXT}; font-family:{_UI_STACK};"
+            "  background:transparent; border:none;"
+        )
+        footer_lay.addWidget(self._strategy_lbl)
+
+        self._signal_lbl = QLabel("Last signal: 4m ago")
+        self._signal_lbl.setStyleSheet(
+            f"font-size:9px; color:{_MUTED}; font-family:{_UI_STACK};"
+            "  background:transparent; border:none;"
+        )
+        footer_lay.addWidget(self._signal_lbl)
+
+        lay.addWidget(footer)
 
         # Store per tick demo
         self._pred_data: deque[float] = deque(pred_history, maxlen=_SL_LEN)
@@ -652,24 +717,33 @@ class _AIPanel(QGroupBox):
     # ── API pubblica ──────────────────────────────────────────────────────────
 
     def tick_pred(self) -> None:
-        """Aggiunge un punto predizione demo (simulazione live)."""
-        new_val = max(0.0, min(1.0, self._pred_data[-1] + random.gauss(0, 0.03)))
+        """Aggiunge un punto predizione demo (simulazione live).
+
+        In modalita hit_miss i valori demo sono 0.75 (hit) o 0.25 (miss)
+        con probabilita ~70% hit — coerente con i dati iniziali.
+        """
+        # Fix 11: i tick demo usano valori 0.75/0.25 coerenti con hit_miss
+        if random.random() < 0.70:
+            new_val = 0.75  # hit
+        else:
+            new_val = 0.25  # miss
         self._pred_data.append(new_val)
         self._pred_sparkline.set_values(list(self._pred_data))
 
-        # Aggiorna label predizione in base all'ultimo valore
+        # Fix 9: aggiorna RichText mantenendo il formato icona+testo+sottotitolo
         if new_val > 0.5:
-            self._pred_label.setText("LONG")
-            self._pred_label.setStyleSheet(
-                f"color:{_BULL}; font-size:14px; font-weight:700;"
-                f" font-family:{_MONO_STACK}; background:transparent; border:none;"
-            )
+            icon_char = "▲"
+            color = _BULL
+            direction = "LONG"
         else:
-            self._pred_label.setText("SHORT")
-            self._pred_label.setStyleSheet(
-                f"color:{_BEAR}; font-size:14px; font-weight:700;"
-                f" font-family:{_MONO_STACK}; background:transparent; border:none;"
-            )
+            icon_char = "▼"
+            color = _BEAR
+            direction = "SHORT"
+        self._pred_label.setText(
+            f'<span style="color:{color};font-size:18px;">{icon_char}</span>'
+            f'&nbsp;<b style="color:{color};font-size:14px;">{direction}</b>'
+            f'&nbsp;<span style="color:#8b949e;font-size:10px;">AI Prediction</span>'
+        )
 
     def update_regime(self, regime: str, hurst: float) -> None:
         self._regime_pill.set_regime(regime, hurst)
@@ -780,19 +854,23 @@ class DashboardWorkspace(QWidget):
         # 2. AI panel: nuovo punto predizione
         self._ai_panel.tick_pred()
 
-        # 3. Hurst drift lento ±0.02
+        # 3. Hurst drift lento ±0.02 — unica sorgente di verità via AppState
         self._demo_hurst += random.uniform(-0.02, 0.02)
         self._demo_hurst = max(0.2, min(0.85, self._demo_hurst))
         self._center.set_hurst(self._demo_hurst)
+        state.current_hurst = round(self._demo_hurst, 4)
 
-        # Aggiorna anche regime pill in AI panel
+        # Regime determinato centralmente e scritto in AppState
         if self._demo_hurst > 0.6:
             regime = "trending"
         elif self._demo_hurst < 0.4:
             regime = "cycling"
         else:
             regime = "choppy"
-        self._ai_panel.update_regime(regime, self._demo_hurst)
+        state.current_regime = regime
+
+        # AI panel legge da AppState (nessun random indipendente)
+        self._ai_panel.update_regime(state.current_regime, state.current_hurst)
 
         # 4. Equity random walk → AppState (triggera TopBar via signal)
         delta = random.gauss(5.0, 40.0)

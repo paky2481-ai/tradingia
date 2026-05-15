@@ -77,6 +77,8 @@ class _BrokerPill(QLabel):
         self.setStyleSheet(
             f"font-family:{mono}; font-size:11px; background:transparent; border:none;"
         )
+        self.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self.setContentsMargins(0, 0, 0, 0)
         self.setToolTip(
             "Latency ping al broker. <50ms ottimo, >200ms degradato."
         )
@@ -94,11 +96,14 @@ class _BrokerPill(QLabel):
                 color = _WARN
             else:
                 color = _BEAR
-            text = f"● {self._latency}ms"
+            text = f"• {self._latency}ms"
         else:
             color = _BEAR
-            text = "● ---"
-        self.setText(f'<span style="color:{color}">{text}</span>')
+            text = "• ---"
+        # vertical-align:middle allinea il bullet al centro della riga di testo
+        self.setText(
+            f'<span style="color:{color}; vertical-align:middle;">{text}</span>'
+        )
         self.setTextFormat(Qt.TextFormat.RichText)
 
 
@@ -266,6 +271,11 @@ class TopBar(QFrame):
 
         lay.addWidget(_make_separator())
 
+        # 9. Spacer — spinge il blocco destra verso il margine destro ──────────
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        lay.addWidget(spacer)
+
         # 7. Mode pill ────────────────────────────────────────────────────────
         self._mode_pill = _ModePill()
         lay.addWidget(self._mode_pill, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -273,11 +283,6 @@ class TopBar(QFrame):
         # 8. Broker pill ──────────────────────────────────────────────────────
         self._broker_pill = _BrokerPill()
         lay.addWidget(self._broker_pill, 0, Qt.AlignmentFlag.AlignVCenter)
-
-        # 9. Spacer ───────────────────────────────────────────────────────────
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        lay.addWidget(spacer)
 
         # 10. Clock UTC ───────────────────────────────────────────────────────
         self._clock_label = QLabel("00:00:00 UTC")

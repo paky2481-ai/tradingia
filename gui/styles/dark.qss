@@ -374,6 +374,8 @@ QPushButton#btn_primary {
     background-color: #238636;
     border-color: #2ea043;
     color: #ffffff;
+    max-height: 28px;
+    padding: 0 12px;
 }
 
 QPushButton[variant="primary"]:hover,
@@ -926,8 +928,8 @@ QLabel[role="tag"] {
 QGroupBox {
     border: 1px solid #21262d;
     border-radius: 5px;
-    margin-top: 14px;
-    padding-top: 10px;
+    margin-top: 10px;
+    padding-top: 8px;
     color: #8b949e;
     font-weight: 600;
     font-size: 11px;

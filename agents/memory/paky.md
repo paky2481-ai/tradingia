@@ -9,6 +9,7 @@
 - 2026-05-14: Verificato che pydantic_settings ha `extra="ignore"` solo sulla Config principale (riga 313-316). Le sub-config non ce l'hanno, ma funziona perché ogni sub usa `env_prefix` specifico.
 - 2026-05-14: Creato `gui/state/app_state.py` (AppState singleton, 11 properties con guard, bridge `connect_signal_bus`). `_on_engine_status` aggancia anche `open_positions` e `mode` da `EngineStatusEvent` (campi presenti nel dataclass).
 - 2026-05-14: Riscritto `gui/main_window.py` da 372→121 LOC. Layout: TopBar(42px)+QStackedWidget con DashboardWorkspace. Rimossi 9 QDockWidget, LogPanel interno, tutti i panel non usati (chart, watchlist, data, ai, engine, positions, backtest, pattern, broker). Aggiunti F1/Ctrl+K/F11 shortcut e bridge connect_signal_bus in __init__.
+- 2026-05-15: Registrato gui/assets/icon.png come window icon in gui/app.py — gia' presente (Path(__file__).parent / "assets" / "icon.png" con guard exists()), nessuna modifica necessaria.
 - 2026-05-14: Fix `QShortcut` import — in PyQt6 sta in `QtGui` non `QtWidgets`. App falliva subito allo startup.
 
 ## Lezioni apprese (permanenti)
