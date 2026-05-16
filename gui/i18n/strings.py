@@ -31,6 +31,7 @@ IT: dict[str, str] = {
     # ---- workspace labels -----------------------------------------------------
     "workspace.dashboard":         "Cruscotto",
     "workspace.order":             "Ordini",
+    "workspace.order_ticket":      "Ordini",
     "workspace.analysis":          "Analisi",
     "workspace.backtest":          "Backtest",
     "workspace.patterns":          "Pattern",
@@ -202,6 +203,72 @@ IT: dict[str, str] = {
     # ---- pattern panel --------------------------------------------------------
     "pattern.col.direction":       "Direzione",
     "pattern.col.age_min":         "Da (min)",
+
+    # ---- order ticket workspace -----------------------------------------------
+    "order.group_title":           "Nuovo Ordine",
+    "order.field.symbol":          "Strumento",
+    "order.field.direction":       "Direzione",
+    "order.field.quantity":        "Quantità",
+    "order.field.type":            "Tipo",
+    "order.field.price":           "Prezzo",
+    "order.sl_label":              "Stop Loss",
+    "order.tp_label":              "Take Profit",
+    "order.btn_submit":            "Invia Ordine",
+    "order.risk_capital":          "Capitale a rischio",
+    "order.risk_rr":               "R:R atteso",
+    "order.risk_kelly":            "Kelly suggerito",
+    "order.header.time":           "ORARIO",
+    "order.header.symbol":         "STRUMENTO",
+    "order.header.direction":      "DIR",
+    "order.header.type":           "TIPO",
+    "order.header.quantity":       "QTÀ",
+    "order.header.price":          "PREZZO",
+    "order.header.status":         "STATO",
+    "order.header.pnl":            "P&L",
+    "order.placeholder.symbol":    "es. AAPL, EURUSD=X, BTC-USD",
+    "workspace.subtitle.order_ticket": "Crea e gestisci ordini",
+
+    # ---- workspace subtitles (altri workspace) --------------------------------
+    "workspace.subtitle.dashboard":    "Panoramica live di mercato e posizioni",
+    "workspace.subtitle.analysis":     "Analisi AI, grafico e dati fondamentali",
+    "workspace.subtitle.backtest":     "Simulazione storica strategie",
+    "workspace.subtitle.patterns":     "Riconoscimento pattern grafici",
+    "workspace.subtitle.settings":     "Configura preferenze, broker e parametri di rischio",
+
+    # ---- settings — sezioni ---------------------------------------------------
+    "settings.section.general":        "Generale",
+    "settings.section.broker":         "Broker",
+    "settings.section.risk":           "Rischio",
+    "settings.section.info":           "Informazioni",
+
+    # ---- settings — lingua ----------------------------------------------------
+    "settings.lang_label":             "Lingua interfaccia",
+    "settings.lang_restart_title":     "Riavvio richiesto",
+    "settings.lang_restart_body":      "La lingua sarà completamente applicata al prossimo avvio dell'applicazione.",
+
+    # ---- settings — tema -------------------------------------------------------
+    "settings.theme_label":            "Tema",
+    "settings.theme_dark":             "Scuro (default)",
+    "settings.theme_light_soon":       "Chiaro (presto)",
+
+    # ---- settings — broker -----------------------------------------------------
+    "settings.btn_open_broker":        "Apri impostazioni broker",
+    "settings.broker_dialog_title":    "Impostazioni Broker",
+
+    # ---- settings — rischio ----------------------------------------------------
+    "settings.risk.initial_capital":   "Capitale iniziale",
+    "settings.risk.per_trade_pct":     "Rischio per trade",
+    "settings.risk.max_drawdown":      "Drawdown massimo",
+    "settings.btn_save_env":           "Salva su .env",
+    "settings.env_saved":              "Impostazioni salvate in {path}. Riavvia l'app per applicarle.",
+    "settings.env_error":              "Errore salvataggio: {error}",
+
+    # ---- settings — info -------------------------------------------------------
+    "settings.info.version":           "Versione app",
+    "settings.info.python":            "Python",
+    "settings.info.pyqt":              "PyQt6",
+    "settings.info.env_path":          "Percorso .env",
+    "settings.info.db_path":           "Percorso DB",
 }
 
 
@@ -217,6 +284,7 @@ EN: dict[str, str] = {
     # ---- workspace labels -----------------------------------------------------
     "workspace.dashboard":         "Dashboard",
     "workspace.order":             "Order Ticket",
+    "workspace.order_ticket":      "Order Ticket",
     "workspace.analysis":          "Analysis",
     "workspace.backtest":          "Backtest",
     "workspace.patterns":          "Patterns",
@@ -388,6 +456,72 @@ EN: dict[str, str] = {
     # ---- pattern panel --------------------------------------------------------
     "pattern.col.direction":       "Direction",
     "pattern.col.age_min":         "Age (min)",
+
+    # ---- order ticket workspace -----------------------------------------------
+    "order.group_title":           "New Order",
+    "order.field.symbol":          "Symbol",
+    "order.field.direction":       "Direction",
+    "order.field.quantity":        "Quantity",
+    "order.field.type":            "Type",
+    "order.field.price":           "Price",
+    "order.sl_label":              "Stop Loss",
+    "order.tp_label":              "Take Profit",
+    "order.btn_submit":            "Submit Order",
+    "order.risk_capital":          "Risk capital",
+    "order.risk_rr":               "Expected R:R",
+    "order.risk_kelly":            "Suggested Kelly",
+    "order.header.time":           "TIME",
+    "order.header.symbol":         "SYMBOL",
+    "order.header.direction":      "DIR",
+    "order.header.type":           "TYPE",
+    "order.header.quantity":       "QTY",
+    "order.header.price":          "PRICE",
+    "order.header.status":         "STATUS",
+    "order.header.pnl":            "P&L",
+    "order.placeholder.symbol":    "e.g. AAPL, EURUSD=X, BTC-USD",
+    "workspace.subtitle.order_ticket": "Create and manage orders",
+
+    # ---- workspace subtitles (altri workspace) --------------------------------
+    "workspace.subtitle.dashboard":    "Live market and positions overview",
+    "workspace.subtitle.analysis":     "AI analysis, chart and fundamental data",
+    "workspace.subtitle.backtest":     "Historical strategy simulation",
+    "workspace.subtitle.patterns":     "Chart pattern recognition",
+    "workspace.subtitle.settings":     "Configure preferences, broker and risk parameters",
+
+    # ---- settings — sezioni ---------------------------------------------------
+    "settings.section.general":        "General",
+    "settings.section.broker":         "Broker",
+    "settings.section.risk":           "Risk",
+    "settings.section.info":           "Information",
+
+    # ---- settings — lingua ----------------------------------------------------
+    "settings.lang_label":             "Interface language",
+    "settings.lang_restart_title":     "Restart required",
+    "settings.lang_restart_body":      "The language will be fully applied on the next application start.",
+
+    # ---- settings — tema -------------------------------------------------------
+    "settings.theme_label":            "Theme",
+    "settings.theme_dark":             "Dark (default)",
+    "settings.theme_light_soon":       "Light (soon)",
+
+    # ---- settings — broker -----------------------------------------------------
+    "settings.btn_open_broker":        "Open broker settings",
+    "settings.broker_dialog_title":    "Broker Settings",
+
+    # ---- settings — rischio ----------------------------------------------------
+    "settings.risk.initial_capital":   "Initial capital",
+    "settings.risk.per_trade_pct":     "Risk per trade",
+    "settings.risk.max_drawdown":      "Max drawdown",
+    "settings.btn_save_env":           "Save to .env",
+    "settings.env_saved":              "Settings saved to {path}. Restart the app to apply.",
+    "settings.env_error":              "Save error: {error}",
+
+    # ---- settings — info -------------------------------------------------------
+    "settings.info.version":           "App version",
+    "settings.info.python":            "Python",
+    "settings.info.pyqt":              "PyQt6",
+    "settings.info.env_path":          ".env path",
+    "settings.info.db_path":           "DB path",
 }
 
 

@@ -5,6 +5,7 @@
 
 ## Decisioni recenti (max 20, FIFO)
 
+- 2026-05-16: Fase 2 — SettingsWorkspace (gui/workspaces/settings.py, ~230 LOC): sezioni Generale/Broker/Rischio/Info, persistenza .env manuale+dotenv fallback, BrokerPanel popup. main_window.py esteso a 6 workspace con import graceful per workspace Marco, shortcut Ctrl+1..6, persistenza QSettings geometry+active_workspace. 43 chiavi nuove in strings.py IT+EN (incluse workspace.order_ticket e workspace.subtitle.*). Quality gate: PASS.
 - 2026-05-15: Fase 1.6.2 — creata infrastruttura gui/i18n/ con 136 chiavi IT+EN (stima audit 118 era approssimativa: 57 da SPRINT.md + 79 da audit = 136 reali). AppState.language property + language_changed signal. Boot QSettings persistence in gui/app.py. Test sanità e quality gate Qt: OK.
 - 2026-05-14: Audit completo startup app — tutti i bug documentati in CLAUDE.md risultano già risolti nel codice corrente. Nessun problema attivo allo startup (verifica statica).
 - 2026-05-14: Verificato che pydantic_settings ha `extra="ignore"` solo sulla Config principale (riga 313-316). Le sub-config non ce l'hanno, ma funziona perché ogni sub usa `env_prefix` specifico.
@@ -14,6 +15,8 @@
 - 2026-05-14: Fix `QShortcut` import — in PyQt6 sta in `QtGui` non `QtWidgets`. App falliva subito allo startup.
 
 ## Lezioni apprese (permanenti)
+
+- **i18n workspace names**: il nome nel dizionario `_WORKSPACE_DEFS` (es. `"order_ticket"`) deve avere una chiave `workspace.<name>` corrispondente in strings.py. Usare nomi divergenti (es. `workspace.order` vs `_WORKSPACE_NAMES[1]="order_ticket"`) causa fallback alla chiave grezza nella statusbar. Aggiungere sempre l'alias esatto.
 
 - **Conteggio chiavi i18n**: la stima "50+68=118" nell'audit era approssimativa. Conteggio reale delle righe tabella: 57 (SPRINT.md) + 79 (audit nuove) = 136. Aggiornare il test assert con il valore reale, non la stima del documento.
 - **Encoding UTF-8 su Windows**: `ast.parse(open(file).read())` fallisce su file con emoji/caratteri speciali (▶ ⏸ ● ○ …) perché PowerShell usa cp1252. Usare sempre `open(file, encoding='utf-8')` nei check sintattico su Windows.
@@ -38,6 +41,7 @@
 - [x] Implementare nuova struttura `gui/main_window.py` con QStackedWidget + ActivityBar (vedi piano)
 - [x] Creare `gui/state/app_state.py` come singleton stato globale
 - [x] Creare `gui/i18n/` con 136 chiavi IT+EN, AppState.language + boot QSettings (Fase 1.6.2)
+- [x] SettingsWorkspace + integrazione 6 workspace in main_window.py con Ctrl+1..6 (Fase 2)
 - [ ] Fix stati pulsanti positions/broker collegandoli a `AppState`
 - [ ] DockArea drag-and-drop con pyqtgraph (oggi: workspace switching invece di dock)
 
