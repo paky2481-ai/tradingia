@@ -34,6 +34,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from gui.i18n import tr
 from gui.state.app_state import AppState
 from gui.widgets.info import HelpIcon, KPIBadge, RegimePill
 
@@ -79,9 +80,7 @@ class _BrokerPill(QLabel):
         )
         self.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         self.setContentsMargins(0, 0, 0, 0)
-        self.setToolTip(
-            "Latency ping al broker. <50ms ottimo, >200ms degradato."
-        )
+        self.setToolTip(tr("tooltip.broker"))
 
     def update_state(self, connected: bool, latency_ms: int) -> None:
         self._connected = connected
@@ -121,9 +120,7 @@ class _ModePill(QLabel):
         super().__init__(parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setFixedHeight(18)
-        self.setToolTip(
-            "PAPER = simulato (nessun rischio). LIVE = soldi reali sul conto broker."
-        )
+        self.setToolTip(tr("tooltip.mode"))
         self._apply("paper")
 
     def set_mode(self, mode: str) -> None:
@@ -215,10 +212,10 @@ class TopBar(QFrame):
         lay.setSpacing(10)
 
         # 1. Engine button ────────────────────────────────────────────────────
-        self._engine_btn = QPushButton("▶ START")
+        self._engine_btn = QPushButton(tr("topbar.start"))
         self._engine_btn.setProperty("variant", "primary")
         self._engine_btn.setFixedSize(100, 28)
-        self._engine_btn.setToolTip("Avvia il motore di trading automatico")
+        self._engine_btn.setToolTip(tr("topbar.engine_start_tip"))
         self._engine_btn.clicked.connect(self._toggle_engine)
         lay.addWidget(self._engine_btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -226,42 +223,32 @@ class TopBar(QFrame):
 
         # 2. EQUITY + sparkline ───────────────────────────────────────────────
         self._badge_equity = KPIBadge(
-            "EQUITY",
+            tr("topbar.equity"),
             show_sparkline=True,
             sparkline_width=60,
             sparkline_height=20,
         )
         self._badge_equity.set_value("—")
-        self._badge_equity.setToolTip(
-            "Capitale totale (cash + valore posizioni aperte)."
-            " La sparkline mostra l'andamento delle ultime 50 osservazioni."
-        )
+        self._badge_equity.setToolTip(tr("tooltip.equity"))
         self._badge_equity.set_sparkline_values(list(self._equity_history))
         lay.addWidget(self._badge_equity, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 3. P&L DAY ──────────────────────────────────────────────────────────
-        self._badge_pnl = KPIBadge("P&L DAY")
+        self._badge_pnl = KPIBadge(tr("topbar.pnl_day"))
         self._badge_pnl.set_value("—")
-        self._badge_pnl.setToolTip(
-            "Profitto/perdita realizzato + non-realizzato di oggi."
-            " Resettato a mezzanotte UTC."
-        )
+        self._badge_pnl.setToolTip(tr("tooltip.pnl_day"))
         lay.addWidget(self._badge_pnl, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 4. POS ──────────────────────────────────────────────────────────────
-        self._badge_pos = KPIBadge("POS")
+        self._badge_pos = KPIBadge(tr("topbar.positions"))
         self._badge_pos.set_value("0/5")
-        self._badge_pos.setToolTip(
-            "Posizioni attualmente aperte / massimo configurato."
-        )
+        self._badge_pos.setToolTip(tr("tooltip.positions"))
         lay.addWidget(self._badge_pos, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 5. WIN% ─────────────────────────────────────────────────────────────
-        self._badge_win = KPIBadge("WIN")
+        self._badge_win = KPIBadge(tr("topbar.win_rate"))
         self._badge_win.set_value("—")
-        self._badge_win.setToolTip(
-            "Percentuale di trade chiusi in profitto sugli ultimi 30 giorni."
-        )
+        self._badge_win.setToolTip(tr("tooltip.win_rate"))
         lay.addWidget(self._badge_win, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 6. RegimePill ───────────────────────────────────────────────────────
@@ -291,22 +278,13 @@ class TopBar(QFrame):
             '  font-family:"Consolas","Cascadia Code",monospace;'
             "  background:transparent; border:none;"
         )
-        self._clock_label.setToolTip(
-            "Ora UTC corrente. I mercati usano UTC come riferimento."
-        )
+        self._clock_label.setToolTip(tr("tooltip.clock"))
         lay.addWidget(self._clock_label, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # 11. HelpIcon globale ────────────────────────────────────────────────
         self._help_icon = HelpIcon(
-            title="Shortcut tastiera",
-            body=(
-                "F1 = Aiuto contestuale\n"
-                "Ctrl+K = Ricerca comandi\n"
-                "F11 = Fullscreen\n"
-                "Ctrl+R = Avvia/Ferma engine\n"
-                "Ctrl+W = Chiudi tab corrente\n"
-                "Ctrl+1..9 = Switcha workspace"
-            ),
+            title=tr("help.shortcuts.title"),
+            body=tr("help.shortcuts.body"),
         )
         lay.addWidget(self._help_icon, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -342,13 +320,13 @@ class TopBar(QFrame):
 
     def _on_engine_state(self, running: bool) -> None:
         if running:
-            self._engine_btn.setText("⏸ STOP")
+            self._engine_btn.setText(tr("topbar.stop"))
             self._engine_btn.setProperty("variant", "danger")
-            self._engine_btn.setToolTip("Ferma il motore di trading automatico")
+            self._engine_btn.setToolTip(tr("topbar.engine_stop_tip"))
         else:
-            self._engine_btn.setText("▶ START")
+            self._engine_btn.setText(tr("topbar.start"))
             self._engine_btn.setProperty("variant", "primary")
-            self._engine_btn.setToolTip("Avvia il motore di trading automatico")
+            self._engine_btn.setToolTip(tr("topbar.engine_start_tip"))
         # Forza il refresh dello stile QSS (il property non aggiorna automaticamente)
         self._engine_btn.style().unpolish(self._engine_btn)
         self._engine_btn.style().polish(self._engine_btn)

@@ -18,45 +18,51 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QSizePolicy, QWidget
 
+from gui.i18n import tr
+
 
 # ── Configurazione regimi ─────────────────────────────────────────────────────
 # Simboli ASCII-safe per evitare buchi con font privi di glifi Unicode rari.
 # "~" per choppy e "~" per cycling e' intenzionale: su trading terminal
 # il simbolo universale di rumore e' "~".
+# label e tooltip sono caricati dinamicamente via tr() al momento del render
+# per supportare cambio lingua runtime.
 _REGIMES: dict[str, dict] = {
     "trending": {
         "symbol": "^",
-        "label":  "TRENDING",
         "bg":     QColor(13, 51, 32),     # verde molto scuro  #0d3320
         "border": QColor(46, 160, 67),    # #2ea043
         "text":   QColor(63, 185, 80),    # #3fb950 BULL
-        "tooltip": "Mercato direzionale. Hurst > 0.6: momentum persistente.",
     },
     "choppy": {
         "symbol": "~",
-        "label":  "CHOPPY",
         "bg":     QColor(28, 29, 33),     # grigio neutro scuro
         "border": QColor(72, 79, 88),     # #484f58
         "text":   QColor(139, 148, 158),  # #8b949e MUTED
-        "tooltip": "Mercato laterale rumoroso. Hurst ~0.5: random walk.",
     },
     "cycling": {
         "symbol": "o",
-        "label":  "CYCLING",
         "bg":     QColor(10, 22, 40),     # blu scuro #0a1628
         "border": QColor(31, 111, 235),   # #1f6feb
         "text":   QColor(88, 166, 255),   # #58a6ff INFO light
-        "tooltip": "Mercato ciclico mean-reverting. Hurst < 0.4: anti-persistente.",
     },
     "unknown": {
         "symbol": "?",
-        "label":  "UNKNOWN",
         "bg":     QColor(22, 27, 34),     # #161b22 BG_SURFACE
         "border": QColor(48, 54, 61),     # #30363d BORDER
         "text":   QColor(72, 79, 88),     # #484f58 TEXT_DIM
-        "tooltip": "Regime non determinato. Dati insufficienti.",
     },
 }
+
+
+def _regime_label(regime: str) -> str:
+    """Ritorna la label tradotta per il regime (es. 'IN TREND' in IT, 'TRENDING' in EN)."""
+    return tr(f"regime.{regime}")
+
+
+def _regime_tooltip(regime: str) -> str:
+    """Ritorna il tooltip tradotto per il regime."""
+    return tr(f"regime.tooltip.{regime}")
 
 _PILL_H  = 22   # altezza fissa pill
 _RADIUS  = 11   # border-radius = altezza/2 per pill perfetto
@@ -112,7 +118,7 @@ class RegimePill(QWidget):
         """Ricalcola il testo e la larghezza auto-fit."""
         cfg = _REGIMES[self._regime]
         sym  = cfg["symbol"]
-        lbl  = cfg["label"]
+        lbl  = _regime_label(self._regime)
 
         if self._hurst is not None:
             self._text = f"{sym} {lbl}  H {self._hurst:.2f}"
@@ -124,7 +130,7 @@ class RegimePill(QWidget):
         text_w = fm.horizontalAdvance(self._text)
         self.setFixedWidth(max(text_w + _PAD_H * 2, 88))
 
-        tip = cfg["tooltip"]
+        tip = _regime_tooltip(self._regime)
         if self._hurst is not None:
             tip = f"H={self._hurst:.3f}  —  {tip}"
         self.setToolTip(tip)

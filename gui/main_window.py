@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from gui.i18n import tr
 from gui.state.app_state import AppState
 from gui.widgets.top_bar import TopBar
 from gui.workspaces.dashboard import DashboardWorkspace
@@ -42,7 +43,7 @@ class TradingMainWindow(QMainWindow):
         # Bridge SignalBus → AppState (noop se bus non ancora pronto)
         AppState.instance().connect_signal_bus(get_bus())
 
-        self.setWindowTitle("TradingIA — Trading Terminal")
+        self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(1280, 760)
         self.resize(1680, 980)
 
@@ -74,7 +75,7 @@ class TradingMainWindow(QMainWindow):
 
     def _setup_statusbar(self) -> None:
         sb = QStatusBar()
-        sb.showMessage("Pronto · Workspace: Dashboard")
+        sb.showMessage(tr("status.ready_workspace", workspace=tr("workspace.dashboard")))
         self.setStatusBar(sb)
 
     # ── Shortcut globali ──────────────────────────────────────────────────────
@@ -95,16 +96,15 @@ class TradingMainWindow(QMainWindow):
     def _show_help(self) -> None:
         QMessageBox.information(
             self,
-            "TradingIA — Aiuto",
-            "F1: questo aiuto.\n"
-            "Premi ▶ START in alto per avviare il motore di trading.",
+            tr("help.f1.title"),
+            tr("help.f1.body"),
         )
 
     def _show_command_palette(self) -> None:
         QMessageBox.information(
             self,
-            "Command palette",
-            "Command palette · arriverà nelle prossime versioni",
+            tr("help.search.title"),
+            tr("help.search.body"),
         )
 
     def _toggle_fullscreen(self) -> None:

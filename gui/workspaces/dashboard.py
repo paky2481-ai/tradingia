@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from gui.i18n import tr
 from gui.state.app_state import AppState
 from gui.widgets.info import Gauge, HelpIcon, KPIBadge, RegimePill, Sparkline
 
@@ -168,7 +169,7 @@ class _WatchlistPanel(QGroupBox):
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("WATCHLIST", parent)
+        super().__init__(tr("dashboard.watchlist"), parent)
         self._rows: list[dict] = []  # [{"price_lbl", "delta_lbl", "sparkline", "data"}]
 
         lay = QVBoxLayout(self)
@@ -188,7 +189,7 @@ class _WatchlistPanel(QGroupBox):
         container = QWidget()
         container.setFixedHeight(34)
         container.setCursor(Qt.CursorShape.PointingHandCursor)
-        container.setToolTip(f"Clicca per selezionare {sym_data.symbol}")
+        container.setToolTip(tr("watchlist.row_tooltip", symbol=sym_data.symbol))
 
         # Sfondo hover via stylesheet dinamico
         container.setStyleSheet(
@@ -291,7 +292,7 @@ class _PositionsPanel(QGroupBox):
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("POSIZIONI APERTE", parent)
+        super().__init__(tr("dashboard.positions_open"), parent)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(8, 14, 8, 8)
@@ -299,7 +300,10 @@ class _PositionsPanel(QGroupBox):
 
         if _POSITIONS_DEMO:
             # Header colonne
-            header_lbl = QLabel("SIMBOLO    DIR    ENTRY → ATTUALE    P&L")
+            header_lbl = QLabel(
+                f"{tr('positions.header.symbol')}    {tr('positions.header.dir')}"
+                f"    {tr('positions.header.entry')}    {tr('positions.header.pnl')}"
+            )
             header_lbl.setStyleSheet(
                 f"color:{_MUTED}; font-size:10px; font-family:{_MONO_STACK};"
                 "  background:transparent; border:none; padding:2px 6px;"
@@ -364,10 +368,7 @@ class _PositionsPanel(QGroupBox):
 
     def _add_empty_state(self, lay: QVBoxLayout) -> None:
         """Placeholder friendly quando nessuna posizione aperta."""
-        empty = QLabel(
-            "Nessuna posizione aperta.\n"
-            "L'engine sta scansionando i mercati..."
-        )
+        empty = QLabel(tr("dashboard.no_positions"))
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.setWordWrap(True)
         empty.setStyleSheet(
@@ -479,7 +480,7 @@ class _CenterPanel(QWidget):
         ph_lay.setContentsMargins(0, 0, 0, 0)
         ph_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        chart_main = QLabel("CHART AREA")
+        chart_main = QLabel(tr("dashboard.chart_placeholder"))
         chart_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
         chart_main.setStyleSheet(
             f"color:{_MUTED}; font-size:22px; font-weight:300;"
@@ -488,7 +489,7 @@ class _CenterPanel(QWidget):
         )
         ph_lay.addWidget(chart_main)
 
-        chart_sub = QLabel("CandlestickChart sarà integrato qui")
+        chart_sub = QLabel(tr("dashboard.chart_subtitle"))
         chart_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         chart_sub.setStyleSheet(
             f"color:#30363d; font-size:12px; font-weight:400;"
@@ -504,31 +505,17 @@ class _CenterPanel(QWidget):
         cards_row.setSpacing(6)
 
         self._hurst_card = _GaugeCard(
-            label="HURST EXPONENT",
+            label=tr("gauge.hurst"),
             help_title="Hurst Exponent",
-            help_body=(
-                "Misura la persistenza di un trend.\n\n"
-                "• Sotto 0.4: il prezzo tende a tornare alla media (mean-reverting). "
-                "Operare in contro-trend.\n"
-                "• Vicino a 0.5: movimento casuale (random walk). "
-                "Segnali poco affidabili.\n"
-                "• Sopra 0.6: trend persistente. "
-                "Seguire la direzione dominante."
-            ),
+            help_body=tr("help.hurst.body"),
             value=0.62,
         )
         cards_row.addWidget(self._hurst_card)
 
         self._kelly_card = _GaugeCard(
-            label="KELLY %",
+            label=tr("gauge.kelly"),
             help_title="Kelly %",
-            help_body=(
-                "Percentuale ottimale del capitale da rischiare in un trade, "
-                "calcolata con il criterio di Kelly.\n\n"
-                "• 0–5%: sizing conservativo, consigliato.\n"
-                "• 5–10%: aggressivo — ok solo con edge statistico forte.\n"
-                "• Oltre 10%: pericoloso, rischio rovina elevato."
-            ),
+            help_body=tr("help.kelly.body"),
             value=0.023,
             zones=[
                 (0.0,  0.05, _BULL),
@@ -539,16 +526,9 @@ class _CenterPanel(QWidget):
         cards_row.addWidget(self._kelly_card)
 
         self._vol_card = _GaugeCard(
-            label="VOLATILITY",
+            label=tr("gauge.volatility"),
             help_title="Volatility (ATR Percentile)",
-            help_body=(
-                "ATR percentile rispetto allo storico degli ultimi 6 mesi.\n\n"
-                "• Sotto 0.3: mercato fermo, range stretto. "
-                "Breakout possibili ma rari.\n"
-                "• 0.3–0.7: volatilità normale. Operatività standard.\n"
-                "• Sopra 0.7: volatilità alta — usare stop più larghi, "
-                "ridurre sizing."
-            ),
+            help_body=tr("help.volatility.body"),
             value=0.45,
             zones=[
                 (0.0, 0.3,  _INFO_LIGHT),
@@ -614,7 +594,7 @@ class _AIPanel(QGroupBox):
         conf_header = QHBoxLayout()
         conf_header.setContentsMargins(0, 0, 0, 0)
         conf_header.setSpacing(4)
-        conf_lbl = _label("CONFIDENCE", size=10, color=_MUTED)
+        conf_lbl = _label(tr("dashboard.confidence"), size=10, color=_MUTED)
         conf_lbl.setStyleSheet(
             f"color:{_MUTED}; font-size:10px; font-weight:600;"
             f" font-family:{_UI_STACK}; text-transform:uppercase;"
@@ -623,11 +603,8 @@ class _AIPanel(QGroupBox):
         conf_header.addWidget(conf_lbl)
         conf_header.addWidget(
             HelpIcon(
-                "AI Confidence",
-                "Quanto il modello è sicuro della predizione corrente.\n\n"
-                "• Sopra 0.7: affidabile — segnale da considerare.\n"
-                "• 0.5–0.7: incerto — usare con cautela.\n"
-                "• Sotto 0.5: non affidabile — ignorare il segnale.",
+                tr("dashboard.ai_prediction"),
+                tr("help.confidence.body"),
             )
         )
         conf_header.addStretch(1)
@@ -653,7 +630,7 @@ class _AIPanel(QGroupBox):
         self._pred_label = QLabel(
             '<span style="color:#3fb950;font-size:18px;">▲</span>'
             '&nbsp;<b style="color:#3fb950;font-size:14px;">LONG</b>'
-            '&nbsp;<span style="color:#8b949e;font-size:10px;">AI Prediction</span>'
+            f'&nbsp;<span style="color:#8b949e;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
         )
         self._pred_label.setTextFormat(Qt.TextFormat.RichText)
         self._pred_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -663,7 +640,7 @@ class _AIPanel(QGroupBox):
         lay.addWidget(_vsep())
 
         # Sparkline storia predizioni
-        spark_header = _label("HISTORY (50 pred.)", size=9, color=_MUTED)
+        spark_header = _label(tr("dashboard.history"), size=9, color=_MUTED)
         spark_header.setStyleSheet(
             f"color:{_MUTED}; font-size:9px; font-weight:600;"
             f" font-family:{_UI_STACK}; text-transform:uppercase;"
@@ -695,14 +672,14 @@ class _AIPanel(QGroupBox):
         footer_lay.setContentsMargins(6, 6, 6, 6)
         footer_lay.setSpacing(2)
 
-        self._strategy_lbl = QLabel("Strategy: Trend4H")
+        self._strategy_lbl = QLabel(f"{tr('dashboard.strategy_label')} Trend4H")
         self._strategy_lbl.setStyleSheet(
             f"font-size:9px; color:{_TEXT}; font-family:{_UI_STACK};"
             "  background:transparent; border:none;"
         )
         footer_lay.addWidget(self._strategy_lbl)
 
-        self._signal_lbl = QLabel("Last signal: 4m ago")
+        self._signal_lbl = QLabel(tr("dashboard.last_signal", n=4))
         self._signal_lbl.setStyleSheet(
             f"font-size:9px; color:{_MUTED}; font-family:{_UI_STACK};"
             "  background:transparent; border:none;"
@@ -742,7 +719,7 @@ class _AIPanel(QGroupBox):
         self._pred_label.setText(
             f'<span style="color:{color};font-size:18px;">{icon_char}</span>'
             f'&nbsp;<b style="color:{color};font-size:14px;">{direction}</b>'
-            f'&nbsp;<span style="color:#8b949e;font-size:10px;">AI Prediction</span>'
+            f'&nbsp;<span style="color:#8b949e;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
         )
 
     def update_regime(self, regime: str, hurst: float) -> None:

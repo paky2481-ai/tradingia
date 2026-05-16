@@ -56,7 +56,12 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(git rm:*)",
       "Bash(git:*)",
-      "Bash(powershell -File \"C:\\\\dev\\\\tradingia\\\\scripts\\\\_cleanup.ps1\")"
+      "Bash(powershell -File \"C:\\\\dev\\\\tradingia\\\\scripts\\\\_cleanup.ps1\")",
+      "PowerShell(Get-Command *)",
+      "PowerShell(claude mcp *)",
+      "PowerShell(cd C:\\\\dev\\\\tradingia; $env:QT_QPA_PLATFORM=\"offscreen\"; python -c \"from gui.workspaces.dashboard import DashboardWorkspace; print\\('import OK'\\)\")",
+      "PowerShell(cd C:\\\\dev\\\\tradingia; $env:QT_QPA_PLATFORM=\"offscreen\"; python -c \"from gui.widgets.info.sparkline import Sparkline; print\\('import sparkline OK'\\)\")",
+      "PowerShell(cd C:\\\\dev\\\\tradingia; $env:QT_QPA_PLATFORM=\"offscreen\"; python -c \"from gui.workspaces.dashboard import DashboardWorkspace; print\\('OK'\\)\")"
     ]
   }
 }
