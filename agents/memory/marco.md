@@ -16,6 +16,7 @@
 - 2026-05-15: Audit i18n completato — 27 file scansionati (9 con stringhe UI rilevanti), 87 stringhe da tradurre, 50 chiavi già in tabella SPRINT.md, 37 NUOVE chiavi da aggiungere.
 - 2026-05-16: Fase 1.6 Step 3 — refactoring tr() su 8 panel atomici (ai_analysis, backtest, broker, pattern, chart, watchlist, data, positions). Tutte le chiavi erano già in strings.py. pattern_panel: _COLUMNS usato solo per len(), intestazioni reali nel .ui — aggiunto _apply_i18n() che sovrascrive a runtime col 2 e 6. Quality gate: 8/8 SYNTAX OK, 8/8 import PASS, istanziazione headless PASS, test IT/EN runtime PASS.
 - 2026-05-16: Fase 2 — Creati 4 workspace (order_ticket, analysis, backtest, patterns). Aggiunte 22 chiavi order.* a strings.py (IT+EN). Struttura: QSplitter per order_ticket (form+tabella+broker) e patterns (pattern+chart), QSplitter nested per analysis (AI+chart top, data bottom), full-width con padding 12px per backtest. Quality gate: 4/4 SYNTAX OK, 4/4 IMPORT OK, 4/4 INSTANCE OK offscreen, 22/22 chiavi i18n presenti.
+- 2026-05-16: Fase 3 — ActivityBar 56px creata (gui/widgets/activity_bar.py, 126 LOC). 6 _ActivityButton con QSS property "active" + unpolish/polish per refresh stato. QSS self-contained nel modulo (non dipende dal foglio globale). Icone scelte: ⌖ ↗ ○ ▦ ✦ ⚙. Tutti e 3 i quality gate PASS (import, istanziazione 56px/6 btn, segnale workspace_changed).
 
 ## Lezioni apprese (permanenti)
 
@@ -46,6 +47,7 @@
 - [ ] Riprogettare `WatchlistPanel` full (pannello esistente) con sparkline per riga
 - [ ] Integrare DashboardWorkspace in MainWindow (a cura di Paky)
 - [x] Fase 2 — Creati 4 workspace rimanenti: OrderTicketWorkspace, AnalysisWorkspace, BacktestWorkspace, PatternsWorkspace
+- [x] Fase 3 — ActivityBar widget creato, export in gui/widgets/__init__.py, quality gate PASS
 
 ## Workflow
 

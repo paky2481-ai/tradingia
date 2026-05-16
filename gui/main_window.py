@@ -1,10 +1,12 @@
 """
-TradingIA Main Window — v4
+TradingIA Main Window — v5
 
 Layout:
-    QVBoxLayout
-    ├── TopBar (42px fissi)   — KPI live, clock UTC, bottone START/STOP
-    └── QStackedWidget        — 6 workspace intercambiabili
+    QHBoxLayout (root)
+    ├── ActivityBar (56px)    — navigazione verticale workspace
+    └── QWidget (right_col)
+        ├── TopBar (42px)     — KPI live, clock UTC, bottone START/STOP
+        └── QStackedWidget    — 6 workspace intercambiabili
 
 Workspace (indice 0..5):
     0 — DashboardWorkspace    (locale)
@@ -32,6 +34,7 @@ from typing import Optional, Type
 from PyQt6.QtCore import QByteArray, QSettings, QSize, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -47,6 +50,16 @@ from gui.widgets.top_bar import TopBar
 from gui.workspaces.dashboard import DashboardWorkspace
 from gui.workspaces.settings import SettingsWorkspace
 from core.signal_bus import get_bus
+
+# ---------------------------------------------------------------------------
+# Import graceful ActivityBar (Marco — creato in parallelo)
+# ---------------------------------------------------------------------------
+
+try:
+    from gui.widgets.activity_bar import ActivityBar
+    _HAS_ACTIVITY_BAR = True
+except ImportError:
+    _HAS_ACTIVITY_BAR = False
 
 # ---------------------------------------------------------------------------
 # Import graceful dei workspace di Marco
@@ -130,16 +143,45 @@ class TradingMainWindow(QMainWindow):
 
     def _setup_layout(self) -> None:
         central = QWidget()
-        v = QVBoxLayout(central)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(0)
 
-        self._top_bar = TopBar()
-        v.addWidget(self._top_bar)
+        if _HAS_ACTIVITY_BAR:
+            # ROOT: QHBoxLayout — ActivityBar | colonna destra
+            root = QHBoxLayout(central)
+            root.setContentsMargins(0, 0, 0, 0)
+            root.setSpacing(0)
 
-        self._stack = QStackedWidget()
-        self._stack.setContentsMargins(0, 0, 0, 0)
-        v.addWidget(self._stack, stretch=1)
+            # Sinistra: ActivityBar 56px fissi
+            self._activity_bar = ActivityBar()
+            self._activity_bar.workspace_changed.connect(self._switch_workspace)
+            root.addWidget(self._activity_bar)
+
+            # Destra: colonna verticale (TopBar + QStackedWidget)
+            right_col = QWidget()
+            v = QVBoxLayout(right_col)
+            v.setContentsMargins(0, 0, 0, 0)
+            v.setSpacing(0)
+
+            self._top_bar = TopBar()
+            v.addWidget(self._top_bar)
+
+            self._stack = QStackedWidget()
+            self._stack.setContentsMargins(0, 0, 0, 0)
+            v.addWidget(self._stack, stretch=1)
+
+            root.addWidget(right_col, stretch=1)
+        else:
+            # FALLBACK: QVBoxLayout senza ActivityBar
+            print("[main_window] ActivityBar non ancora disponibile")
+            v = QVBoxLayout(central)
+            v.setContentsMargins(0, 0, 0, 0)
+            v.setSpacing(0)
+
+            self._top_bar = TopBar()
+            v.addWidget(self._top_bar)
+
+            self._stack = QStackedWidget()
+            self._stack.setContentsMargins(0, 0, 0, 0)
+            v.addWidget(self._stack, stretch=1)
 
         self.setCentralWidget(central)
 
@@ -200,7 +242,7 @@ class TradingMainWindow(QMainWindow):
     # ── Switch workspace ──────────────────────────────────────────────────────
 
     def _switch_workspace(self, idx: int) -> None:
-        """Attiva il workspace all'indice dato e aggiorna la statusbar."""
+        """Attiva il workspace all'indice dato e aggiorna statusbar e ActivityBar."""
         if not (0 <= idx < self._stack.count()):
             return
         self._stack.setCurrentIndex(idx)
@@ -208,6 +250,9 @@ class TradingMainWindow(QMainWindow):
         self.statusBar().showMessage(
             tr("status.ready_workspace", workspace=tr(name_key))
         )
+        # Sync visivo ActivityBar (no-op se non disponibile)
+        if _HAS_ACTIVITY_BAR and hasattr(self, "_activity_bar"):
+            self._activity_bar.set_active(idx)
 
     # ── Azioni shortcut ───────────────────────────────────────────────────────
 

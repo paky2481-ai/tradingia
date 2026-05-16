@@ -5,6 +5,7 @@
 
 ## Decisioni recenti (max 20, FIFO)
 
+- 2026-05-16: Fase 3 — ActivityBar integrata in main_window.py: layout root cambiato da QVBoxLayout a QHBoxLayout (ActivityBar 56px | right_col con TopBar+Stack). Fallback graceful se ActivityBar non disponibile (VBoxLayout + warning stdout). _switch_workspace ora chiama set_active(idx) per sync visivo. Quality gate: PASS (has_activity_bar=True, stack=6).
 - 2026-05-16: Fase 2 — SettingsWorkspace (gui/workspaces/settings.py, ~230 LOC): sezioni Generale/Broker/Rischio/Info, persistenza .env manuale+dotenv fallback, BrokerPanel popup. main_window.py esteso a 6 workspace con import graceful per workspace Marco, shortcut Ctrl+1..6, persistenza QSettings geometry+active_workspace. 43 chiavi nuove in strings.py IT+EN (incluse workspace.order_ticket e workspace.subtitle.*). Quality gate: PASS.
 - 2026-05-15: Fase 1.6.2 — creata infrastruttura gui/i18n/ con 136 chiavi IT+EN (stima audit 118 era approssimativa: 57 da SPRINT.md + 79 da audit = 136 reali). AppState.language property + language_changed signal. Boot QSettings persistence in gui/app.py. Test sanità e quality gate Qt: OK.
 - 2026-05-14: Audit completo startup app — tutti i bug documentati in CLAUDE.md risultano già risolti nel codice corrente. Nessun problema attivo allo startup (verifica statica).
