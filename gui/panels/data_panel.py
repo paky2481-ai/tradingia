@@ -160,7 +160,7 @@ class DataPanel(QWidget):
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _set_status(self, msg: str, error: bool = False):
-        color = "#f85149" if error else "#8b949e"
+        color = "#f85149" if error else "#a8b1bb"
         self._status.setStyleSheet(f"font-size:11px; color:{color};")
         self._status.setText(msg)
 

@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 _ENV_PATH = Path(__file__).parent.parent.parent / ".env"
 
 _STYLE_TITLE  = "color:#e6edf3; font-size:13px; font-weight:bold;"
-_STYLE_GRAY   = "color:#8b949e; font-size:11px;"
+_STYLE_GRAY   = "color:#a8b1bb; font-size:11px;"
 _STYLE_GREEN  = "color:#3fb950; font-weight:bold;"
 _STYLE_RED    = "color:#f85149; font-weight:bold;"
 _STYLE_YELLOW = "color:#e3b341; font-weight:bold;"
@@ -49,7 +49,7 @@ _STYLE_BTN_TEST = (
     "QPushButton:hover { background:#30363d; }"
 )
 _STYLE_GROUP = (
-    "QGroupBox { color:#8b949e; font-size:11px; border:1px solid #30363d; "
+    "QGroupBox { color:#a8b1bb; font-size:11px; border:1px solid #30363d; "
     "border-radius:4px; margin-top:6px; padding-top:6px; background:#0d1117; } "
     "QGroupBox::title { subcontrol-origin:margin; left:8px; color:#58a6ff; }"
 )
@@ -77,7 +77,7 @@ class _PasswordField(QWidget):
         self._btn.setFixedWidth(28)
         self._btn.setCheckable(True)
         self._btn.setStyleSheet(
-            "QPushButton { background:#21262d; color:#8b949e; border:1px solid #30363d; "
+            "QPushButton { background:#21262d; color:#a8b1bb; border:1px solid #30363d; "
             "border-radius:4px; font-size:11px; } "
             "QPushButton:checked { color:#e6edf3; }"
         )
@@ -229,7 +229,7 @@ class BrokerPanel(QWidget):
         form.addRow(_make_label("Account ID:"),                     self._ig_account_id)
 
         note = QLabel(tr("broker.ig_note"))
-        note.setStyleSheet("color:#484f58; font-size:10px;")
+        note.setStyleSheet("color:#6e7681; font-size:10px;")
         note.setWordWrap(True)
         w = QWidget()
         lay = QVBoxLayout(w)
@@ -257,7 +257,7 @@ class BrokerPanel(QWidget):
         form.addRow(_make_label(tr("broker.field.environment")), self._oanda_env)
 
         note = QLabel(tr("broker.oanda_note"))
-        note.setStyleSheet("color:#484f58; font-size:10px;")
+        note.setStyleSheet("color:#6e7681; font-size:10px;")
         note.setWordWrap(True)
         w = QWidget()
         lay = QVBoxLayout(w)

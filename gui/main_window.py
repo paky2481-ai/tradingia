@@ -94,7 +94,7 @@ def _make_placeholder(name: str) -> QWidget:
     w.setStyleSheet("background:#0d1117;")
     lbl = QLabel(f"Workspace '{name}'\nnon ancora disponibile")
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    lbl.setStyleSheet("color:#8b949e; font-size:14px;")
+    lbl.setStyleSheet("color:#a8b1bb; font-size:14px;")
     lay = QVBoxLayout(w)
     lay.addWidget(lbl)
     return w

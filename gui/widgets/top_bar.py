@@ -43,7 +43,7 @@ from gui.widgets.info import HelpIcon, KPIBadge, RegimePill
 _BULL    = "#3fb950"
 _BEAR    = "#f85149"
 _WARN    = "#d29922"
-_MUTED   = "#8b949e"
+_MUTED   = "#a8b1bb"
 _TEXT    = "#e6edf3"
 _BG_SURFACE = "#161b22"
 _BORDER  = "#30363d"
@@ -274,7 +274,7 @@ class TopBar(QFrame):
         # 10. Clock UTC ───────────────────────────────────────────────────────
         self._clock_label = QLabel("00:00:00 UTC")
         self._clock_label.setStyleSheet(
-            "color:#8b949e; font-size:11px; font-weight:500;"
+            "color:#a8b1bb; font-size:11px; font-weight:500;"
             '  font-family:"Consolas","Cascadia Code",monospace;'
             "  background:transparent; border:none;"
         )

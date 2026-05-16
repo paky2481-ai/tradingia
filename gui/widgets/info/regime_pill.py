@@ -37,8 +37,8 @@ _REGIMES: dict[str, dict] = {
     "choppy": {
         "symbol": "~",
         "bg":     QColor(28, 29, 33),     # grigio neutro scuro
-        "border": QColor(72, 79, 88),     # #484f58
-        "text":   QColor(139, 148, 158),  # #8b949e MUTED
+        "border": QColor(72, 79, 88),     # #6e7681
+        "text":   QColor(139, 148, 158),  # #a8b1bb MUTED
     },
     "cycling": {
         "symbol": "o",
@@ -50,7 +50,7 @@ _REGIMES: dict[str, dict] = {
         "symbol": "?",
         "bg":     QColor(22, 27, 34),     # #161b22 BG_SURFACE
         "border": QColor(48, 54, 61),     # #30363d BORDER
-        "text":   QColor(72, 79, 88),     # #484f58 TEXT_DIM
+        "text":   QColor(72, 79, 88),     # #6e7681 TEXT_DIM
     },
 }
 

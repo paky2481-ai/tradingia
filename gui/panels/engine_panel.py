@@ -32,7 +32,7 @@ _UI = Path(__file__).parent.parent / "ui" / "engine_panel.ui"
 _STYLE_GREEN  = "color: #3fb950; font-weight: bold;"
 _STYLE_RED    = "color: #f85149; font-weight: bold;"
 _STYLE_YELLOW = "color: #e3b341; font-weight: bold;"
-_STYLE_GRAY   = "color: #8b949e;"
+_STYLE_GRAY   = "color: #a8b1bb;"
 _STYLE_WHITE  = "color: #e6edf3;"
 
 
@@ -109,7 +109,7 @@ class EnginePanel(QWidget):
             }
         """)
         self.scanGroup.setStyleSheet("""
-            QGroupBox { color:#8b949e; font-size:11px; border:1px solid #30363d;
+            QGroupBox { color:#a8b1bb; font-size:11px; border:1px solid #30363d;
                         border-radius:4px; margin-top:6px; padding-top:4px; }
             QGroupBox::title { subcontrol-origin:margin; left:8px; }
         """)
@@ -196,7 +196,7 @@ class EnginePanel(QWidget):
         elif ev.direction == "sell":
             color = "#f85149"; icon = "▼"
         else:
-            color = "#8b949e"; icon = "—"
+            color = "#a8b1bb"; icon = "—"
 
         text = f"{ts}  {icon} {ev.display:8s}  conf={ev.confidence:.2f}  [{ev.strategy}]"
         row = QLabel(text)
@@ -243,13 +243,13 @@ class EnginePanel(QWidget):
         cl.addWidget(title)
 
         meta = QLabel(f"Conf: {ev.confidence:.0f}%  |  {ts}  |  {ev.timeframe}")
-        meta.setStyleSheet("color:#8b949e; font-size:10px;")
+        meta.setStyleSheet("color:#a8b1bb; font-size:10px;")
         cl.addWidget(meta)
 
         sigs = QLabel(f"{len(ev.signals)} segnali: " + " · ".join(
             s.split("(")[0].strip() for s in ev.signals[:3]
         ))
-        sigs.setStyleSheet("color:#8b949e; font-size:10px;")
+        sigs.setStyleSheet("color:#a8b1bb; font-size:10px;")
         sigs.setWordWrap(True)
         cl.addWidget(sigs)
 

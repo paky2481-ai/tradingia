@@ -114,7 +114,7 @@ def _row(label: str, value: str, value_color: str = "#e6edf3") -> QWidget:
     hl.setContentsMargins(0, 0, 0, 0)
     hl.setSpacing(4)
     lbl = QLabel(label)
-    lbl.setStyleSheet("color:#8b949e; font-size:11px;")
+    lbl.setStyleSheet("color:#a8b1bb; font-size:11px;")
     val = QLabel(value)
     val.setStyleSheet(f"color:{value_color}; font-size:11px; font-weight:bold;")
     val.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -156,12 +156,12 @@ class AIAnalysisPanel(QWidget):
         self.setStyleSheet("background:#0d1117; color:#e6edf3;")
         self._header.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
         self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:12px;")
-        self._chk_auto.setStyleSheet("color:#8b949e; font-size:10px;")
+        self._chk_auto.setStyleSheet("color:#a8b1bb; font-size:10px;")
         self._btn_run.setStyleSheet(
             "QPushButton { background:#238636; color:#fff; border:none; "
             "padding:6px; font-size:11px; }"
             "QPushButton:hover { background:#2ea043; }"
-            "QPushButton:disabled { background:#161b22; color:#484f58; }"
+            "QPushButton:disabled { background:#161b22; color:#6e7681; }"
         )
         self._progress.setStyleSheet(
             "QProgressBar { background:#161b22; border:none; }"
@@ -194,7 +194,7 @@ class AIAnalysisPanel(QWidget):
 
         self._lbl_empty = QLabel(tr("ai.empty_state"))
         self._lbl_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._lbl_empty.setStyleSheet("color:#484f58; font-size:11px; padding:16px;")
+        self._lbl_empty.setStyleSheet("color:#6e7681; font-size:11px; padding:16px;")
         self._content_layout.insertWidget(0, self._lbl_empty)
 
         self._hide_sections()
@@ -276,19 +276,19 @@ class AIAnalysisPanel(QWidget):
         regime_color = {
             "trending": "#3fb950",
             "cycling":  "#f0883e",
-            "choppy":   "#8b949e",
-        }.get(r.regime, "#8b949e")
+            "choppy":   "#a8b1bb",
+        }.get(r.regime, "#a8b1bb")
 
         c.addWidget(_row("Regime", r.regime.capitalize(), regime_color))
 
         hurst = r.hurst
-        hurst_color = "#3fb950" if hurst > 0.55 else ("#f0883e" if hurst < 0.45 else "#8b949e")
+        hurst_color = "#3fb950" if hurst > 0.55 else ("#f0883e" if hurst < 0.45 else "#a8b1bb")
         hurst_row = QWidget()
         hl = QHBoxLayout(hurst_row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
         lbl_hurst = QLabel("Hurst")
-        lbl_hurst.setStyleSheet("color:#8b949e; font-size:11px;")
+        lbl_hurst.setStyleSheet("color:#a8b1bb; font-size:11px;")
         hl.addWidget(lbl_hurst)
         bar = _BarWidget(value=hurst * 2 - 1, symmetric=False)  # map 0-1 → 0-1 bar
         bar.set_value(hurst)
@@ -307,14 +307,14 @@ class AIAnalysisPanel(QWidget):
         c = sec.content()
 
         score = r.fundamental_score
-        score_color = "#3fb950" if score > 0.2 else ("#f85149" if score < -0.2 else "#8b949e")
+        score_color = "#3fb950" if score > 0.2 else ("#f85149" if score < -0.2 else "#a8b1bb")
 
         row_w = QWidget()
         hl = QHBoxLayout(row_w)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
         lbl = QLabel("Score")
-        lbl.setStyleSheet("color:#8b949e; font-size:11px;")
+        lbl.setStyleSheet("color:#a8b1bb; font-size:11px;")
         hl.addWidget(lbl)
         bar = _BarWidget(score, symmetric=True)
         hl.addWidget(bar, 1)
@@ -341,7 +341,7 @@ class AIAnalysisPanel(QWidget):
             hl.setContentsMargins(0, 0, 0, 0)
             hl.setSpacing(4)
             lbl = QLabel(ind_name)
-            lbl.setStyleSheet("color:#8b949e; font-size:10px;")
+            lbl.setStyleSheet("color:#a8b1bb; font-size:10px;")
             hl.addWidget(lbl, 2)
             bar = _BarWidget(w / max_w if max_w > 0 else 0, symmetric=False)
             hl.addWidget(bar, 3)
@@ -362,7 +362,7 @@ class AIAnalysisPanel(QWidget):
             "breakout":        ("Breakout",            "#3fb950"),
             "scalping":        ("Scalping",            "#ffa657"),
         }
-        label, color = strat_labels.get(r.recommended_strategy, (r.recommended_strategy, "#8b949e"))
+        label, color = strat_labels.get(r.recommended_strategy, (r.recommended_strategy, "#a8b1bb"))
         c.addWidget(_row("Strategy", label, color))
 
         if r.tuned_params:
@@ -383,7 +383,7 @@ class AIAnalysisPanel(QWidget):
             "choppy":   ("NEUTRAL", confidence * 0.5),
         }
         direction, conf = regime_to_bias.get(r.regime, ("NEUTRAL", 0.5))
-        dir_color = "#3fb950" if direction == "BUY" else ("#f85149" if direction == "SELL" else "#8b949e")
+        dir_color = "#3fb950" if direction == "BUY" else ("#f85149" if direction == "SELL" else "#a8b1bb")
 
         c.addWidget(_row("Direction", direction, dir_color))
 
@@ -392,7 +392,7 @@ class AIAnalysisPanel(QWidget):
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
         lbl = QLabel("Confidence")
-        lbl.setStyleSheet("color:#8b949e; font-size:11px;")
+        lbl.setStyleSheet("color:#a8b1bb; font-size:11px;")
         hl.addWidget(lbl)
         bar = _BarWidget(conf, symmetric=False)
         hl.addWidget(bar, 1)
@@ -412,7 +412,7 @@ class AIAnalysisPanel(QWidget):
         )
         c.addWidget(_row("Fund. support",
                          fund_support,
-                         "#3fb950" if r.fundamental_score > 0.15 else ("#f85149" if r.fundamental_score < -0.15 else "#8b949e")))
+                         "#3fb950" if r.fundamental_score > 0.15 else ("#f85149" if r.fundamental_score < -0.15 else "#a8b1bb")))
 
     # ── Visibility helpers ─────────────────────────────────────────────────
 

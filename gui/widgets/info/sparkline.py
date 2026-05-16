@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import QSizePolicy, QWidget
 # ── Palette semantica ────────────────────────────────────────────────────────
 _BULL    = QColor("#3fb950")
 _BEAR    = QColor("#f85149")
-_NEUTRAL = QColor("#484f58")
+_NEUTRAL = QColor("#6e7681")
 _ACCENT  = QColor("#a371f7")
 
 

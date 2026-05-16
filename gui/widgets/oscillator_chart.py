@@ -21,7 +21,7 @@ _COLORS = {
     "cci_20":    "#f0883e",   # orange
     "macd_hist": "#3fb950",   # green (positive) / #f85149 (negative)
     "mfi_14":    "#79c0ff",   # light blue
-    "default":   "#8b949e",   # muted gray
+    "default":   "#a8b1bb",   # muted gray
 }
 
 _DISPLAY_NAMES = {
@@ -62,7 +62,7 @@ class OscillatorChart(QWidget):
         # Label bar
         self._header = QLabel("Oscillator")
         self._header.setStyleSheet(
-            "background:#161b22; color:#8b949e; font-size:11px;"
+            "background:#161b22; color:#a8b1bb; font-size:11px;"
             " padding:2px 8px; border-top:1px solid #30363d;"
         )
         layout.addWidget(self._header)
@@ -83,7 +83,7 @@ class OscillatorChart(QWidget):
         for ax in ("left", "bottom", "top", "right"):
             axis = self._plot.getAxis(ax)
             axis.setPen(pg.mkPen(color="#30363d"))
-            axis.setTextPen(pg.mkPen(color="#8b949e"))
+            axis.setTextPen(pg.mkPen(color="#a8b1bb"))
         self._plot.getAxis("bottom").hide()
         self._plot.getAxis("right").show()
         self._plot.getAxis("left").setWidth(0)

@@ -37,7 +37,7 @@ COL_VOLUME  = 4
 
 C_GREEN = QColor("#3fb950")
 C_RED   = QColor("#f85149")
-C_MUTED = QColor("#8b949e")
+C_MUTED = QColor("#a8b1bb")
 
 
 def _fmt_volume(v) -> str:

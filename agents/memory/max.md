@@ -26,6 +26,7 @@
 - L'utente vuole densità informativa Bloomberg-grade, non solo styling. Le statusbar oggi mostrano "Pronto" e nascondono tutto ciò che il motore calcola — questo è il problema reale da risolvere.
 - Quando dai consigli strategici, includi sempre il trade-off principale in 1 riga prima di proporre l'opzione consigliata.
 - L'utente apprezza le AskUserQuestion con opzione "Recommended" chiara — non galleggiare, prendi posizione.
+- **Encoding Windows trap**: PowerShell `Get-Content -Raw` su questo Windows legge i file con encoding CP1252 di default. Se poi salvi con `Set-Content -Encoding utf8`, ogni byte multibyte UTF-8 (▶ ⌖ € → · ✦ ⚙) viene corrotto in mojibake (â€¢, âœ, etc). Per find&replace su file UTF-8: usare ESCLUSIVAMENTE Python con `Path.read_text(encoding="utf-8")` + `write_text(encoding="utf-8")`. Mai PowerShell per text manipulation di file con caratteri non-ASCII. Documentato dopo incidente 2026-05-16 (Fase 3.5 polish).
 
 ## Consigli dati all'utente
 

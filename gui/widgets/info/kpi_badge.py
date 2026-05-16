@@ -21,7 +21,7 @@ from .sparkline import Sparkline
 
 # ── Palette (stringhe per QSS inline) ────────────────────────────────────────
 _TEXT   = "#e6edf3"
-_MUTED  = "#8b949e"
+_MUTED  = "#a8b1bb"
 _BULL   = "#3fb950"
 _BEAR   = "#f85149"
 _WARN   = "#d29922"

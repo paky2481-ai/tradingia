@@ -37,10 +37,10 @@ _COLORS = {
     "forming":   "#d29922",   # giallo-arancio
     "confirmed": "#3fb950",   # verde
     "failed":    "#f85149",   # rosso
-    "expired":   "#484f58",   # grigio scuro
+    "expired":   "#6e7681",   # grigio scuro
     "bullish":   "#3fb950",
     "bearish":   "#f85149",
-    "neutral":   "#8b949e",
+    "neutral":   "#a8b1bb",
 }
 
 _COLUMNS = ["Symbol", "Pattern", "Direzione", "Status", "Conf%", "TF", "Da (min)", "Target"]
@@ -65,19 +65,21 @@ class PatternPanel(QWidget):
     # ── UI setup ───────────────────────────────────────────────────────────
 
     def _apply_i18n(self):
-        """Aggiorna le intestazioni traducibili della tabella."""
+        """Aggiorna le intestazioni traducibili della tabella e gli header."""
         self._table.setHorizontalHeaderItem(2, QTableWidgetItem(tr("pattern.col.direction")))
         self._table.setHorizontalHeaderItem(6, QTableWidgetItem(tr("pattern.col.age_min")))
+        self._lbl_title.setText(tr("pattern.title"))
+        self._btn_clear.setText(tr("pattern.btn_clear"))
 
     def _apply_styles(self):
         self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:13px;")
-        self._lbl_count.setStyleSheet("color:#8b949e; font-size:11px;")
+        self._lbl_count.setStyleSheet("color:#a8b1bb; font-size:11px;")
         self._status_filter.setStyleSheet(
             "background:#21262d; color:#e6edf3; border:1px solid #30363d; "
             "border-radius:4px; padding:2px 6px; font-size:11px;"
         )
         self._btn_clear.setStyleSheet(
-            "background:#21262d; color:#8b949e; border:1px solid #30363d; "
+            "background:#21262d; color:#a8b1bb; border:1px solid #30363d; "
             "border-radius:4px; padding:2px 8px; font-size:11px;"
         )
         self._table.setStyleSheet("""
@@ -90,7 +92,7 @@ class PatternPanel(QWidget):
                 background:#1c2128; color:#e6edf3;
             }
             QHeaderView::section {
-                background:#161b22; color:#8b949e;
+                background:#161b22; color:#a8b1bb;
                 border:none; border-bottom:1px solid #30363d;
                 padding:4px 6px; font-size:11px;
             }
@@ -186,18 +188,18 @@ class PatternPanel(QWidget):
 
         age_min = max(0, int((datetime.utcnow() - forming_since).total_seconds() / 60))
         target_str = f"{target:.5g}" if target is not None else "—"
-        status_col = _COLORS.get(status, "#8b949e")
-        dir_col    = _COLORS.get(direction, "#8b949e")
+        status_col = _COLORS.get(status, "#a8b1bb")
+        dir_col    = _COLORS.get(direction, "#a8b1bb")
 
         cells = [
             (symbol,                   "#c9d1d9"),
             (pattern,                  "#e6edf3"),
             (direction.capitalize(),   dir_col),
             (status.upper(),           status_col),
-            (f"{confidence * 100:.0f}%", "#8b949e"),
-            (timeframe,                "#8b949e"),
-            (str(age_min),             "#8b949e"),
-            (target_str,               "#8b949e"),
+            (f"{confidence * 100:.0f}%", "#a8b1bb"),
+            (timeframe,                "#a8b1bb"),
+            (str(age_min),             "#a8b1bb"),
+            (target_str,               "#a8b1bb"),
         ]
 
         for col, (text, color) in enumerate(cells):

@@ -152,7 +152,7 @@ class _MetricBox(QWidget):
         layout.setSpacing(1)
 
         self._lbl_name = QLabel(label)
-        self._lbl_name.setStyleSheet("color:#8b949e; font-size:10px;")
+        self._lbl_name.setStyleSheet("color:#a8b1bb; font-size:10px;")
         self._lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._lbl_val = QLabel("—")
@@ -219,7 +219,7 @@ class BacktestPanel(QWidget):
             "color:#e6edf3; padding:3px 6px;"
         )
         _gb = (
-            "QGroupBox { color:#8b949e; font-size:11px; border:1px solid #21262d; "
+            "QGroupBox { color:#a8b1bb; font-size:11px; border:1px solid #21262d; "
             "border-radius:6px; margin-top:8px; padding-top:6px; }"
             "QGroupBox::title { subcontrol-origin:margin; left:8px; }"
         )
@@ -233,21 +233,21 @@ class BacktestPanel(QWidget):
             "font-weight:bold; padding:0 16px;"
         )
         self._btn_export.setStyleSheet(
-            "background:#21262d; color:#8b949e; border:1px solid #30363d; "
+            "background:#21262d; color:#a8b1bb; border:1px solid #30363d; "
             "border-radius:6px; padding:0 12px;"
         )
         self._progress.setStyleSheet(
             "QProgressBar { background:#21262d; border:none; border-radius:3px; }"
             "QProgressBar::chunk { background:#238636; border-radius:3px; }"
         )
-        self._lbl_status.setStyleSheet("color:#8b949e; font-size:11px;")
+        self._lbl_status.setStyleSheet("color:#a8b1bb; font-size:11px;")
         self._metrics_group.setStyleSheet(_gb)
         self._chart_group.setStyleSheet(_gb)
         self._log_group.setStyleSheet(_gb)
         self._trade_table.setStyleSheet(
             "QTableWidget { background:#0d1117; alternate-background-color:#161b22; "
             "color:#e6edf3; gridline-color:#21262d; border:none; font-size:11px; }"
-            "QHeaderView::section { background:#161b22; color:#8b949e; "
+            "QHeaderView::section { background:#161b22; color:#a8b1bb; "
             "border:none; padding:4px; font-size:11px; }"
         )
         self._trade_table.horizontalHeader().setSectionResizeMode(
@@ -284,7 +284,7 @@ class BacktestPanel(QWidget):
         layout.setContentsMargins(4, 12, 4, 4)
         if _PG_OK:
             pg.setConfigOption("background", "#0d1117")
-            pg.setConfigOption("foreground", "#8b949e")
+            pg.setConfigOption("foreground", "#a8b1bb")
             self._plot_widget = pg.PlotWidget()
             self._plot_widget.showGrid(x=True, y=True, alpha=0.15)
             self._plot_widget.getAxis("left").setLabel(tr("backtest.axis.capital"))
@@ -295,14 +295,14 @@ class BacktestPanel(QWidget):
                 pen=pg.mkPen("#3fb950", width=2), name="Strategia"
             )
             self._bnh_line = self._plot_widget.plot(
-                pen=pg.mkPen("#8b949e", width=1, style=Qt.PenStyle.DashLine),
+                pen=pg.mkPen("#a8b1bb", width=1, style=Qt.PenStyle.DashLine),
                 name="Buy & Hold"
             )
             self._plot_widget.addLegend(offset=(10, 10))
         else:
             lbl = QLabel(tr("backtest.pyqtgraph_missing"))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet("color:#8b949e;")
+            lbl.setStyleSheet("color:#a8b1bb;")
             layout.addWidget(lbl)
             self._plot_widget = None
             self._equity_line = None
@@ -484,7 +484,7 @@ class BacktestPanel(QWidget):
     def _reset_ui(self):
         self._progress.setValue(0)
         self._progress.setVisible(True)
-        self._lbl_status.setStyleSheet("color:#8b949e; font-size:11px;")
+        self._lbl_status.setStyleSheet("color:#a8b1bb; font-size:11px;")
         self._trade_table.setRowCount(0)
         self._btn_export.setEnabled(False)
 

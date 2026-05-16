@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import QSizePolicy, QWidget
 _BG_ELEVATED = "#21262d"
 _TRACK_BG    = "#161b22"
 _TEXT        = "#e6edf3"
-_MUTED       = "#8b949e"
+_MUTED       = "#a8b1bb"
 _BULL        = "#3fb950"
 _BEAR        = "#f85149"
 _WARN        = "#d29922"

@@ -42,7 +42,7 @@ ActivityBar {
 
 _ActivityButton {
     background: transparent;
-    color: #8b949e;
+    color: #a8b1bb;
     border: none;
     border-left: 3px solid transparent;
     font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;

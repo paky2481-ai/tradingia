@@ -203,6 +203,9 @@ IT: dict[str, str] = {
     # ---- pattern panel --------------------------------------------------------
     "pattern.col.direction":       "Direzione",
     "pattern.col.age_min":         "Da (min)",
+    "pattern.title":               "Pattern Attivi",
+    "pattern.btn_clear":           "Pulisci",
+    "pattern.count_label":         "{n} pattern",
 
     # ---- order ticket workspace -----------------------------------------------
     "order.group_title":           "Nuovo Ordine",
@@ -456,6 +459,9 @@ EN: dict[str, str] = {
     # ---- pattern panel --------------------------------------------------------
     "pattern.col.direction":       "Direction",
     "pattern.col.age_min":         "Age (min)",
+    "pattern.title":               "Active Patterns",
+    "pattern.btn_clear":           "Clear",
+    "pattern.count_label":         "{n} patterns",
 
     # ---- order ticket workspace -----------------------------------------------
     "order.group_title":           "New Order",

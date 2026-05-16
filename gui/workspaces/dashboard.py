@@ -47,7 +47,7 @@ _BG_ELEVATED  = "#21262d"
 _BORDER       = "#30363d"
 _BORDER_DIM   = "#21262d"
 _TEXT         = "#e6edf3"
-_MUTED        = "#8b949e"
+_MUTED        = "#a8b1bb"
 _BULL         = "#3fb950"
 _BEAR         = "#f85149"
 _WARN         = "#d29922"
@@ -630,7 +630,7 @@ class _AIPanel(QGroupBox):
         self._pred_label = QLabel(
             '<span style="color:#3fb950;font-size:18px;">▲</span>'
             '&nbsp;<b style="color:#3fb950;font-size:14px;">LONG</b>'
-            f'&nbsp;<span style="color:#8b949e;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
+            f'&nbsp;<span style="color:#a8b1bb;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
         )
         self._pred_label.setTextFormat(Qt.TextFormat.RichText)
         self._pred_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -719,7 +719,7 @@ class _AIPanel(QGroupBox):
         self._pred_label.setText(
             f'<span style="color:{color};font-size:18px;">{icon_char}</span>'
             f'&nbsp;<b style="color:{color};font-size:14px;">{direction}</b>'
-            f'&nbsp;<span style="color:#8b949e;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
+            f'&nbsp;<span style="color:#a8b1bb;font-size:10px;">{tr("dashboard.ai_prediction")}</span>'
         )
 
     def update_regime(self, regime: str, hurst: float) -> None:

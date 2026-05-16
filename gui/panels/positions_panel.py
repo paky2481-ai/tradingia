@@ -41,7 +41,7 @@ MANUAL_SYMBOLS = [
 _STYLE_GREEN  = "color: #3fb950; font-weight: bold;"
 _STYLE_RED    = "color: #f85149; font-weight: bold;"
 _STYLE_YELLOW = "color: #e3b341;"
-_STYLE_GRAY   = "color: #8b949e;"
+_STYLE_GRAY   = "color: #a8b1bb;"
 
 _COL_DISPLAY = 0
 _COL_DIR     = 1

@@ -2,7 +2,7 @@
 HelpIcon — cerchio "?" muted cliccabile con tooltip + MessageBox esplicativa.
 
 Design:
-  - Cerchio 16x16px, sfondo #21262d, testo "#8b949e", bordo-radius 8px
+  - Cerchio 16x16px, sfondo #21262d, testo "#a8b1bb", bordo-radius 8px
   - Hover: sfondo #1f6feb (blu accent), testo bianco
   - Tooltip nativo HTML (multilinea, max ~400 char)
   - Click: QMessageBox con titolo bold + corpo esteso + bottone Chiudi
@@ -46,7 +46,7 @@ class HelpIcon(QLabel):
         self.setStyleSheet(
             "QLabel {"
             "  background: #21262d;"
-            "  color: #8b949e;"
+            "  color: #a8b1bb;"
             "  border-radius: 8px;"
             "  font-size: 10px;"
             "  font-weight: bold;"

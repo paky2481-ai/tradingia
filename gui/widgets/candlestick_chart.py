@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 C_BG        = "#0d1117"
 C_BG2       = "#161b22"
 C_GRID      = "#21262d"
-C_TEXT      = "#8b949e"
+C_TEXT      = "#a8b1bb"
 C_BULL      = "#3fb950"   # green candle
 C_BEAR      = "#f85149"   # red candle
 C_BULL_BODY = "#2ea04388"

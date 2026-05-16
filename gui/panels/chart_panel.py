@@ -54,7 +54,7 @@ class ChartPanel(QWidget):
 
         self._lbl_tf = QLabel("")
         self._lbl_tf.setStyleSheet(
-            "font-size:12px; color:#8b949e; background:#21262d; "
+            "font-size:12px; color:#a8b1bb; background:#21262d; "
             "border-radius:4px; padding:2px 8px;"
         )
         ib_layout.addWidget(self._lbl_tf)
@@ -80,7 +80,7 @@ class ChartPanel(QWidget):
         ib_layout.addWidget(self._lbl_price)
 
         self._lbl_change = QLabel("")
-        self._lbl_change.setStyleSheet("font-size:14px; color:#8b949e;")
+        self._lbl_change.setStyleSheet("font-size:14px; color:#a8b1bb;")
         ib_layout.addWidget(self._lbl_change)
 
         layout.addWidget(info_bar)
@@ -125,15 +125,15 @@ class ChartPanel(QWidget):
         em_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         em_lbl = QLabel(tr("chart.empty_state"))
         em_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        em_lbl.setStyleSheet("color:#484f58; font-size:16px;")
+        em_lbl.setStyleSheet("color:#6e7681; font-size:16px;")
         em_layout.addWidget(em_lbl)
         layout.addWidget(self._empty)
 
         self._chart.setVisible(False)
 
     def _make_ohlcv_label(self, prefix: str) -> QLabel:
-        lbl = QLabel(f"<span style='color:#484f58'>{prefix}</span> —")
-        lbl.setStyleSheet("font-size:12px; color:#8b949e;")
+        lbl = QLabel(f"<span style='color:#6e7681'>{prefix}</span> —")
+        lbl.setStyleSheet("font-size:12px; color:#a8b1bb;")
         lbl.setTextFormat(Qt.TextFormat.RichText)
         return lbl
 
@@ -215,20 +215,20 @@ class ChartPanel(QWidget):
 
     def _on_bar_hovered(self, bar: dict):
         """Update OHLCV info bar from chart crosshair hover."""
-        self._lbl_open.setText( f"<span style='color:#484f58'>O</span> {bar['open']:.4f}")
+        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {bar['open']:.4f}")
         self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {bar['high']:.4f}")
         self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {bar['low']:.4f}")
         self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {bar['close']:.4f}")
-        self._lbl_vol.setText(  f"<span style='color:#484f58'>V</span> {int(bar['volume']):,}")
+        self._lbl_vol.setText(  f"<span style='color:#6e7681'>V</span> {int(bar['volume']):,}")
 
     def _update_ohlcv_labels(self, row):
         o = row.get("open", row["open"] if "open" in row.index else None)
-        self._lbl_open.setText( f"<span style='color:#484f58'>O</span> {row['open']:.4f}")
+        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {row['open']:.4f}")
         self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {row['high']:.4f}")
         self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {row['low']:.4f}")
         self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {row['close']:.4f}")
         vol = row.get("volume", 0)
-        self._lbl_vol.setText(  f"<span style='color:#484f58'>V</span> {int(vol):,}")
+        self._lbl_vol.setText(  f"<span style='color:#6e7681'>V</span> {int(vol):,}")
 
     def _update_price_badge(self, last_row):
         price = last_row["close"]

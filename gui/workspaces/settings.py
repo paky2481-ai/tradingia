@@ -44,7 +44,7 @@ _DB_PATH  = Path(os.getcwd()) / "data" / "tradingia.db"
 # Stili interni (palette Bloomberg-style usata in tutta la GUI)
 # ---------------------------------------------------------------------------
 _STYLE_LABEL = "color:#e6edf3; font-size:12px;"
-_STYLE_GRAY  = "color:#8b949e; font-size:11px;"
+_STYLE_GRAY  = "color:#a8b1bb; font-size:11px;"
 _STYLE_BTN   = (
     "QPushButton { background:#21262d; color:#e6edf3; border:1px solid #30363d; "
     "border-radius:4px; padding:6px 14px; font-size:11px; } "
@@ -65,7 +65,7 @@ _STYLE_SPINBOX = (
     "background:#21262d; border:none; width:16px; }"
 )
 _STYLE_GROUP = (
-    "QGroupBox { color:#8b949e; font-size:11px; font-weight:bold; "
+    "QGroupBox { color:#a8b1bb; font-size:11px; font-weight:bold; "
     "border:1px solid #21262d; border-radius:6px; margin-top:8px; padding:8px 6px; } "
     "QGroupBox::title { subcontrol-origin:margin; left:10px; padding:0 4px; }"
 )
@@ -191,7 +191,7 @@ class SettingsWorkspace(QWidget):
         title_lbl = QLabel(tr("workspace.settings"))
         title_lbl.setStyleSheet("color:#e6edf3; font-size:18px; font-weight:bold;")
         sub_lbl = QLabel(tr("workspace.subtitle.settings"))
-        sub_lbl.setStyleSheet("color:#8b949e; font-size:12px;")
+        sub_lbl.setStyleSheet("color:#a8b1bb; font-size:12px;")
         vbox.addWidget(title_lbl)
         vbox.addWidget(sub_lbl)
 
