@@ -126,6 +126,57 @@ class EngineStatusEvent:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Eventi Fase 5 — AI / Risk / Loop heartbeat / Correlazioni
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class AIResultEvent:
+    """Payload AutoConfigResult: emesso da orchestrator quando AutoConfig termina."""
+    symbol: str
+    regime: str             # "trending" | "choppy" | "cycling" | "unknown"
+    hurst: float            # esponente Hurst [0, 1]
+    confidence: float       # confidenza modello AI [0, 1]
+    prediction: str         # "long" | "short" | "neutral"
+    price_direction: float  # ritorno atteso a 20 barre (firmato)
+    strategy: str = ""      # nome strategia scelta
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class KellyUpdateEvent:
+    """Kelly % suggerito da RiskManager."""
+    kelly_pct: float        # [0, 1] frazione Kelly raccomandata
+    win_rate: float = 0.0   # win rate corrente usato nel calcolo
+    avg_win_loss_ratio: float = 0.0  # avg_win / avg_loss
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class RegimeUpdateEvent:
+    """Regime + hurst per il simbolo corrente (broadcast ad ogni scan)."""
+    symbol: str
+    regime: str             # "trending" | "choppy" | "cycling" | "unknown"
+    hurst: float
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class LoopHeartbeatEvent:
+    """Heartbeat di un loop async (per StatusDot pulse)."""
+    loop_name: str          # "4h_scan" | "1h_scan" | "trend_detect" | "position_check"
+    state: str = "active"   # "idle" | "active" | "error" | "loading"
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class CorrelationUpdateEvent:
+    """Matrice correlazioni tra posizioni aperte (numpy o list of lists)."""
+    matrix: Any             # np.ndarray N×N oppure list[list[float]]
+    symbols: List[str]      # etichette assi (in ordine matrice)
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Comandi GUI → Engine
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -160,6 +211,13 @@ class _BusQtEmitter(QObject):
     engine_started  = pyqtSignal()
     engine_stopped  = pyqtSignal()
     log_message     = pyqtSignal(str, str)  # message, color
+
+    # Fase 5 — AI / Risk / Loop / Correlazioni
+    ai_result          = pyqtSignal(object)        # AIResultEvent
+    kelly_update       = pyqtSignal(float)         # frazione Kelly suggerita (semplice)
+    regime_update      = pyqtSignal(str, float)    # (regime, hurst) per simbolo corrente
+    loop_heartbeat     = pyqtSignal(str)           # loop_name (es. "4h_scan")
+    correlation_update = pyqtSignal(object)        # CorrelationUpdateEvent
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -218,6 +276,29 @@ class SignalBus:
 
     def emit_stopped(self):
         self.qt.engine_stopped.emit()
+
+    # ── Fase 5: AI / Risk / Loop / Correlazioni ───────────────────────────
+
+    def emit_ai_result(self, event: AIResultEvent):
+        """Emette risultato AutoConfig. Anche scatena regime_update separato."""
+        self.qt.ai_result.emit(event)
+        self.qt.regime_update.emit(event.regime, event.hurst)
+
+    def emit_kelly_update(self, kelly_pct: float):
+        """Kelly% suggerito (frazione [0, 1])."""
+        self.qt.kelly_update.emit(float(kelly_pct))
+
+    def emit_regime_update(self, regime: str, hurst: float):
+        """Regime + hurst per simbolo corrente (standalone, senza AIResult completo)."""
+        self.qt.regime_update.emit(regime, float(hurst))
+
+    def emit_loop_heartbeat(self, loop_name: str):
+        """Heartbeat di un loop async per StatusDot pulse."""
+        self.qt.loop_heartbeat.emit(loop_name)
+
+    def emit_correlation_update(self, event: CorrelationUpdateEvent):
+        """Matrice correlazioni posizioni aperte."""
+        self.qt.correlation_update.emit(event)
 
     # ── GUI → Engine ───────────────────────────────────────────────────────
 
