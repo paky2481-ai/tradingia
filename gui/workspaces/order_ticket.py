@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -272,8 +273,15 @@ class _OrderTablePanel(QWidget):
         )
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.verticalHeader().setVisible(False)
-        self._table.horizontalHeader().setStretchLastSection(True)
         self._table.setShowGrid(False)
+
+        # A.2 — Resize automatico colonne: ResizeToContents per tutte, Stretch
+        # per l'ultima (P&L) così non rimane spazio vuoto a destra.
+        hdr = self._table.horizontalHeader()
+        hdr.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        hdr.setSectionResizeMode(
+            self._COLUMNS - 1, QHeaderView.ResizeMode.Stretch
+        )
 
         # Popola demo data
         self._populate_demo()
