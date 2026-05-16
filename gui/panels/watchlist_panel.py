@@ -16,6 +16,7 @@ from PyQt6.QtGui import QColor, QBrush, QFont
 from PyQt6.QtWidgets import (
     QWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
+from gui.i18n import tr
 
 _UI = Path(__file__).parent.parent / "ui" / "watchlist_panel.ui"
 
@@ -181,15 +182,15 @@ class WatchlistPanel(QWidget):
             pass
 
     async def _fetch_quotes(self):
-        self._status_label.setText("Updating…")
+        self._status_label.setText(tr("watchlist.status.updating"))
         try:
             from data.feed import data_feed
             quotes = await data_feed.get_multiple_quotes(self._symbols)
             self._quotes.update(quotes)
             self._update_from_cache()
-            self._status_label.setText(f"Updated — {len(quotes)} symbols")
+            self._status_label.setText(tr("watchlist.status.updated", n=len(quotes)))
         except Exception as e:
-            self._status_label.setText(f"Error: {e}")
+            self._status_label.setText(tr("watchlist.status.error", error=e))
 
     def _update_from_cache(self):
         for row in range(self._table.rowCount()):

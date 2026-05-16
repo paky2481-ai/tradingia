@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from core.signal_bus import get_bus, PatternAlertEvent
 from core.pattern_observer import get_pattern_observer
 from utils.logger import get_logger
+from gui.i18n import tr
 
 _UI = Path(__file__).parent.parent / "ui" / "pattern_panel.ui"
 
@@ -43,6 +44,9 @@ _COLORS = {
 }
 
 _COLUMNS = ["Symbol", "Pattern", "Direzione", "Status", "Conf%", "TF", "Da (min)", "Target"]
+# Nota: _COLUMNS è usato solo per len(). Le intestazioni UI vengono dal .ui file.
+# Le chiavi i18n pattern.col.direction e pattern.col.age_min sono disponibili per
+# eventuali implementazioni future che costruiscano le intestazioni programmaticamente.
 
 
 class PatternPanel(QWidget):
@@ -53,11 +57,17 @@ class PatternPanel(QWidget):
         self._rows: dict[str, int] = {}   # observation_id → row index
         uic.loadUi(str(_UI), self)
         self._apply_styles()
+        self._apply_i18n()
         self._connect_signals()
         self._connect_bus()
         self._start_polling()
 
     # ── UI setup ───────────────────────────────────────────────────────────
+
+    def _apply_i18n(self):
+        """Aggiorna le intestazioni traducibili della tabella."""
+        self._table.setHorizontalHeaderItem(2, QTableWidgetItem(tr("pattern.col.direction")))
+        self._table.setHorizontalHeaderItem(6, QTableWidgetItem(tr("pattern.col.age_min")))
 
     def _apply_styles(self):
         self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:13px;")

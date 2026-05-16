@@ -17,6 +17,8 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 
+from gui.i18n import tr
+
 import pandas as pd
 from PyQt6 import uic
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
@@ -190,7 +192,7 @@ class AIAnalysisPanel(QWidget):
 
         self._content_layout.addStretch(1)
 
-        self._lbl_empty = QLabel("Load a symbol and click\n\"Run AI Analysis\"")
+        self._lbl_empty = QLabel(tr("ai.empty_state"))
         self._lbl_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_empty.setStyleSheet("color:#484f58; font-size:11px; padding:16px;")
         self._content_layout.insertWidget(0, self._lbl_empty)
@@ -208,7 +210,7 @@ class AIAnalysisPanel(QWidget):
         self._symbol = symbol
         self._df = df
         self._asset_type = asset_type
-        self._btn_run.setText(f"Run AI Analysis  [{symbol}]")
+        self._btn_run.setText(tr("ai.btn_run", symbol=symbol))
         self._btn_run.setEnabled(True)
 
         if self._auto_enabled:
@@ -257,7 +259,7 @@ class AIAnalysisPanel(QWidget):
             )
             self.update_from_result(result)
         except Exception as e:
-            self._lbl_empty.setText(f"Analysis error:\n{e}")
+            self._lbl_empty.setText(tr("ai.analysis_error", error=e))
             self._lbl_empty.show()
         finally:
             self._running = False
@@ -399,9 +401,17 @@ class AIAnalysisPanel(QWidget):
         hl.addWidget(pct)
         c.addWidget(conf_row)
 
-        c.addWidget(_row("Hurst bias", "Trending" if r.hurst > 0.55 else ("Reverting" if r.hurst < 0.45 else "Random")))
+        hurst_bias = (
+            tr("ai.hurst_bias.trending") if r.hurst > 0.55 else
+            (tr("ai.hurst_bias.reverting") if r.hurst < 0.45 else tr("ai.hurst_bias.random"))
+        )
+        c.addWidget(_row("Hurst bias", hurst_bias))
+        fund_support = (
+            tr("ai.fund_support.yes") if r.fundamental_score > 0.15 else
+            (tr("ai.fund_support.negative") if r.fundamental_score < -0.15 else tr("ai.fund_support.neutral"))
+        )
         c.addWidget(_row("Fund. support",
-                         "Yes" if r.fundamental_score > 0.15 else ("Negative" if r.fundamental_score < -0.15 else "Neutral"),
+                         fund_support,
                          "#3fb950" if r.fundamental_score > 0.15 else ("#f85149" if r.fundamental_score < -0.15 else "#8b949e")))
 
     # ── Visibility helpers ─────────────────────────────────────────────────

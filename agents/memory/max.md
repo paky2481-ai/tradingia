@@ -15,6 +15,8 @@
 - 2026-05-14: Aggiunto requisito utente i18n — IT default + EN opzionale, lasciare in inglese solo nomi tecnici riconosciuti (AI, ML, Hurst, Kelly, ATR, long/short, watchlist, broker, ecc.). Tabella di mapping completa con ~50 chiavi + tooltip esplicativi in `docs/SPRINT.md` Fase 1.6. Architettura: dict Python puro (no gettext/Qt Linguist), `gui/i18n/strings.py` con `tr()`, persistenza in QSettings, selettore in SettingsWorkspace.
 - 2026-05-15: **Fase 1.5 COMPLETATA** — commit `f92bda2` consolida 15 fix gate review (Ondate 1+2+3): layout TopBar+WATCHLIST, header colonne posizioni, _GaugeCard border, regime/hurst da AppState (no divergenze), _AIPanel restyled con hit/miss sparkline, KPIBadge tooltip anchor, icon.png 256x256 candela verde, BrokerPill bullet U+2022. Quality gate import OK. Path venv su questo Windows: `.\.venv312\Scripts\python.exe` (NON `.venv`). Classe MainWindow è `TradingMainWindow` (non `MainWindow`).
 - 2026-05-15: Avviata Fase 1.6.1 — audit testi UI hardcoded delegato a Marco. Visual check Fase 1.5 demandato all'utente al prossimo lancio app (non bloccante per audit read-only).
+- 2026-05-16: **Fase 1.6.2 + 1.6.3 COMPLETATE**. Commit `97e40d9` (Paky) crea `gui/i18n/strings.py` con dict IT/EN da 136 chiavi, funzione `tr()` con fallback alla chiave e interpolazione `.format()`, bootstrap QSettings in `gui/app.py`, setter `AppState.language` con segnale `language_changed`. Commit `2357c01` (Marco) refactor `tr()` nei 4 file GUI principali: `main_window.py`, `widgets/top_bar.py`, `widgets/info/regime_pill.py`, `workspaces/dashboard.py`. Quality gate import + istanziazione headless PASS in IT (default) ed EN. Resta da fare: Step 3 esteso sui 8 panel atomici (in corso, delegato a Marco background).
+- 2026-05-16: Lezione encoding — su PowerShell Windows serve sempre `$env:PYTHONIOENCODING="utf-8"` per stampare caratteri Unicode (▶, ⏸, →, ·, ecc.) in stdout dai test Python. Senza, errore `UnicodeEncodeError: 'charmap' codec`. Documentato per evitare falsi negativi nei quality gate.
 
 ## Lezioni apprese (permanenti)
 
@@ -29,11 +31,12 @@
 ## Task aperti
 
 - [x] **Fase 1.5 — Polish difetti gate review** — completata 2026-05-15 (commit f92bda2)
-- [ ] **Fase 1.6 — Internazionalizzazione (IT default + EN opzionale)** ← IN CORSO 2026-05-15
-  - Step 1: audit testi UI hardcoded (Marco)
-  - Step 2: crea `gui/i18n/` con dict IT/EN + AppState.language + QSettings persistence (Paky)
-  - Step 3: sostituzione progressiva con `tr()` in TopBar → Dashboard → main_window → panel (Marco)
-  - Step 4: test bilingue + selettore in SettingsWorkspace
+- [ ] **Fase 1.6 — Internazionalizzazione (IT default + EN opzionale)** ← IN CORSO 2026-05-16
+  - [x] Step 1: audit testi UI hardcoded (Marco) → `docs/i18n_audit.md`
+  - [x] Step 2: `gui/i18n/strings.py` con dict IT/EN da 136 chiavi + bootstrap QSettings in `gui/app.py` + setter `AppState.language` (Paky, commit `97e40d9`)
+  - [x] Step 3: refactor `tr()` nei 4 file GUI principali — `main_window.py`, `widgets/top_bar.py`, `widgets/info/regime_pill.py`, `workspaces/dashboard.py` (Marco, commit `2357c01`)
+  - [ ] Step 3 esteso: refactor `tr()` sui 8 panel atomici `gui/panels/*.py` (~47 stringhe) — in corso Marco background
+  - [ ] Step 4: selettore lingua in `SettingsWorkspace` → rimandato a Fase 2 (workspace non ancora creato)
 - [ ] Fase 2 — 5 workspaces rimanenti (order_ticket, analysis, backtest, patterns, settings) **devono usare `tr()` da subito**
 - [ ] Fase 3 — ActivityBar verticale + persistenza workspace in QSettings
 - [ ] Fase 4 — 8 info widget rimanenti (ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable)

@@ -23,6 +23,7 @@ from core.signal_bus import (
     get_bus, PositionUpdateEvent, TradeOpenedEvent, TradeClosedEvent,
     OpenTradeCommand, CloseTradeCommand,
 )
+from gui.i18n import tr
 
 _UI = Path(__file__).parent.parent / "ui" / "positions_panel.ui"
 
@@ -156,7 +157,7 @@ class PositionsPanel(QWidget):
         self._set_cell(row, _COL_TP,      f"{ev.take_profit:.5f}", _STYLE_GREEN)
 
         # Bottone close
-        btn = QPushButton("Chiudi")
+        btn = QPushButton(tr("positions.btn_close"))
         btn.setFixedHeight(22)
         btn.setStyleSheet("""
             QPushButton {

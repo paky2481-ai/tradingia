@@ -34,6 +34,7 @@ except ImportError:
 from backtesting.backtester import Backtester, BacktestResult
 from config.settings import settings
 from utils.logger import get_logger
+from gui.i18n import tr
 
 logger = get_logger.bind(name="gui.backtest_panel")
 
@@ -259,18 +260,18 @@ class BacktestPanel(QWidget):
         grid.setSpacing(6)
         grid.setContentsMargins(8, 12, 8, 8)
         metrics = [
-            ("Rendimento",    "_m_return"),
-            ("Rendim. Ann.",  "_m_ann_return"),
-            ("Sharpe",        "_m_sharpe"),
-            ("Sortino",       "_m_sortino"),
-            ("Max Drawdown",  "_m_drawdown"),
-            ("Win Rate",      "_m_winrate"),
-            ("Profit Factor", "_m_pf"),
-            ("N. Trade",      "_m_trades"),
-            ("Avg Win",       "_m_avg_win"),
-            ("Avg Loss",      "_m_avg_loss"),
-            ("Capitale Fin.", "_m_final_cap"),
-            ("Barre/Trade",   "_m_bars"),
+            (tr("backtest.metric.return"),          "_m_return"),
+            (tr("backtest.metric.ann_return"),       "_m_ann_return"),
+            ("Sharpe",                               "_m_sharpe"),
+            ("Sortino",                              "_m_sortino"),
+            ("Max Drawdown",                         "_m_drawdown"),
+            ("Win Rate",                             "_m_winrate"),
+            ("Profit Factor",                        "_m_pf"),
+            (tr("backtest.metric.n_trades"),         "_m_trades"),
+            ("Avg Win",                              "_m_avg_win"),
+            ("Avg Loss",                             "_m_avg_loss"),
+            (tr("backtest.metric.final_capital"),    "_m_final_cap"),
+            (tr("backtest.metric.bars_per_trade"),   "_m_bars"),
         ]
         for idx, (label, attr) in enumerate(metrics):
             box = _MetricBox(label)
@@ -286,8 +287,8 @@ class BacktestPanel(QWidget):
             pg.setConfigOption("foreground", "#8b949e")
             self._plot_widget = pg.PlotWidget()
             self._plot_widget.showGrid(x=True, y=True, alpha=0.15)
-            self._plot_widget.getAxis("left").setLabel("Capitale (€)")
-            self._plot_widget.getAxis("bottom").setLabel("Barre")
+            self._plot_widget.getAxis("left").setLabel(tr("backtest.axis.capital"))
+            self._plot_widget.getAxis("bottom").setLabel(tr("backtest.axis.bars"))
             self._plot_widget.setMinimumHeight(180)
             layout.addWidget(self._plot_widget)
             self._equity_line = self._plot_widget.plot(
@@ -299,7 +300,7 @@ class BacktestPanel(QWidget):
             )
             self._plot_widget.addLegend(offset=(10, 10))
         else:
-            lbl = QLabel("pyqtgraph non installato\n(pip install pyqtgraph)")
+            lbl = QLabel(tr("backtest.pyqtgraph_missing"))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet("color:#8b949e;")
             layout.addWidget(lbl)
@@ -323,7 +324,7 @@ class BacktestPanel(QWidget):
         self._reset_ui()
         self._set_running(True)
         self._lbl_status.setText(
-            f"Download {symbol} [{tf}] · {days} giorni..."
+            tr("backtest.status.downloading", symbol=symbol, tf=tf, days=days)
         )
 
         # Cleanup thread/worker precedenti (già terminati per il check sopra)
@@ -352,15 +353,16 @@ class BacktestPanel(QWidget):
     @pyqtSlot(int)
     def _on_progress(self, pct: int):
         self._progress.setValue(pct)
-        self._lbl_status.setText(f"Simulazione in corso... {pct}%")
+        self._lbl_status.setText(tr("backtest.status.running", pct=pct))
 
     @pyqtSlot(object)
     def _on_finished(self, result: BacktestResult):
         self._result = result
         self._progress.setValue(100)
         self._lbl_status.setText(
-            f"Completato · {result.total_trades} trade · "
-            f"{result.total_return_pct:+.2f}%"
+            tr("backtest.status.done",
+               trades=result.total_trades,
+               return_pct=f"{result.total_return_pct:+.2f}")
         )
         self._display_result(result)
         self._btn_export.setEnabled(True)
@@ -371,7 +373,7 @@ class BacktestPanel(QWidget):
 
     @pyqtSlot(str)
     def _on_error(self, msg: str):
-        self._lbl_status.setText(f"Errore: {msg}")
+        self._lbl_status.setText(tr("backtest.status.error", msg=msg))
         self._lbl_status.setStyleSheet("color:#f85149; font-size:11px;")
 
     @pyqtSlot()
@@ -380,7 +382,7 @@ class BacktestPanel(QWidget):
             return
         from PyQt6.QtWidgets import QFileDialog
         path, _ = QFileDialog.getSaveFileName(
-            self, "Esporta Trade Log", f"backtest_{self._result.symbol}.csv",
+            self, tr("backtest.export_dialog_title"), f"backtest_{self._result.symbol}.csv",
             "CSV (*.csv)"
         )
         if path:
@@ -498,5 +500,5 @@ class BacktestPanel(QWidget):
 
     def _set_running(self, running: bool):
         self._btn_run.setEnabled(not running)
-        self._btn_run.setText("⏳  In corso..." if running else "▶  Avvia Backtest")
+        self._btn_run.setText("⏳  In corso..." if running else tr("engine.btn_start"))
         self._progress.setVisible(running or self._result is not None)

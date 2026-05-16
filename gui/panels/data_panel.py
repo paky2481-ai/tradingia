@@ -13,6 +13,7 @@ from typing import Optional
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
+from gui.i18n import tr
 
 _UI = Path(__file__).parent.parent / "ui" / "data_panel.ui"
 
@@ -80,7 +81,7 @@ class DataPanel(QWidget):
     def _on_load_clicked(self):
         symbol = self._symbol_input.text().strip().upper()
         if not symbol:
-            self._set_status("Enter a symbol first.", error=True)
+            self._set_status(tr("data.error.no_symbol"), error=True)
             return
         tf = self._tf_combo.currentText()
         asyncio.ensure_future(self._fetch_historical(symbol, tf))
@@ -88,12 +89,12 @@ class DataPanel(QWidget):
     def _on_live_clicked(self):
         symbol = self._symbol_input.text().strip().upper()
         if not symbol:
-            self._set_status("Enter a symbol first.", error=True)
+            self._set_status(tr("data.error.no_symbol"), error=True)
             self._btn_live.setChecked(False)
             return
 
         if self._btn_live.isChecked():
-            self._btn_live.setText("Stop Live Feed")
+            self._btn_live.setText(tr("data.btn_stop_live"))
             self._btn_live.setStyleSheet("""
                 QPushButton { background-color:#da3633; border-color:#da3633;
                               color:#ffffff; border-radius:6px; }
@@ -108,10 +109,10 @@ class DataPanel(QWidget):
         if self._live_task:
             self._live_task.cancel()
             self._live_task = None
-        self._btn_live.setText("Start Live Feed")
+        self._btn_live.setText(tr("data.btn_start_live"))
         self._btn_live.setStyleSheet("")   # reset to stylesheet
         self._btn_live.setChecked(False)
-        self._set_status("Live feed stopped.")
+        self._set_status(tr("data.status.live_stopped"))
 
     # ── Async workers ──────────────────────────────────────────────────────
 

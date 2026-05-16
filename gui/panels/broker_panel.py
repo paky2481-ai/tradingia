@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from PyQt6.QtCore import Qt, pyqtSlot
+from gui.i18n import tr
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QLineEdit, QGroupBox, QFormLayout, QFrame,
@@ -133,7 +134,7 @@ class BrokerPanel(QWidget):
         root.setSpacing(8)
 
         # ── Title ────────────────────────────────────────────────────────
-        title = QLabel("Impostazioni Broker")
+        title = QLabel(tr("broker.settings_title"))
         title.setStyleSheet(_STYLE_TITLE)
         root.addWidget(title)
         root.addWidget(_sep())
@@ -141,10 +142,10 @@ class BrokerPanel(QWidget):
         # ── Status ───────────────────────────────────────────────────────
         status_row = QHBoxLayout()
         status_row.setSpacing(6)
-        status_lbl = QLabel("Stato:")
+        status_lbl = QLabel(tr("broker.status_label"))
         status_lbl.setStyleSheet(_STYLE_GRAY)
         status_row.addWidget(status_lbl)
-        self._lbl_status = QLabel("● Paper — SIMULAZIONE")
+        self._lbl_status = QLabel(tr("broker.paper_status"))
         self._lbl_status.setStyleSheet(_STYLE_YELLOW)
         status_row.addWidget(self._lbl_status, 1)
         root.addLayout(status_row)
@@ -157,7 +158,7 @@ class BrokerPanel(QWidget):
         self._combo_broker = QComboBox()
         self._combo_broker.addItems(self._BROKER_LABELS)
         self._combo_broker.setStyleSheet(_STYLE_COMBO)
-        broker_row.addRow(_make_label("Broker attivo:"), self._combo_broker)
+        broker_row.addRow(_make_label(tr("broker.active_label")), self._combo_broker)
         root.addLayout(broker_row)
 
         # ── Stacked credential panels ────────────────────────────────────
@@ -174,9 +175,9 @@ class BrokerPanel(QWidget):
         # ── Buttons ──────────────────────────────────────────────────────
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
-        self._btn_save = QPushButton("Salva impostazioni")
+        self._btn_save = QPushButton(tr("broker.btn_save"))
         self._btn_save.setStyleSheet(_STYLE_BTN_SAVE)
-        self._btn_test = QPushButton("Testa connessione")
+        self._btn_test = QPushButton(tr("broker.btn_test"))
         self._btn_test.setStyleSheet(_STYLE_BTN_TEST)
         btn_row.addWidget(self._btn_save)
         btn_row.addWidget(self._btn_test)
@@ -200,17 +201,14 @@ class BrokerPanel(QWidget):
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 4, 0, 4)
-        info = QLabel(
-            "Nessuna credenziale richiesta.\n"
-            "In modalità Paper gli ordini sono simulati senza soldi reali."
-        )
+        info = QLabel(tr("broker.paper_info"))
         info.setStyleSheet("color:#58a6ff; font-size:11px;")
         info.setWordWrap(True)
         lay.addWidget(info)
         return w
 
     def _build_ig_panel(self) -> QWidget:
-        grp = QGroupBox("IG Markets — CFD (forex, indici, oro)")
+        grp = QGroupBox(tr("broker.ig_title"))
         grp.setStyleSheet(_STYLE_GROUP)
         form = QFormLayout(grp)
         form.setContentsMargins(8, 12, 8, 8)
@@ -224,16 +222,13 @@ class BrokerPanel(QWidget):
         self._ig_account_type.setStyleSheet(_STYLE_COMBO)
         self._ig_account_id = _make_input("lascia vuoto per default")
 
-        form.addRow(_make_label("API Key:"),       self._ig_api_key)
-        form.addRow(_make_label("Username:"),      self._ig_username)
-        form.addRow(_make_label("Password:"),      self._ig_password)
-        form.addRow(_make_label("Account type:"),  self._ig_account_type)
-        form.addRow(_make_label("Account ID:"),    self._ig_account_id)
+        form.addRow(_make_label("API Key:"),                        self._ig_api_key)
+        form.addRow(_make_label("Username:"),                       self._ig_username)
+        form.addRow(_make_label("Password:"),                       self._ig_password)
+        form.addRow(_make_label(tr("broker.field.account_type")),   self._ig_account_type)
+        form.addRow(_make_label("Account ID:"),                     self._ig_account_id)
 
-        note = QLabel(
-            "Conto demo gratuito: ig.com/it → Conto Demo\n"
-            "API key: labs.ig.com → My Applications"
-        )
+        note = QLabel(tr("broker.ig_note"))
         note.setStyleSheet("color:#484f58; font-size:10px;")
         note.setWordWrap(True)
         w = QWidget()
@@ -245,7 +240,7 @@ class BrokerPanel(QWidget):
         return w
 
     def _build_oanda_panel(self) -> QWidget:
-        grp = QGroupBox("OANDA — Forex + XAU/USD")
+        grp = QGroupBox(tr("broker.oanda_title"))
         grp.setStyleSheet(_STYLE_GROUP)
         form = QFormLayout(grp)
         form.setContentsMargins(8, 12, 8, 8)
@@ -257,14 +252,11 @@ class BrokerPanel(QWidget):
         self._oanda_env.addItems(["practice", "live"])
         self._oanda_env.setStyleSheet(_STYLE_COMBO)
 
-        form.addRow(_make_label("API Token:"),    self._oanda_token)
-        form.addRow(_make_label("Account ID:"),   self._oanda_account_id)
-        form.addRow(_make_label("Ambiente:"),     self._oanda_env)
+        form.addRow(_make_label("API Token:"),                 self._oanda_token)
+        form.addRow(_make_label("Account ID:"),                self._oanda_account_id)
+        form.addRow(_make_label(tr("broker.field.environment")), self._oanda_env)
 
-        note = QLabel(
-            "Conto practice gratuito: oanda.com\n"
-            "Token: MyAccount → Manage API Access"
-        )
+        note = QLabel(tr("broker.oanda_note"))
         note.setStyleSheet("color:#484f58; font-size:10px;")
         note.setWordWrap(True)
         w = QWidget()
@@ -276,7 +268,7 @@ class BrokerPanel(QWidget):
         return w
 
     def _build_alpaca_panel(self) -> QWidget:
-        grp = QGroupBox("Alpaca — Azioni USA")
+        grp = QGroupBox(tr("broker.alpaca_title"))
         grp.setStyleSheet(_STYLE_GROUP)
         form = QFormLayout(grp)
         form.setContentsMargins(8, 12, 8, 8)
@@ -285,16 +277,16 @@ class BrokerPanel(QWidget):
         self._alpaca_key    = _make_input("API Key ID")
         self._alpaca_secret = _PasswordField()
         self._alpaca_paper  = QComboBox()
-        self._alpaca_paper.addItems(["Paper (simulato)", "Live"])
+        self._alpaca_paper.addItems([tr("broker.alpaca_mode_paper"), "Live"])
         self._alpaca_paper.setStyleSheet(_STYLE_COMBO)
 
-        form.addRow(_make_label("API Key:"),    self._alpaca_key)
-        form.addRow(_make_label("Secret:"),     self._alpaca_secret)
-        form.addRow(_make_label("Modalità:"),   self._alpaca_paper)
+        form.addRow(_make_label("API Key:"),                self._alpaca_key)
+        form.addRow(_make_label("Secret:"),                 self._alpaca_secret)
+        form.addRow(_make_label(tr("broker.field.mode")),   self._alpaca_paper)
         return grp
 
     def _build_ccxt_panel(self) -> QWidget:
-        grp = QGroupBox("CCXT — Crypto Exchanges")
+        grp = QGroupBox(tr("broker.ccxt_title"))
         grp.setStyleSheet(_STYLE_GROUP)
         form = QFormLayout(grp)
         form.setContentsMargins(8, 12, 8, 8)
@@ -304,13 +296,13 @@ class BrokerPanel(QWidget):
         self._ccxt_key      = _make_input("API Key")
         self._ccxt_secret   = _PasswordField()
         self._ccxt_sandbox  = QComboBox()
-        self._ccxt_sandbox.addItems(["Sandbox (simulato)", "Live"])
+        self._ccxt_sandbox.addItems([tr("broker.ccxt_mode_sandbox"), "Live"])
         self._ccxt_sandbox.setStyleSheet(_STYLE_COMBO)
 
-        form.addRow(_make_label("Exchange:"),  self._ccxt_exchange)
-        form.addRow(_make_label("API Key:"),   self._ccxt_key)
-        form.addRow(_make_label("Secret:"),    self._ccxt_secret)
-        form.addRow(_make_label("Modalità:"),  self._ccxt_sandbox)
+        form.addRow(_make_label("Exchange:"),               self._ccxt_exchange)
+        form.addRow(_make_label("API Key:"),                self._ccxt_key)
+        form.addRow(_make_label("Secret:"),                 self._ccxt_secret)
+        form.addRow(_make_label(tr("broker.field.mode")),   self._ccxt_sandbox)
         return grp
 
     # ─────────────────────────────────────────────────────────────────────
@@ -358,7 +350,7 @@ class BrokerPanel(QWidget):
 
             self._update_status_label(broker_id)
         except Exception as e:
-            self._lbl_result.setText(f"Errore caricamento impostazioni: {e}")
+            self._lbl_result.setText(tr("broker.load_error", error=e))
 
     def _on_broker_changed(self, idx: int):
         self._stack.setCurrentIndex(idx)
@@ -367,11 +359,11 @@ class BrokerPanel(QWidget):
 
     def _update_status_label(self, broker_id: str):
         if broker_id == "paper":
-            self._lbl_status.setText("● Paper — SIMULAZIONE")
+            self._lbl_status.setText(tr("broker.paper_status"))
             self._lbl_status.setStyleSheet(_STYLE_YELLOW)
         else:
             label = self._BROKER_LABELS[self._BROKER_IDS.index(broker_id)]
-            self._lbl_status.setText(f"○ {label} — non connesso")
+            self._lbl_status.setText(tr("broker.disconnected_status", broker=label))
             self._lbl_status.setStyleSheet(_STYLE_GRAY)
 
     # ─────────────────────────────────────────────────────────────────────
@@ -421,12 +413,10 @@ class BrokerPanel(QWidget):
             # Aggiorna settings in memoria per la sessione corrente
             self._apply_to_settings(broker_id)
             self._lbl_result.setStyleSheet(_STYLE_GREEN)
-            self._lbl_result.setText(
-                "Impostazioni salvate in .env. Riavvia l'app per applicarle."
-            )
+            self._lbl_result.setText(tr("broker.save_ok"))
         except Exception as e:
             self._lbl_result.setStyleSheet(_STYLE_RED)
-            self._lbl_result.setText(f"Errore salvataggio: {e}")
+            self._lbl_result.setText(tr("broker.save_error", error=e))
 
     def _write_env(self, updates: Dict[str, str]):
         """Aggiorna le righe corrispondenti nel file .env."""
@@ -475,32 +465,32 @@ class BrokerPanel(QWidget):
 
         if broker_id == "paper":
             self._lbl_result.setStyleSheet(_STYLE_GREEN)
-            self._lbl_result.setText("Paper broker: nessuna connessione necessaria.")
-            self._lbl_status.setText("● Paper — SIMULAZIONE")
+            self._lbl_result.setText(tr("broker.paper_no_connect"))
+            self._lbl_status.setText(tr("broker.paper_status"))
             self._lbl_status.setStyleSheet(_STYLE_YELLOW)
             return
 
         self._btn_test.setEnabled(False)
         self._lbl_result.setStyleSheet(_STYLE_GRAY)
-        self._lbl_result.setText("Test connessione in corso...")
+        self._lbl_result.setText(tr("broker.test_in_progress"))
         asyncio.ensure_future(self._async_test(broker_id))
 
     async def _async_test(self, broker_id: str):
         try:
             ok, msg = await self._do_test(broker_id)
             if ok:
-                self._lbl_status.setText(f"● {broker_id.upper()} — CONNESSO")
+                self._lbl_status.setText(tr("broker.connected_status", broker=broker_id.upper()))
                 self._lbl_status.setStyleSheet(_STYLE_GREEN)
                 self._lbl_result.setStyleSheet(_STYLE_GREEN)
-                self._lbl_result.setText(f"Connessione riuscita: {msg}")
+                self._lbl_result.setText(tr("broker.test_ok", msg=msg))
             else:
-                self._lbl_status.setText(f"○ {broker_id.upper()} — ERRORE")
+                self._lbl_status.setText(tr("broker.error_status", broker=broker_id.upper()))
                 self._lbl_status.setStyleSheet(_STYLE_RED)
                 self._lbl_result.setStyleSheet(_STYLE_RED)
-                self._lbl_result.setText(f"Connessione fallita: {msg}")
+                self._lbl_result.setText(tr("broker.test_fail", msg=msg))
         except Exception as e:
             self._lbl_result.setStyleSheet(_STYLE_RED)
-            self._lbl_result.setText(f"Errore test: {e}")
+            self._lbl_result.setText(tr("broker.test_error", error=e))
         finally:
             self._btn_test.setEnabled(True)
 

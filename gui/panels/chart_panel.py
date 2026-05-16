@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from gui.widgets.candlestick_chart import CandlestickChart
 from gui.widgets.oscillator_chart import OscillatorChart
+from gui.i18n import tr
 
 
 class ChartPanel(QWidget):
@@ -122,7 +123,7 @@ class ChartPanel(QWidget):
         self._empty.setStyleSheet("background:#0d1117;")
         em_layout = QVBoxLayout(self._empty)
         em_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        em_lbl = QLabel("Select a symbol and click\n\"Load Historical Data\"")
+        em_lbl = QLabel(tr("chart.empty_state"))
         em_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         em_lbl.setStyleSheet("color:#484f58; font-size:16px;")
         em_layout.addWidget(em_lbl)
