@@ -26,10 +26,10 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
   - `gui/main_window.py` riscritto (372→121 LOC, zero QDockWidget)
 - [x] **🚦 Gate Review — Qt VINCE** (PR #12 + #13 mergiati)
 - [x] **Quality gate agenti**: Paky e Marco ora hanno regola obbligatoria di real import test + istanziazione widget prima di chiudere task (commit d13075c)
-- [ ] **Fase 1.5 — Polish difetti gate review** (3 ondate, dettaglio sotto)
-- [ ] **Fase 1.6 — Internazionalizzazione (IT default + EN opzionale)** ← NUOVO REQUISITO UTENTE
-- [ ] Fase 2 — Workspaces rimanenti (5 file in `gui/workspaces/`) — DEVONO usare `tr()` da subito
-- [ ] Fase 3 — ActivityBar verticale sinistra per switch workspace
+- [x] **Fase 1.5 — Polish difetti gate review** — completata 2026-05-15 (commit `f92bda2`, 15 fix)
+- [x] **Fase 1.6 — Internazionalizzazione (IT default + EN opzionale)** — completata 2026-05-16 (commit `97e40d9`, `2357c01`, `b8239b8`, `810387a`). 187 chiavi IT=EN, 12 file refactored con `tr()`, selettore lingua in SettingsWorkspace
+- [x] **Fase 2 — Workspaces rimanenti** — completata 2026-05-16 (commit `810387a`). 5 nuovi workspace, QStackedWidget 6 slot, Ctrl+1..6 shortcut, persistenza QSettings
+- [ ] Fase 3 — ActivityBar verticale sinistra per switch workspace ← PROSSIMO STEP
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
 - [ ] Fase 6 — Fix stati pulsanti via AppState (tutti i panel)
