@@ -9,6 +9,8 @@ Shows the full AI analysis for the currently loaded symbol:
   - Final AI signal with confidence breakdown
   - Active strategy + tuned parameters
   - "Run AI Analysis" button
+
+Fase 5.2: ascolta bus.qt.ai_result, regime_update, kelly_update.
 """
 
 from __future__ import annotations
@@ -21,12 +23,16 @@ from gui.i18n import tr
 
 import pandas as pd
 from PyQt6 import uic
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QTimer
 from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QFont
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QSizePolicy, QProgressBar,
     QGridLayout, QCheckBox,
+)
+
+from gui.widgets.info import (
+    RegimePill, Gauge, ConfidenceBar, BiDirectionalBar, FFTMini, Sparkline,
 )
 
 _UI = Path(__file__).parent.parent / "ui" / "ai_analysis_panel.ui"
@@ -132,6 +138,8 @@ class AIAnalysisPanel(QWidget):
     Signals:
         analysis_complete(dict)  – emitted when analysis finishes
         oscillator_changed(str)  – emitted when AI selects a different oscillator
+
+    Fase 5.2: listener bus.qt.ai_result, regime_update, kelly_update.
     """
 
     analysis_complete = pyqtSignal(object)    # AutoConfigResult
@@ -145,10 +153,14 @@ class AIAnalysisPanel(QWidget):
         self._auto_enabled: bool = True
         self._running: bool = False
 
+        # Fase 5.2 — storico predizioni per sparkline
+        self._prediction_history: list[float] = []
+
         uic.loadUi(str(_UI), self)
         self._apply_styles()
         self._build_dynamic_content()
         self._connect_signals()
+        self._connect_bus()
 
     # ── UI Setup ──────────────────────────────────────────────────────────
 
@@ -178,6 +190,66 @@ class AIAnalysisPanel(QWidget):
         """Aggiunge sezioni dinamiche e label vuota al layout dello scroll content."""
         self._content_layout = self._scroll_content.layout()
 
+        # ── Fase 5.2: header con RegimePill + ConfidenceBar + BiDirectionalBar ──
+        self._header_sec = _Section("Regime & Signal")
+        hc = self._header_sec.content()
+
+        # RegimePill in riga con label
+        pill_row = QWidget()
+        pill_hl = QHBoxLayout(pill_row)
+        pill_hl.setContentsMargins(0, 0, 0, 0)
+        pill_hl.setSpacing(6)
+        pill_lbl = QLabel("Regime:")
+        pill_lbl.setStyleSheet("color:#a8b1bb; font-size:11px;")
+        pill_hl.addWidget(pill_lbl)
+        self._regime_pill = RegimePill()
+        pill_hl.addWidget(self._regime_pill)
+        pill_hl.addStretch()
+        hc.addWidget(pill_row)
+
+        # ConfidenceBar
+        self._confidence_bar = ConfidenceBar()
+        self._confidence_bar.set_label("CONFIDENCE")
+        self._confidence_bar.set_threshold(0.7)
+        hc.addWidget(self._confidence_bar)
+
+        # BiDirectionalBar (prediction direction)
+        self._bidir_bar = BiDirectionalBar()
+        hc.addWidget(self._bidir_bar)
+
+        # ── Gauge Hurst ───────────────────────────────────────────────────────
+        self._gauge_hurst = Gauge(label=tr("gauge.hurst"))
+        hc.addWidget(self._gauge_hurst)
+
+        # ── Gauge Kelly ───────────────────────────────────────────────────────
+        self._gauge_kelly = Gauge(
+            label=tr("gauge.kelly"),
+            zones=[(0.0, 0.05, "#3fb950"), (0.05, 0.15, "#d29922"), (0.15, 1.0, "#f85149")],
+        )
+        hc.addWidget(self._gauge_kelly)
+
+        self._content_layout.addWidget(self._header_sec)
+
+        # ── FFTMini ───────────────────────────────────────────────────────────
+        self._fft_sec = _Section("Cycle Spectrum (FFT)")
+        self._fft_mini = FFTMini()
+        self._fft_mini.set_spectrum([0.1] * 10)  # placeholder finché non arriva CycleAnalysis
+        self._fft_sec.content().addWidget(self._fft_mini)
+        self._content_layout.addWidget(self._fft_sec)
+
+        # ── Sparkline storia predizioni ───────────────────────────────────────
+        self._spark_sec = _Section("History (50 pred.)")
+        spark_row = QWidget()
+        spark_hl = QHBoxLayout(spark_row)
+        spark_hl.setContentsMargins(0, 0, 0, 0)
+        spark_hl.setSpacing(4)
+        self._pred_sparkline = Sparkline(width=120, height=28, marker_mode="hit_miss")
+        spark_hl.addWidget(self._pred_sparkline)
+        spark_hl.addStretch()
+        self._spark_sec.content().addWidget(spark_row)
+        self._content_layout.addWidget(self._spark_sec)
+
+        # ── Sezioni analisi tradizionali ─────────────────────────────────────
         self._sec_regime      = _Section("Regime & Cycles")
         self._sec_fundamental = _Section("Fundamental Score")
         self._sec_indicators  = _Section("AI-Selected Indicators")
@@ -202,6 +274,17 @@ class AIAnalysisPanel(QWidget):
     def _connect_signals(self):
         self._chk_auto.toggled.connect(self._on_auto_toggled)
         self._btn_run.clicked.connect(self._on_run_clicked)
+
+    def _connect_bus(self):
+        """Fase 5.2 — collega segnali SignalBus in lazy mode."""
+        try:
+            from core.signal_bus import get_bus
+            bus = get_bus()
+            bus.qt.ai_result.connect(self._on_ai_result)
+            bus.qt.regime_update.connect(self._on_regime_update)
+            bus.qt.kelly_update.connect(self._on_kelly_update)
+        except Exception:
+            pass  # bus non disponibile in test headless
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -247,6 +330,54 @@ class AIAnalysisPanel(QWidget):
 
     def _on_auto_toggled(self, checked: bool):
         self._auto_enabled = checked
+
+    # ── Fase 5.2 — Bus slots ──────────────────────────────────────────────
+
+    @pyqtSlot(object)
+    def _on_ai_result(self, event):
+        """Aggiorna widget da AIResultEvent emesso dal bus."""
+        try:
+            # Gauge Hurst
+            self._gauge_hurst.set_value(event.hurst)
+            # ConfidenceBar
+            self._confidence_bar.set_value(event.confidence)
+            # BiDirectionalBar: derivo bull/bear da price_direction
+            pd_val = float(event.price_direction)
+            if pd_val > 0:
+                bull = min(1.0, 0.5 + abs(pd_val))
+                bear = max(0.0, 0.5 - abs(pd_val))
+            else:
+                bear = min(1.0, 0.5 + abs(pd_val))
+                bull = max(0.0, 0.5 - abs(pd_val))
+            self._bidir_bar.set_split(bull, bear)
+            # Aggiorna storico sparkline: 1.0 = hit (long+positive / short+negative), 0.0 = miss
+            hit = 1.0 if (event.prediction in ("long", "neutral") and pd_val >= 0) \
+                      or (event.prediction == "short" and pd_val < 0) else 0.0
+            self._prediction_history.append(hit)
+            if len(self._prediction_history) > 50:
+                self._prediction_history = self._prediction_history[-50:]
+            self._pred_sparkline.set_values(self._prediction_history)
+            # Aggiorna anche RegimePill
+            self._regime_pill.set_regime(event.regime, event.hurst)
+        except Exception:
+            pass
+
+    @pyqtSlot(str, float)
+    def _on_regime_update(self, regime: str, hurst: float):
+        """Aggiorna solo RegimePill + Gauge Hurst."""
+        try:
+            self._regime_pill.set_regime(regime, hurst)
+            self._gauge_hurst.set_value(hurst)
+        except Exception:
+            pass
+
+    @pyqtSlot(float)
+    def _on_kelly_update(self, kelly_pct: float):
+        """Aggiorna Gauge Kelly."""
+        try:
+            self._gauge_kelly.set_value(kelly_pct)
+        except Exception:
+            pass
 
     # ── Async analysis ────────────────────────────────────────────────────
 

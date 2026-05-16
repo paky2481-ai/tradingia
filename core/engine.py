@@ -34,6 +34,7 @@ from core.signal_bus import (
     ScanResultEvent, TradeOpenedEvent, TradeClosedEvent,
     PositionUpdateEvent, TrendAlertEvent, EngineStatusEvent,
     OpenTradeCommand, CloseTradeCommand,
+    CorrelationUpdateEvent,
 )
 from indicators.trend_change import TrendChangeDetector
 from notifications.notifier import notifier
@@ -146,6 +147,10 @@ class TradingEngine:
 
     async def _scan_loop(self):
         while self._running:
+            try:
+                self.bus.emit_loop_heartbeat("4h_scan")
+            except Exception:
+                pass
             now = datetime.now(timezone.utc)
 
             for symbol, (display, strategy, asset_class, pip) in INSTRUMENTS.items():
@@ -223,6 +228,10 @@ class TradingEngine:
 
     async def _trend_detect_loop(self):
         while self._running:
+            try:
+                self.bus.emit_loop_heartbeat("trend_detect")
+            except Exception:
+                pass
             now = datetime.now(timezone.utc)
 
             for symbol, (display, strategy, asset_class, _pip) in INSTRUMENTS.items():
@@ -288,6 +297,10 @@ class TradingEngine:
     async def _position_monitor_loop(self):
         while self._running:
             await asyncio.sleep(POSITION_CHECK)
+            try:
+                self.bus.emit_loop_heartbeat("position_check")
+            except Exception:
+                pass
 
             for symbol in list(self._positions.keys()):
                 pos = self._positions[symbol]
@@ -328,6 +341,12 @@ class TradingEngine:
 
                 except Exception as e:
                     logger.error(f"Errore monitor {symbol}: {e}")
+
+            # Emetti correlazione se ci sono ≥2 posizioni con prezzi aggiornati
+            try:
+                self._emit_correlation_if_ready()
+            except Exception:
+                pass
 
     # ─────────────────────────────────────────────────────────────────────
     # Loop: comandi manuali dalla GUI
@@ -421,6 +440,10 @@ class TradingEngine:
     async def _status_loop(self):
         while self._running:
             await asyncio.sleep(STATUS_INTERVAL)
+            try:
+                self.bus.emit_loop_heartbeat("1h_scan")
+            except Exception:
+                pass
             try:
                 account = await self.broker.get_account()
                 self.bus.emit_engine_status(EngineStatusEvent(
@@ -516,6 +539,33 @@ class TradingEngine:
         )
 
         await notifier.notify_trade(pos["display"], close_dir, pos["quantity"], price, pnl)
+
+    def _emit_correlation_if_ready(self):
+        """
+        Calcola e emette la matrice di correlazione tra posizioni aperte.
+        Richiede ≥2 posizioni con candle in cache (usa prezzi close).
+        Emessa ad ogni ciclo _position_monitor_loop (~30s).
+        """
+        symbols = [s for s in self._positions if s in self._candle_cache]
+        if len(symbols) < 2:
+            return
+
+        series = {}
+        min_len = None
+        for s in symbols:
+            closes = self._candle_cache[s]["close"].values.astype(float)
+            series[s] = closes
+            min_len = len(closes) if min_len is None else min(min_len, len(closes))
+
+        if min_len is None or min_len < 5:
+            return
+
+        mat = np.column_stack([series[s][-min_len:] for s in symbols])
+        corr = np.corrcoef(mat.T)
+        self.bus.emit_correlation_update(CorrelationUpdateEvent(
+            matrix=corr.tolist(),
+            symbols=symbols,
+        ))
 
     # ─────────────────────────────────────────────────────────────────────
     # Data feed

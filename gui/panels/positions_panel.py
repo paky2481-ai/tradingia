@@ -4,26 +4,30 @@
 Due sezioni:
   1. Tabella posizioni aperte (con P&L live, SL/TP, bottone Close)
   2. Form apertura manuale trade
+
+Fase 5.2: header P&L Totale grande + sparkline mini per ogni posizione.
 """
 
 from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from PyQt6 import uic
-from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot, QTimer
 from PyQt6.QtWidgets import (
     QWidget, QTableWidgetItem, QHeaderView, QPushButton,
+    QVBoxLayout, QHBoxLayout, QLabel, QFrame,
 )
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QFont
 
 from core.signal_bus import (
     get_bus, PositionUpdateEvent, TradeOpenedEvent, TradeClosedEvent,
     OpenTradeCommand, CloseTradeCommand,
 )
 from gui.i18n import tr
+from gui.widgets.info import Sparkline
 
 _UI = Path(__file__).parent.parent / "ui" / "positions_panel.ui"
 
@@ -43,17 +47,18 @@ _STYLE_RED    = "color: #f85149; font-weight: bold;"
 _STYLE_YELLOW = "color: #e3b341;"
 _STYLE_GRAY   = "color: #a8b1bb;"
 
-_COL_DISPLAY = 0
-_COL_DIR     = 1
-_COL_QTY     = 2
-_COL_ENTRY   = 3
-_COL_CURRENT = 4
-_COL_PNL     = 5
-_COL_PNL_PCT = 6
-_COL_SL      = 7
-_COL_TP      = 8
-_COL_CLOSE   = 9
-_NCOLS       = 10
+_COL_DISPLAY   = 0
+_COL_DIR       = 1
+_COL_QTY       = 2
+_COL_ENTRY     = 3
+_COL_CURRENT   = 4
+_COL_PNL       = 5
+_COL_PNL_PCT   = 6
+_COL_SL        = 7
+_COL_TP        = 8
+_COL_MINI      = 9   # Fase 5.2 — Sparkline mini per riga
+_COL_CLOSE     = 10
+_NCOLS         = 11
 
 
 class PositionsPanel(QWidget):
@@ -62,6 +67,14 @@ class PositionsPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._positions: Dict[str, dict] = {}   # symbol → row data
+        # Fase 5.2 — storico PnL per equity sparkline header
+        self._pnl_history: List[float] = [0.0]
+        # Fase 5.2 — storico prezzi per sparkline per riga
+        self._price_history: Dict[str, List[float]] = {}  # symbol → lista prezzi
+        # Fase 5.2 — sparkline widget per riga
+        self._row_sparklines: Dict[str, Sparkline] = {}   # symbol → Sparkline
+        # Totale PnL non realizzato corrente
+        self._total_pnl: float = 0.0
 
         uic.loadUi(str(_UI), self)
 
@@ -70,11 +83,52 @@ class PositionsPanel(QWidget):
         self.manualLayout.setContentsMargins(8, 8, 8, 8)
         self.logLayout.setContentsMargins(6, 6, 6, 6)
 
+        self._build_pnl_header()
         self._setup_table()
         self._setup_form()
         self._setup_connections()
         self._connect_bus()
         self._update_table_visibility()
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Fase 5.2 — Header P&L Totale
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _build_pnl_header(self):
+        """Inserisce header P&L Totale sopra posLayout nel layout genitore."""
+        header = QFrame()
+        header.setStyleSheet(
+            "QFrame { background:#161b22; border-bottom:1px solid #30363d; }"
+        )
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(10, 6, 10, 6)
+        hl.setSpacing(12)
+
+        # Label P&L grande
+        lbl_cap = QLabel(tr("positions.total_pnl") + ":")
+        lbl_cap.setStyleSheet("color:#a8b1bb; font-size:11px;")
+        hl.addWidget(lbl_cap)
+
+        self._lbl_total_pnl = QLabel("€ 0.00")
+        self._lbl_total_pnl.setStyleSheet(
+            "color:#e6edf3; font-size:16px; font-weight:bold; font-family:monospace;"
+        )
+        hl.addWidget(self._lbl_total_pnl)
+
+        hl.addSpacing(12)
+
+        # Sparkline equity curve mini (80x24)
+        self._equity_sparkline = Sparkline(width=80, height=24)
+        self._equity_sparkline.set_values([0.0])
+        hl.addWidget(self._equity_sparkline)
+        hl.addStretch()
+
+        # Inserisco l'header all'inizio del layout principale del pannello
+        try:
+            main_layout = self.posLayout
+            main_layout.insertWidget(0, header)
+        except AttributeError:
+            pass  # UI non ancora caricata — chiamato prima di uic.loadUi
 
     # ─────────────────────────────────────────────────────────────────────
     # Setup
@@ -136,12 +190,43 @@ class PositionsPanel(QWidget):
         self._set_cell(row_idx, _COL_PNL, f"{ev.unrealized_pnl:+.2f}", pnl_style)
         self._set_cell(row_idx, _COL_PNL_PCT, f"{ev.pnl_pct:+.2f}%", pnl_style)
 
+        # Fase 5.2 — aggiorna sparkline mini per riga
+        spark = self._row_sparklines.get(ev.symbol)
+        if spark is not None:
+            hist = self._price_history.setdefault(ev.symbol, [ev.entry_price])
+            hist.append(ev.current_price)
+            if len(hist) > 20:
+                hist[:] = hist[-20:]
+            spark.set_values(hist)
+
+        # Fase 5.2 — ricalcola totale PnL e aggiorna header
+        self._recalculate_total_pnl(ev.symbol, ev.unrealized_pnl)
+
+    def _recalculate_total_pnl(self, updated_symbol: str, new_pnl: float):
+        """Aggiorna totale PnL e la sparkline equity curve nell'header."""
+        try:
+            self._positions[updated_symbol]["pnl"] = new_pnl
+            total = sum(d.get("pnl", 0.0) for d in self._positions.values())
+            self._total_pnl = total
+            color = "#3fb950" if total >= 0 else "#f85149"
+            self._lbl_total_pnl.setText(f"€ {total:+.2f}")
+            self._lbl_total_pnl.setStyleSheet(
+                f"color:{color}; font-size:16px; font-weight:bold; font-family:monospace;"
+            )
+            self._pnl_history.append(total)
+            if len(self._pnl_history) > 50:
+                self._pnl_history = self._pnl_history[-50:]
+            self._equity_sparkline.set_values(self._pnl_history)
+        except Exception:
+            pass
+
     @pyqtSlot(object)
     def _on_trade_opened(self, ev: TradeOpenedEvent):
         """Aggiunge riga nella tabella posizioni."""
         row = self._table.rowCount()
         self._table.insertRow(row)
-        self._positions[ev.symbol] = {"row": row}
+        self._table.setRowHeight(row, 34)
+        self._positions[ev.symbol] = {"row": row, "pnl": 0.0}
 
         dir_style = _STYLE_GREEN if ev.direction == "buy" else _STYLE_RED
         dir_text  = "▲ BUY" if ev.direction == "buy" else "▼ SELL"
@@ -155,6 +240,14 @@ class PositionsPanel(QWidget):
         self._set_cell(row, _COL_PNL_PCT, "0.00%")
         self._set_cell(row, _COL_SL,      f"{ev.stop_loss:.5f}", _STYLE_RED)
         self._set_cell(row, _COL_TP,      f"{ev.take_profit:.5f}", _STYLE_GREEN)
+
+        # Fase 5.2 — Sparkline mini per riga (entry price come primo punto)
+        spark = Sparkline(width=60, height=22)
+        spark.set_values([ev.entry_price])
+        self._price_history[ev.symbol] = [ev.entry_price]
+        self._row_sparklines[ev.symbol] = spark
+        self._table.setCellWidget(row, _COL_MINI, spark)
+        self._table.setColumnWidth(_COL_MINI, 64)
 
         # Bottone close
         btn = QPushButton(tr("positions.btn_close"))
@@ -181,6 +274,9 @@ class PositionsPanel(QWidget):
             for sym, data in self._positions.items():
                 if data["row"] > row:
                     data["row"] -= 1
+            # Fase 5.2 — pulizia strutture per riga
+            self._price_history.pop(ev.symbol, None)
+            self._row_sparklines.pop(ev.symbol, None)
 
         # Aggiungi al log
         log_row = self._trade_log.rowCount()

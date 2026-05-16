@@ -2,6 +2,8 @@
 Watchlist Panel
 Real-time quote table with color-coded price changes.
 Emits symbol_selected(symbol) signal when user clicks a row.
+
+Fase 5.2: aggiunta colonna REGIME con RegimePill per simbolo corrente.
 """
 
 from __future__ import annotations
@@ -11,12 +13,13 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from PyQt6 import uic
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QColor, QBrush, QFont
 from PyQt6.QtWidgets import (
-    QWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QLabel, QHBoxLayout,
 )
 from gui.i18n import tr
+from gui.widgets.info import RegimePill
 
 _UI = Path(__file__).parent.parent / "ui" / "watchlist_panel.ui"
 
@@ -28,12 +31,13 @@ DEFAULT_WATCHLISTS: Dict[str, List[str]] = {
     "Indices": ["^GSPC", "^DJI", "^IXIC", "^FTSE"],
 }
 
-COLS = ["Symbol", "Price", "Change", "Change%", "Volume"]
+COLS = ["Symbol", "Price", "Change", "Change%", "Volume", "Regime"]
 COL_SYMBOL  = 0
 COL_PRICE   = 1
 COL_CHANGE  = 2
 COL_CHANGEP = 3
 COL_VOLUME  = 4
+COL_REGIME  = 5
 
 C_GREEN = QColor("#3fb950")
 C_RED   = QColor("#f85149")
@@ -72,6 +76,11 @@ class WatchlistPanel(QWidget):
         self._active_list = "Stocks"
         self._refresh_task: Optional[asyncio.Task] = None
 
+        # Fase 5.2 — mappa symbol → RegimePill widget nella colonna Regime
+        self._regime_pills: Dict[str, RegimePill] = {}
+        # Fase 5.2 — ultimo regime broadcast (per highlight simbolo corrente)
+        self._current_symbol_regime: Optional[str] = None
+
         uic.loadUi(str(_UI), self)
 
         # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
@@ -89,6 +98,7 @@ class WatchlistPanel(QWidget):
 
         self._setup_table()
         self._setup_connections()
+        self._connect_bus()
         self._load_list("Stocks")
 
         # Refresh timer (every 10 seconds while visible)
@@ -105,13 +115,16 @@ class WatchlistPanel(QWidget):
         self._table.setShowGrid(False)
         self._table.setAlternatingRowColors(False)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.horizontalHeader().setStretchLastSection(False)
         self._table.horizontalHeader().setSectionResizeMode(
             COL_SYMBOL, QHeaderView.ResizeMode.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(
+            COL_REGIME, QHeaderView.ResizeMode.Stretch)
         self._table.setColumnWidth(COL_SYMBOL, 80)
         self._table.setColumnWidth(COL_PRICE, 80)
         self._table.setColumnWidth(COL_CHANGE, 70)
         self._table.setColumnWidth(COL_CHANGEP, 60)
+        self._table.setColumnWidth(COL_VOLUME, 60)
         self._table.verticalHeader().setVisible(False)
 
     def _setup_connections(self):
@@ -122,6 +135,14 @@ class WatchlistPanel(QWidget):
 
         for name, btn in self._tab_buttons.items():
             btn.clicked.connect(lambda checked, n=name: self._load_list(n))
+
+    def _connect_bus(self):
+        """Fase 5.2 — collega regime_update per aggiornare pill per simbolo selezionato."""
+        try:
+            from core.signal_bus import get_bus
+            get_bus().qt.regime_update.connect(self._on_regime_update)
+        except Exception:
+            pass
 
     # ── List Management ────────────────────────────────────────────────────
 
@@ -145,6 +166,7 @@ class WatchlistPanel(QWidget):
 
     def _rebuild_table(self):
         self._table.setRowCount(0)
+        self._regime_pills.clear()
         for symbol in self._symbols:
             self._insert_row(symbol)
         self._update_from_cache()
@@ -165,10 +187,36 @@ class WatchlistPanel(QWidget):
         for col in [COL_PRICE, COL_CHANGE, COL_CHANGEP, COL_VOLUME]:
             self._table.setItem(row, col, _item("--"))
 
+        # Fase 5.2 — colonna Regime con RegimePill (unknown di default)
+        pill = RegimePill()
+        pill.set_regime("unknown")
+        # Wrap in QWidget per setCellWidget
+        cell_w = QWidget()
+        cell_hl = QHBoxLayout(cell_w)
+        cell_hl.setContentsMargins(2, 2, 2, 2)
+        cell_hl.setSpacing(0)
+        cell_hl.addWidget(pill)
+        cell_hl.addStretch()
+        self._table.setCellWidget(row, COL_REGIME, cell_w)
+        self._regime_pills[symbol] = pill
+
     def _on_row_clicked(self, row: int, _col: int):
         item = self._table.item(row, COL_SYMBOL)
         if item:
             self.symbol_selected.emit(item.data(Qt.ItemDataRole.UserRole))
+
+    @pyqtSlot(str, float)
+    def _on_regime_update(self, regime: str, hurst: float):
+        """Fase 5.2 — aggiorna la pill del simbolo selezionato (primo della lista per ora)."""
+        try:
+            # Aggiorna la pill del primo simbolo della lista corrente (simbolo attivo)
+            if self._symbols:
+                symbol = self._symbols[0]
+                pill = self._regime_pills.get(symbol)
+                if pill:
+                    pill.set_regime(regime, hurst)
+        except Exception:
+            pass
 
     # ── Quote Updates ──────────────────────────────────────────────────────
 

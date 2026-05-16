@@ -50,6 +50,7 @@ class RiskManager:
         self._daily_pnl: float = 0.0
         self._peak_equity: float = 100_000.0
         self._current_drawdown_pct: float = 0.0
+        self._last_kelly_pct: float = -1.0  # sentinel: non ancora emesso
 
     # ── External state updates ─────────────────────────────────────────────
 
@@ -158,6 +159,16 @@ class RiskManager:
 
         actual_risk = kelly_qty * stop_dist
         risk_pct = actual_risk / self._portfolio_value * 100
+
+        # Emit kelly_update solo se il valore cambia di >0.5% rispetto all'ultimo emesso
+        kelly_pct = float(signal.confidence * self.cfg.kelly_fraction)
+        try:
+            if abs(kelly_pct - self._last_kelly_pct) > 0.005:
+                from core.signal_bus import get_bus
+                get_bus().emit_kelly_update(kelly_pct)
+                self._last_kelly_pct = kelly_pct
+        except Exception:
+            pass
 
         return kelly_qty, actual_risk, risk_pct
 

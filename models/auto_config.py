@@ -215,6 +215,14 @@ class AutoConfig:
         hurst = cycle["hurst"]
         dominant_period = cycle["dominant_period"]
 
+        # Emetti regime_update standalone (early signal per la GUI, prima del
+        # risultato AutoConfig completo — utile per panel che mostrano solo il regime)
+        try:
+            from core.signal_bus import get_bus
+            get_bus().emit_regime_update(regime, float(hurst))
+        except Exception:
+            pass
+
         # ── 2. Fundamental analysis ────────────────────────────────────
         fund_score = 0.0
         if asset_type in settings.fundamental.enabled_asset_types:

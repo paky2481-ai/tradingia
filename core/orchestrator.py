@@ -18,6 +18,7 @@ from portfolio.portfolio_manager import PortfolioManager
 from notifications.notifier import notifier
 from database.db import init_db
 from utils.logger import get_logger
+from core.signal_bus import get_bus, AIResultEvent
 
 _RETRAIN_STAMP_FILE = Path(settings.ml.models_dir) / ".last_retrain.json"
 
@@ -125,6 +126,40 @@ class TradingOrchestrator:
             return
 
         all_signals = await self.strategy_manager.evaluate_all(data)
+
+        # 3b. Emetti AIResultEvent per ogni simbolo con AutoConfigResult disponibile
+        try:
+            bus = get_bus()
+            auto_config = self.strategy_manager._get_auto_config()
+            for symbol in data:
+                result = auto_config.get_result(symbol)
+                if result is None:
+                    continue
+                signals_for_sym = all_signals.get(symbol, [])
+                # Determina prediction dalla lista segnali aggregati
+                if signals_for_sym:
+                    best = max(signals_for_sym, key=lambda s: s.confidence)
+                    prediction = best.direction  # "buy"/"sell"/"none"
+                    price_dir = best.confidence if best.direction == "buy" else (
+                        -best.confidence if best.direction == "sell" else 0.0
+                    )
+                else:
+                    prediction = "neutral"
+                    price_dir = 0.0
+                # Normalizza prediction al formato AIResultEvent ("long"/"short"/"neutral")
+                pred_map = {"buy": "long", "sell": "short", "none": "neutral"}
+                evt = AIResultEvent(
+                    symbol=symbol,
+                    regime=result.regime,
+                    hurst=result.hurst,
+                    confidence=result.confidence,
+                    prediction=pred_map.get(prediction, "neutral"),
+                    price_direction=price_dir,
+                    strategy=result.recommended_strategy,
+                )
+                bus.emit_ai_result(evt)
+        except Exception:
+            pass
 
         # 4. Process signals
         new_signals = []

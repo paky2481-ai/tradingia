@@ -18,6 +18,7 @@
 - 2026-05-16: Fase 2 — Creati 4 workspace (order_ticket, analysis, backtest, patterns). Aggiunte 22 chiavi order.* a strings.py (IT+EN). Struttura: QSplitter per order_ticket (form+tabella+broker) e patterns (pattern+chart), QSplitter nested per analysis (AI+chart top, data bottom), full-width con padding 12px per backtest. Quality gate: 4/4 SYNTAX OK, 4/4 IMPORT OK, 4/4 INSTANCE OK offscreen, 22/22 chiavi i18n presenti.
 - 2026-05-16: Fase 3 — ActivityBar 56px creata (gui/widgets/activity_bar.py, 126 LOC). 6 _ActivityButton con QSS property "active" + unpolish/polish per refresh stato. QSS self-contained nel modulo (non dipende dal foglio globale). Icone scelte: ⌖ ↗ ○ ▦ ✦ ⚙. Tutti e 3 i quality gate PASS (import, istanziazione 56px/6 btn, segnale workspace_changed).
 - 2026-05-16: Fase 4 — 8 widget atomici creati in gui/widgets/info/: ConfidenceBar (25H), BiDirectionalBar (22H), Heatmap (mouseMoveEvent tooltip cell), PingIndicator (dot glow + latency), StatusDot (QTimer pulsante loading), LiveLabel (flash QTimer 100ms via stylesheet), FFTMini (barre+gradiente+triangolo peak), NumericTable (QTableWidget Bloomberg-grade + sparkline cell). 2 chiavi i18n aggiunte (bidir.bear/bull IT+EN). Quality gate: 8/8 SYNTAX OK, 8/8 IMPORT OK, 8/8 INSTANCE OK offscreen.
+- 2026-05-16: Fase 5.2 — Arricchiti 4 panel (ai_analysis, watchlist, positions, engine) con 13 info widget + listener bus Fase 5. Creato PortfolioPanel nuovo standalone. 9 chiavi i18n aggiunte (engine.loop.*, portfolio.*, positions.total_pnl). QTimer idle 60s per loop dots. Quality gate: 6/6 SYNTAX OK, 5/5 IMPORT OK, 5/5 INSTANCE OK, tutti emit PASS.
 
 ## Lezioni apprese (permanenti)
 
@@ -45,7 +46,7 @@
 - [x] Creare `HelpIcon` riutilizzabile con tooltip + MessageBox dark-styled — DONE (99 LOC)
 - [x] Creare `DashboardWorkspace` MVP per gate review — DONE (807 LOC, liveness demo 2s)
 - [x] Restanti 8 micro-componenti: ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable — DONE Fase 4
-- [ ] Riprogettare `WatchlistPanel` full (pannello esistente) con sparkline per riga
+- [x] Riprogettare `WatchlistPanel` — aggiunta colonna REGIME con RegimePill (soluzione non invasiva: non ricostruisce l'intera tabella)
 - [ ] Integrare DashboardWorkspace in MainWindow (a cura di Paky)
 - [x] Fase 2 — Creati 4 workspace rimanenti: OrderTicketWorkspace, AnalysisWorkspace, BacktestWorkspace, PatternsWorkspace
 - [x] Fase 3 — ActivityBar widget creato, export in gui/widgets/__init__.py, quality gate PASS

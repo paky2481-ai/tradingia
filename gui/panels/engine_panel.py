@@ -7,6 +7,8 @@ Mostra in tempo reale:
   - Ultimo scan per strumento
   - Alert di trend change
   - Bottone Start/Stop
+
+Fase 5.2: 4 StatusDot per loop async + listener loop_heartbeat + timeout idle 60s.
 """
 
 from __future__ import annotations
@@ -15,15 +17,16 @@ from pathlib import Path
 from typing import Dict
 
 from PyQt6 import uic
-from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot, QTimer
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QFrame, QVBoxLayout,
+    QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout,
 )
 
 from core.signal_bus import (
     get_bus, EngineStatusEvent, TrendAlertEvent, ScanResultEvent,
     TradeOpenedEvent, TradeClosedEvent,
 )
+from gui.widgets.info import StatusDot
 
 _UI = Path(__file__).parent.parent / "ui" / "engine_panel.ui"
 
@@ -44,6 +47,10 @@ def _sep() -> QFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+_LOOP_NAMES = ["4h_scan", "1h_scan", "trend_detect", "position_check"]
+_IDLE_TIMEOUT_MS = 60_000  # 60 secondi senza heartbeat → idle
+
+
 class EnginePanel(QWidget):
     """Pannello di controllo e monitoraggio del motore automatico."""
 
@@ -69,6 +76,7 @@ class EnginePanel(QWidget):
         self._alert_layout.addStretch()
 
         self._setup_styles()
+        self._build_loop_dots()
         self._setup_connections()
         self._connect_bus()
 
@@ -119,6 +127,57 @@ class EnginePanel(QWidget):
             QGroupBox::title { subcontrol-origin:margin; left:8px; }
         """)
 
+    def _build_loop_dots(self):
+        """Fase 5.2 — Crea 4 StatusDot per i loop async e li inserisce dopo metricsFrame."""
+        from gui.i18n import tr
+
+        dots_frame = QFrame()
+        dots_frame.setStyleSheet(
+            "QFrame { background:#161b22; border:1px solid #30363d; border-radius:6px; }"
+        )
+        dots_layout = QVBoxLayout(dots_frame)
+        dots_layout.setContentsMargins(10, 8, 10, 8)
+        dots_layout.setSpacing(6)
+
+        title_lbl = QLabel("Loop Status")
+        title_lbl.setStyleSheet("color:#a8b1bb; font-size:10px; font-weight:bold;")
+        dots_layout.addWidget(title_lbl)
+
+        self._loop_dots: Dict[str, StatusDot] = {}
+        self._loop_timers: Dict[str, QTimer] = {}
+
+        for loop_name in _LOOP_NAMES:
+            label_text = tr(f"engine.loop.{loop_name}")
+            row_w = QWidget()
+            row_hl = QHBoxLayout(row_w)
+            row_hl.setContentsMargins(0, 0, 0, 0)
+            row_hl.setSpacing(6)
+
+            dot = StatusDot()
+            dot.set_state("idle")
+            dot.set_label(label_text)
+            self._loop_dots[loop_name] = dot
+            row_hl.addWidget(dot)
+            row_hl.addStretch()
+            dots_layout.addWidget(row_w)
+
+            # Timer timeout idle: se non riceviamo heartbeat per 60s → idle
+            t = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(_IDLE_TIMEOUT_MS)
+            # Closure per catturare loop_name correttamente
+            t.timeout.connect(
+                (lambda lname: lambda: self._loop_dots[lname].set_state("idle"))(loop_name)
+            )
+            self._loop_timers[loop_name] = t
+
+        # Inserisco il frame dei dots subito dopo metricsFrame nel rootLayout
+        try:
+            idx = self.rootLayout.indexOf(self.metricsFrame)
+            self.rootLayout.insertWidget(idx + 1, dots_frame)
+        except Exception:
+            self.rootLayout.addWidget(dots_frame)
+
     def _setup_connections(self):
         self._btn_start.clicked.connect(self._on_start_stop)
 
@@ -133,6 +192,8 @@ class EnginePanel(QWidget):
         bus.qt.engine_stopped.connect(self._on_engine_stopped)
         bus.qt.scan_result.connect(self._on_scan_result)
         bus.qt.trend_alert.connect(self._on_trend_alert)
+        # Fase 5.2 — heartbeat loop async
+        bus.qt.loop_heartbeat.connect(self._on_loop_heartbeat)
 
     # ─────────────────────────────────────────────────────────────────────
     # Slots
@@ -261,6 +322,19 @@ class EnginePanel(QWidget):
             item = self._alert_layout.takeAt(0)
             if item and item.widget():
                 item.widget().deleteLater()
+
+    @pyqtSlot(str)
+    def _on_loop_heartbeat(self, loop_name: str):
+        """Fase 5.2 — heartbeat: flash dot active + reset timer idle 60s."""
+        dot = self._loop_dots.get(loop_name)
+        if dot is None:
+            return
+        dot.set_state("active")
+        dot.pulse()
+        # Reset timer idle: se arriva un altro heartbeat entro 60s, il reset continua
+        timer = self._loop_timers.get(loop_name)
+        if timer:
+            timer.start()
 
     # ─────────────────────────────────────────────────────────────────────
     # Start/Stop

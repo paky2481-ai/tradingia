@@ -276,6 +276,21 @@ IT: dict[str, str] = {
     "settings.info.pyqt":              "PyQt6",
     "settings.info.env_path":          "Percorso .env",
     "settings.info.db_path":           "Percorso DB",
+
+    # ---- engine loop dots -------------------------------------------------------
+    "engine.loop.4h_scan":             "Scan 4h",
+    "engine.loop.1h_scan":             "Scan 1h",
+    "engine.loop.trend_detect":        "Trend Detect",
+    "engine.loop.position_check":      "Position Check",
+
+    # ---- portfolio panel --------------------------------------------------------
+    "portfolio.title":                 "Portafoglio",
+    "portfolio.correlations":          "Correlazioni",
+    "portfolio.asset_class":           "Asset Class",
+    "portfolio.drawdown":              "Drawdown Corrente",
+
+    # ---- positions panel (nuovi) ------------------------------------------------
+    "positions.total_pnl":             "P&L Totale",
 }
 
 
@@ -536,6 +551,21 @@ EN: dict[str, str] = {
     "settings.info.pyqt":              "PyQt6",
     "settings.info.env_path":          ".env path",
     "settings.info.db_path":           "DB path",
+
+    # ---- engine loop dots -------------------------------------------------------
+    "engine.loop.4h_scan":             "4h Scan",
+    "engine.loop.1h_scan":             "1h Scan",
+    "engine.loop.trend_detect":        "Trend Detect",
+    "engine.loop.position_check":      "Position Check",
+
+    # ---- portfolio panel --------------------------------------------------------
+    "portfolio.title":                 "Portfolio",
+    "portfolio.correlations":          "Correlations",
+    "portfolio.asset_class":           "Asset Class",
+    "portfolio.drawdown":              "Current Drawdown",
+
+    # ---- positions panel (nuovi) ------------------------------------------------
+    "positions.total_pnl":             "Total P&L",
 }
 
 
