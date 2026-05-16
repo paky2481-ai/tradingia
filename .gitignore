@@ -12,6 +12,10 @@ build/
 .eggs/
 *.whl
 
+# Claude Code temporary scratch files
+.tmp_*
+*.tmp
+
 # Virtual environments
 .venv/
 .venv312/

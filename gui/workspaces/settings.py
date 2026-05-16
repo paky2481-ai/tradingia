@@ -3,7 +3,7 @@ SettingsWorkspace — configurazione preferenze, broker e parametri di rischio.
 
 Layout: QScrollArea con QVBoxLayout di sezioni QGroupBox.
 Sezioni:
-    A. Generale  — lingua interfaccia + tema (placeholder)
+    A. Generale  — lingua interfaccia
     B. Broker    — apre BrokerPanel in popup QDialog
     C. Rischio   — capitale iniziale, risk/trade, max drawdown (persiste su .env)
     D. Info      — versione, Python, PyQt6, percorsi .env e DB
@@ -237,18 +237,6 @@ class SettingsWorkspace(QWidget):
             self._lang_combo.setCurrentIndex(idx)
         self._lang_combo.currentIndexChanged.connect(self._on_lang_changed)
         form.addRow(lang_lbl, self._lang_combo)
-
-        # --- Tema (placeholder disabilitato) ---
-        theme_lbl = QLabel(tr("settings.theme_label"))
-        theme_lbl.setStyleSheet(_STYLE_LABEL)
-
-        theme_combo = QComboBox()
-        theme_combo.setStyleSheet(_STYLE_COMBO)
-        theme_combo.addItem(tr("settings.theme_dark"))
-        theme_combo.addItem(tr("settings.theme_light_soon"))
-        theme_combo.setEnabled(False)
-        theme_combo.setToolTip("Disponibile nelle prossime versioni")
-        form.addRow(theme_lbl, theme_combo)
 
         return group
 
