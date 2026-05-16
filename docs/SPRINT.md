@@ -32,7 +32,8 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase 3 — ActivityBar verticale** — completata 2026-05-16 (commit `63a54ad`). Widget 56px sinistra con 6 icone, sync bidirezionale workspace↔ActivityBar
 - [x] **Fase 3.5 — Polish post visual check** — completata 2026-05-16 (commit `53ced06` + `db21dd2`). Fix groupbox titoli tagliati + contrasto AAA WCAG + rimozione tema placeholder
 - [x] **Fase 4 — 8 info widget atomici** — completata 2026-05-16 (commit `7f06b27`). ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable in `gui/widgets/info/`
-- [ ] Fase 5 — Arricchimento panel + 5 nuovi segnali SignalBus (Tom + Paky + Marco) ← PROSSIMO STEP
+- [x] **Fase 5 — Arricchimento panel + 5 segnali SignalBus** — completata 2026-05-16 (commit `7246e63` + `fae14d4`). Pipeline live end-to-end: AutoConfig→GUI, RiskManager→Gauge, Engine loop→StatusDot, posizioni→Heatmap. PortfolioPanel nuovo non ancora integrato in workspace
+- [ ] Fase 6 — Fix stati pulsanti via AppState ← PROSSIMO STEP
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
 - [ ] Fase 6 — Fix stati pulsanti via AppState (tutti i panel)
