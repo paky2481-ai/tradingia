@@ -207,6 +207,10 @@ IT: dict[str, str] = {
     "pattern.btn_clear":           "Pulisci",
     "pattern.count_label":         "{n} pattern",
 
+    # ---- bidir bar ------------------------------------------------------------
+    "bidir.bear":                   "BEAR",
+    "bidir.bull":                   "BULL",
+
     # ---- order ticket workspace -----------------------------------------------
     "order.group_title":           "Nuovo Ordine",
     "order.field.symbol":          "Strumento",
@@ -462,6 +466,10 @@ EN: dict[str, str] = {
     "pattern.title":               "Active Patterns",
     "pattern.btn_clear":           "Clear",
     "pattern.count_label":         "{n} patterns",
+
+    # ---- bidir bar ------------------------------------------------------------
+    "bidir.bear":                   "BEAR",
+    "bidir.bull":                   "BULL",
 
     # ---- order ticket workspace -----------------------------------------------
     "order.group_title":           "New Order",
