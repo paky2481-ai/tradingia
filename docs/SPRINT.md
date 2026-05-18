@@ -38,9 +38,10 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase 5.7 — HelpIcon panel + dedupe bottone AI** — completata 2026-05-18.
 - [x] **Fix yfinance HTTP 401 + XAUUSD=X→GC=F + Kelly/Vol drift demo** — completati 2026-05-18 (commit `29f89a6` + `8889f63`).
 - [x] **Fase A — Filo conduttore architetturale (single-instrument trader + multi-instrument AI backend)** — completata 2026-05-18 (commit `1a932cb` + `9c97abf`). AppState.current_symbol sync end-to-end, current_scan_symbol signal, Cruscotto trader-puro 1 tab Trading + Fundamentals strip, Osservatorio AI sostituisce workspace Analisi.
+- [x] **Fix 4 bug Workspace Operativo (A-B-C-D)** — completato 2026-05-18 (commit `8595075`). A: layout form Operativo, B: caption EnginePanel leggibili, C: rimozione form manuale duplicato in PositionsPanel, D: combo editable + sync bidirezionale simboli custom (MSFT, AAPL) end-to-end Operativo↔AppState↔Backtest.
 - [ ] **Fase B — Backend visibile** — chip simbolo TopBar fatto in A.1; resta polish + indicatore "engine sta scansionando X"
-- [ ] **Fase C — Chart integration** — sostituisce ChartArea placeholder con CandlestickChart, fetch dati on current_symbol
-- [ ] **Fase D — UX ordini + auto-download** — combo simbolo fatto in A.1; resta auto-download al primo click + rimozione data_panel
+- [ ] **Fase C — Chart integration** — sostituisce ChartArea placeholder con CandlestickChart, fetch dati on current_symbol ← candidato prossimo step
+- [ ] **Fase D — UX ordini + auto-download** — combo simbolo + sync bidirezionale fatti (A.1+commit 8595075); resta auto-download dati al primo click + rimozione data_panel
 - [ ] **Fase E — Pulizia + bug** — fix Pattern recognition, unifica le 2 watchlist, cleanup workspace ridondanti
 - [ ] **Fase 6 — Fix stati pulsanti via AppState** — engine_running → setEnabled() su Buy/Sell/CloseAll, loading state Test broker, quick-pick attivi
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
