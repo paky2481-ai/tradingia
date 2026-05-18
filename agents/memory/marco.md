@@ -20,6 +20,8 @@
 - 2026-05-16: Fase 4 — 8 widget atomici creati in gui/widgets/info/: ConfidenceBar (25H), BiDirectionalBar (22H), Heatmap (mouseMoveEvent tooltip cell), PingIndicator (dot glow + latency), StatusDot (QTimer pulsante loading), LiveLabel (flash QTimer 100ms via stylesheet), FFTMini (barre+gradiente+triangolo peak), NumericTable (QTableWidget Bloomberg-grade + sparkline cell). 2 chiavi i18n aggiunte (bidir.bear/bull IT+EN). Quality gate: 8/8 SYNTAX OK, 8/8 IMPORT OK, 8/8 INSTANCE OK offscreen.
 - 2026-05-16: Fase 5.2 — Arricchiti 4 panel (ai_analysis, watchlist, positions, engine) con 13 info widget + listener bus Fase 5. Creato PortfolioPanel nuovo standalone. 9 chiavi i18n aggiunte (engine.loop.*, portfolio.*, positions.total_pnl). QTimer idle 60s per loop dots. Quality gate: 6/6 SYNTAX OK, 5/5 IMPORT OK, 5/5 INSTANCE OK, tutti emit PASS.
 - 2026-05-18: Fase 5.5 — A.1: splitter OrderTicket [300,450,250]→[350,750,480], minWidth broker 200→420, form 280→330. A.3: padding bottoni BrokerPanel 12px→14px + min-height:32px nei QSS inline + setSizePolicy Expanding/Fixed. B: DashboardWorkspace refactored 863→~280 LOC — rimossi _WatchlistPanel, _PositionsPanel, _AIPanel; sostituiti con panel atomici. Layout scelto: sinistra V-split a 3 (Watchlist 40%+Positions 35%+Engine 25%), centro chart+gauge, destra AIAnalysisPanel. Demo timer NON tocca segnali Fase 5. Quality gate 4/4 PASS.
+- 2026-05-18: Refactor cruscotto Bloomberg-style (Max) — DashboardWorkspace riscritto ~310 LOC. _CenterPanel spezzato in _ChartArea (standalone) + _GaugeStrip (82px fissi, 3 gauge). QTabWidget 4 tab: Posizioni/AIAnalysis/Engine/Portfolio. Watchlist sempre visibile sinistra 280-360px. 4 chiavi i18n aggiunte (workspace.tab_*). Quality gate 4/4 PASS (sintassi, import, istanziazione 9 assert, i18n IT+EN).
+- 2026-05-18: Fase 5.6 — 4 tab flat → 2 macro-tab a gruppi correlati. Tab "Trading" (QSplitter H: Positions+Engine 50/50), Tab "Analisi" (QSplitter H: AI+Portfolio 50/50). Stretch chart 65→50, tab 35→50. 4 chiavi i18n rimosse, 2 aggiunte (tab_trading/tab_analysis). Quality gate 5/5 PASS.
 
 ## Lezioni apprese (permanenti)
 
@@ -52,6 +54,8 @@
 - [x] Fase 2 — Creati 4 workspace rimanenti: OrderTicketWorkspace, AnalysisWorkspace, BacktestWorkspace, PatternsWorkspace
 - [x] Fase 3 — ActivityBar widget creato, export in gui/widgets/__init__.py, quality gate PASS
 - [x] Fase 5.5 — A.1 splitter Ordini, A.3 padding broker buttons, B DashboardWorkspace refactor con panel atomici
+- [x] Refactor cruscotto Bloomberg-style — _ChartArea + _GaugeStrip separati, QTabWidget 4 tab, WatchlistPanel always-visible
+- [x] Fase 5.6 — 4 tab flat → 2 macro-tab (Trading=Positions+Engine, Analisi=AI+Portfolio), stretch 50/50, quality gate 5/5 PASS
 
 ## Workflow
 

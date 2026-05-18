@@ -1,21 +1,26 @@
 """
-DashboardWorkspace — Cruscotto principale Fase 5.5.
+DashboardWorkspace — Cruscotto principale.
 
-Layout:
-    QSplitter(H)
-    +-- Sinistra 320px  QSplitter(V)
-    |   +-- WatchlistPanel (panel atomico Fase 5.2)
-    |   +-- PositionsPanel (panel atomico Fase 5.2)
-    |   +-- EnginePanel    (panel atomico Fase 5.2, prima orfano)
-    +-- Centro (exp.)   Placeholder chart + 3 Gauge (Hurst, Kelly, Volatility)
-    +-- Destra 320px    AIAnalysisPanel (panel atomico Fase 5.2)
+Layout Bloomberg-style (Max, 2026-05-18):
+
+    QHBoxLayout(root)
+    +-- WatchlistPanel  280-360px  (sempre visibile, fuori dai tab)
+    +-- right_container (QWidget)
+        +-- _ChartArea    stretch=50  (placeholder/futuro CandlestickChart)
+        +-- _GaugeStrip   ~80px fissi (3 gauge: Hurst/Kelly/Volatility)
+        +-- QTabWidget    stretch=50  (2 macro-tab: Trading / Analisi)
+              ├── Tab "Trading"  → QSplitter H [PositionsPanel | EnginePanel]
+              └── Tab "Analisi"  → QSplitter H [AIAnalysisPanel | PortfolioPanel]
+
+Vincoli layout:
+    - Tab attivo occupa almeno 50% altezza verticale (stretch 50/50 con chart)
+    - Ogni macro-tab mostra 2 panel affiancati 50/50 in QSplitter orizzontale
+    - Un solo macro-tab visibile alla volta (default QTabWidget)
 
 Demo liveness:
-    QTimer 2s simula tick su AppState per variabili che non hanno ancora
-    emit dal core (equity, hurst, latency, daily_pnl).
-    NON sovrascrive segnali Fase 5 (ai_result, kelly_update, regime_update,
-    loop_heartbeat, correlation_update) — quelli rimangono vuoti finche
-    l'engine non e' running.
+    QTimer 2s simula AppState per variabili senza emit dal core.
+    NON sovrascrive segnali Fase 5 (ai_result, kelly_update,
+    regime_update, loop_heartbeat, correlation_update).
 
 NON modifica main_window.py — integrazione affidata a Paky.
 """
@@ -30,6 +35,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QSizePolicy,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -38,11 +44,12 @@ from gui.i18n import tr
 from gui.state.app_state import AppState
 from gui.widgets.info import Gauge, HelpIcon
 
-# Panel atomici Fase 5.2
+# Panel atomici
 from gui.panels.watchlist_panel import WatchlistPanel
 from gui.panels.positions_panel import PositionsPanel
 from gui.panels.ai_analysis_panel import AIAnalysisPanel
 from gui.panels.engine_panel import EnginePanel
+from gui.panels.portfolio_panel import PortfolioPanel
 
 
 # ── Palette (coerente con dark.qss) ─────────────────────────────────────────
@@ -60,6 +67,12 @@ _ACCENT       = "#a371f7"
 _INFO_LIGHT   = "#58a6ff"
 
 _UI_STACK     = '"Segoe UI", "Inter", "SF Pro Display", sans-serif'
+
+# ── Chiavi i18n dei 2 macro-tab (usate in _apply_i18n) ───────────────────────
+_TAB_KEYS = [
+    "workspace.tab_trading",
+    "workspace.tab_analysis",
+]
 
 
 def _label(
@@ -80,13 +93,13 @@ def _label(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Centro: Placeholder Chart + 3 Gauge cards
+# _GaugeCard — singola card con Gauge + titolo + HelpIcon
 # ═══════════════════════════════════════════════════════════════════════════
 
 class _GaugeCard(QFrame):
     """
     Card compatta con Gauge + titolo + HelpIcon.
-    Usata per le mini-cards sotto il placeholder chart.
+    Altezza fissa per non dilatare la strip.
     """
 
     def __init__(
@@ -106,7 +119,7 @@ class _GaugeCard(QFrame):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # Container esplicito con bordo visibile
+        # Container con bordo visibile
         inner_frame = QFrame(self)
         inner_frame.setStyleSheet(
             "background:#161b22;"
@@ -150,26 +163,23 @@ class _GaugeCard(QFrame):
         self._gauge.set_value(v)
 
 
-class _CenterPanel(QWidget):
+# ═══════════════════════════════════════════════════════════════════════════
+# _ChartArea — placeholder chart (futuro CandlestickChart)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class _ChartArea(QFrame):
     """
-    Area centrale: placeholder chart grande + 3 gauge card in fila.
+    Area chart: per ora placeholder grafico.
+    Quando CandlestickChart sarà pronto, basterà
+    sostituire il contenuto di ph_lay senza toccare
+    il layout esterno (DashboardWorkspace).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("ChartPlaceholder")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(6)
-
-        # ── Placeholder chart ─────────────────────────────────────────────
-        self._chart_placeholder = QFrame()
-        self._chart_placeholder.setObjectName("ChartPlaceholder")
-        self._chart_placeholder.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        self._chart_placeholder.setStyleSheet(
+        self.setStyleSheet(
             "#ChartPlaceholder {"
             f"  background:{_BG_BASE};"
             f"  border:1px solid {_BORDER};"
@@ -177,9 +187,9 @@ class _CenterPanel(QWidget):
             "}"
         )
 
-        ph_lay = QVBoxLayout(self._chart_placeholder)
-        ph_lay.setContentsMargins(0, 0, 0, 0)
-        ph_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         chart_main = QLabel(tr("dashboard.chart_placeholder"))
         chart_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -188,7 +198,7 @@ class _CenterPanel(QWidget):
             f" font-family:{_UI_STACK}; background:transparent; border:none;"
             "  letter-spacing:3px;"
         )
-        ph_lay.addWidget(chart_main)
+        lay.addWidget(chart_main)
 
         chart_sub = QLabel(tr("dashboard.chart_subtitle"))
         chart_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -196,14 +206,28 @@ class _CenterPanel(QWidget):
             f"color:#30363d; font-size:12px; font-weight:400;"
             f" font-family:{_UI_STACK}; background:transparent; border:none;"
         )
-        ph_lay.addWidget(chart_sub)
+        lay.addWidget(chart_sub)
 
-        outer.addWidget(self._chart_placeholder, 1)
 
-        # ── Riga di 3 Gauge cards ─────────────────────────────────────────
-        cards_row = QHBoxLayout()
-        cards_row.setContentsMargins(0, 0, 0, 0)
-        cards_row.setSpacing(6)
+# ═══════════════════════════════════════════════════════════════════════════
+# _GaugeStrip — 3 gauge orizzontali in strip sticky a ~80px
+# ═══════════════════════════════════════════════════════════════════════════
+
+class _GaugeStrip(QWidget):
+    """
+    Striscia orizzontale con 3 GaugeCard (Hurst / Kelly / Volatility).
+    Altezza fissa ~80px — non si dilata.
+    API: set_hurst(), set_kelly(), set_volatility().
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(82)
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 4, 0, 4)
+        row.setSpacing(6)
 
         self._hurst_card = _GaugeCard(
             label=tr("gauge.hurst"),
@@ -211,7 +235,7 @@ class _CenterPanel(QWidget):
             help_body=tr("help.hurst.body"),
             value=0.62,
         )
-        cards_row.addWidget(self._hurst_card)
+        row.addWidget(self._hurst_card)
 
         self._kelly_card = _GaugeCard(
             label=tr("gauge.kelly"),
@@ -224,7 +248,7 @@ class _CenterPanel(QWidget):
                 (0.10, 1.00, _BEAR),
             ],
         )
-        cards_row.addWidget(self._kelly_card)
+        row.addWidget(self._kelly_card)
 
         self._vol_card = _GaugeCard(
             label=tr("gauge.volatility"),
@@ -237,9 +261,7 @@ class _CenterPanel(QWidget):
                 (0.7, 1.0,  _WARN),
             ],
         )
-        cards_row.addWidget(self._vol_card)
-
-        outer.addLayout(cards_row)
+        row.addWidget(self._vol_card)
 
     # ── API pubblica ──────────────────────────────────────────────────────────
 
@@ -259,18 +281,17 @@ class _CenterPanel(QWidget):
 
 class DashboardWorkspace(QWidget):
     """
-    Workspace principale Cruscotto.
+    Workspace principale Cruscotto — layout Bloomberg-style.
 
-    Layout: QSplitter(H) -> [sinistra 320] [centro exp.] [destra 320]
-
-    Sinistra: QSplitter(V) con WatchlistPanel + PositionsPanel + EnginePanel
-              (tutti panel atomici con listener SignalBus Fase 5.2)
-    Centro:   placeholder chart + 3 gauge (Hurst, Kelly, Volatility)
-    Destra:   AIAnalysisPanel atomico con listener bus.qt.ai_result + regime_update
-
-    Demo liveness: QTimer 2s simula AppState per variabili senza emit core.
-    NON emette ai_result/kelly_update/correlation_update — quelli restano
-    vuoti finche' l'engine non e' running.
+    Struttura:
+        QHBoxLayout
+        ├── WatchlistPanel  (280-360px, sempre visibile)
+        └── right_container (QWidget, espandibile)
+            ├── _ChartArea     (stretch=65)
+            ├── _GaugeStrip    (80px fissi)
+            └── QTabWidget     (stretch=50)
+                ├── QSplitter H [PositionsPanel | EnginePanel]     [0] Trading
+                └── QSplitter H [AIAnalysisPanel | PortfolioPanel] [1] Analisi
 
     Uso in MainWindow (a cura di Paky):
         ws = DashboardWorkspace()
@@ -297,47 +318,100 @@ class DashboardWorkspace(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(2)
-        root.addWidget(splitter)
+        # Splitter principale: watchlist | right
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        main_splitter.setHandleWidth(2)
+        root.addWidget(main_splitter)
 
-        # ── Sinistra: V-split Watchlist + Positions + Engine ──────────────
-        left_splitter = QSplitter(Qt.Orientation.Vertical)
-        left_splitter.setMinimumWidth(280)
-        left_splitter.setMaximumWidth(420)
-        left_splitter.setHandleWidth(2)
-
+        # ── Sinistra: WatchlistPanel (sempre visibile) ─────────────────────
         self._watchlist = WatchlistPanel()
-        left_splitter.addWidget(self._watchlist)
+        self._watchlist.setMinimumWidth(280)
+        self._watchlist.setMaximumWidth(360)
+        main_splitter.addWidget(self._watchlist)
 
+        # ── Destra: chart + gauge strip + tab widget ───────────────────────
+        right_container = QWidget()
+        right_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        right_col = QVBoxLayout(right_container)
+        right_col.setContentsMargins(6, 0, 0, 0)
+        right_col.setSpacing(6)
+
+        # 1. Area chart (50% altezza — parità con tab widget)
+        self._chart_area = _ChartArea()
+        right_col.addWidget(self._chart_area, stretch=50)
+
+        # 2. Gauge strip (altezza fissa 82px)
+        self._gauge_strip = _GaugeStrip()
+        right_col.addWidget(self._gauge_strip, stretch=0)
+
+        # 3. QTabWidget con 2 macro-tab (50% altezza — almeno 50% schermo)
+        self._tab_widget = QTabWidget()
+        self._tab_widget.setTabPosition(QTabWidget.TabPosition.North)
+        self._tab_widget.setMovable(False)
+        self._tab_widget.setStyleSheet(
+            "QTabWidget::pane {"
+            f"  border: 1px solid {_BORDER};"
+            f"  background: {_BG_SURFACE};"
+            "}"
+            "QTabBar::tab {"
+            f"  background: {_BG_ELEVATED};"
+            f"  color: {_MUTED};"
+            "  padding: 5px 14px;"
+            "  font-size: 11px;"
+            f"  font-family: {_UI_STACK};"
+            f"  border: 1px solid {_BORDER_DIM};"
+            "  border-bottom: none;"
+            "  margin-right: 2px;"
+            "}"
+            "QTabBar::tab:selected {"
+            f"  background: {_BG_SURFACE};"
+            f"  color: {_TEXT};"
+            f"  border-color: {_BORDER};"
+            "}"
+            "QTabBar::tab:hover:!selected {"
+            f"  color: {_TEXT};"
+            "}"
+        )
+
+        # Panel atomici (attributi esposti per accesso esterno)
         self._positions = PositionsPanel()
-        left_splitter.addWidget(self._positions)
-
         self._engine = EnginePanel()
-        left_splitter.addWidget(self._engine)
-
-        # Rapporti verticali: watchlist 40%, positions 35%, engine 25%
-        left_splitter.setStretchFactor(0, 4)
-        left_splitter.setStretchFactor(1, 3)
-        left_splitter.setStretchFactor(2, 2)
-        left_splitter.setSizes([300, 240, 160])
-
-        splitter.addWidget(left_splitter)
-
-        # ── Centro: chart placeholder + gauge cards ────────────────────────
-        self._center = _CenterPanel()
-        splitter.addWidget(self._center)
-
-        # ── Destra: AIAnalysisPanel atomico ───────────────────────────────
         self._ai_panel = AIAnalysisPanel()
-        self._ai_panel.setMinimumWidth(280)
-        self._ai_panel.setMaximumWidth(420)
-        splitter.addWidget(self._ai_panel)
+        self._portfolio = PortfolioPanel()
 
-        splitter.setStretchFactor(0, 0)   # sinistra: fissa
-        splitter.setStretchFactor(1, 1)   # centro: espandibile
-        splitter.setStretchFactor(2, 0)   # destra: fissa
-        splitter.setSizes([320, 800, 320])
+        # Macro-tab 0: Trading — Posizioni + Engine affiancati 50/50
+        trading_split = QSplitter(Qt.Orientation.Horizontal)
+        trading_split.addWidget(self._positions)
+        trading_split.addWidget(self._engine)
+        trading_split.setSizes([500, 500])
+        trading_split.setHandleWidth(2)
+
+        # Macro-tab 1: Analisi — AI Analysis + Portfolio affiancati 50/50
+        analysis_split = QSplitter(Qt.Orientation.Horizontal)
+        analysis_split.addWidget(self._ai_panel)
+        analysis_split.addWidget(self._portfolio)
+        analysis_split.setSizes([500, 500])
+        analysis_split.setHandleWidth(2)
+
+        self._tab_widget.addTab(trading_split,  tr("workspace.tab_trading"))
+        self._tab_widget.addTab(analysis_split, tr("workspace.tab_analysis"))
+        self._tab_widget.setCurrentIndex(0)   # Trading di default
+
+        right_col.addWidget(self._tab_widget, stretch=50)
+
+        main_splitter.addWidget(right_container)
+        main_splitter.setSizes([320, 1100])
+        main_splitter.setStretchFactor(0, 0)   # watchlist: fissa
+        main_splitter.setStretchFactor(1, 1)   # destra: espandibile
+
+        # ── i18n dinamico: aggiorna nomi tab a cambio lingua ──────────────
+        try:
+            from gui.state.signal_bus import SignalBus
+            SignalBus.instance().language_changed.connect(self._apply_i18n)
+        except Exception:
+            pass  # bus non ancora disponibile in test headless
 
         # ── Demo liveness timer ───────────────────────────────────────────
         # Simula variabili AppState che non hanno ancora emit dal core engine.
@@ -351,12 +425,19 @@ class DashboardWorkspace(QWidget):
         self._demo_timer.timeout.connect(self._demo_tick)
         self._demo_timer.start(2000)
 
+    # ── i18n ─────────────────────────────────────────────────────────────────
+
+    def _apply_i18n(self) -> None:
+        """Aggiorna i testi dei 2 macro-tab quando cambia la lingua."""
+        for idx, key in enumerate(_TAB_KEYS):
+            self._tab_widget.setTabText(idx, tr(key))
+
     # ── Demo tick ─────────────────────────────────────────────────────────────
 
     def _demo_tick(self) -> None:
         """
         Simula un tick live ogni 2 secondi per variabili senza emit core.
-        Aggiorna: Hurst gauge, equity, daily_pnl, latency via AppState.
+        Aggiorna: Hurst gauge strip, equity, daily_pnl, latency via AppState.
 
         NON chiama metodi update_*() diretti sui panel atomici — quelli
         ascoltano gia' il SignalBus in autonomia.
@@ -364,10 +445,10 @@ class DashboardWorkspace(QWidget):
         self._tick_count += 1
         state = AppState.instance()
 
-        # 1. Hurst drift lento — aggiorna le 3 gauge centrali
+        # 1. Hurst drift lento — aggiorna le 3 gauge nella strip
         self._demo_hurst += random.uniform(-0.02, 0.02)
         self._demo_hurst = max(0.2, min(0.85, self._demo_hurst))
-        self._center.set_hurst(self._demo_hurst)
+        self._gauge_strip.set_hurst(self._demo_hurst)
         state.current_hurst = round(self._demo_hurst, 4)
 
         # Regime determinato da Hurst e scritto in AppState

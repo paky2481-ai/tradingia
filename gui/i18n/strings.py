@@ -291,6 +291,10 @@ IT: dict[str, str] = {
 
     # ---- positions panel (nuovi) ------------------------------------------------
     "positions.total_pnl":             "P&L Totale",
+
+    # ---- dashboard tab widget ---------------------------------------------------
+    "workspace.tab_trading":           "Trading",
+    "workspace.tab_analysis":          "Analisi",
 }
 
 
@@ -566,6 +570,10 @@ EN: dict[str, str] = {
 
     # ---- positions panel (nuovi) ------------------------------------------------
     "positions.total_pnl":             "Total P&L",
+
+    # ---- dashboard tab widget ---------------------------------------------------
+    "workspace.tab_trading":           "Trading",
+    "workspace.tab_analysis":          "Analysis",
 }
 
 
