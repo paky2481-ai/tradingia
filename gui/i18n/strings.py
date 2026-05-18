@@ -310,7 +310,33 @@ IT: dict[str, str] = {
 
     # ---- dashboard tab widget ---------------------------------------------------
     "workspace.tab_trading":           "Trading",
-    "workspace.tab_analysis":          "Analisi",
+
+    # ---- dashboard fundamentals strip ------------------------------------------
+    "dashboard.fund_pe":               "P/E",
+    "dashboard.fund_mktcap":           "Cap. Mercato",
+    "dashboard.fund_div":              "Div.",
+    "dashboard.fund_beta":             "Beta",
+    "dashboard.fund_na":               "—",
+
+    # ---- AI Observatory workspace -----------------------------------------------
+    "observatory.title":               "Osservatorio AI",
+    "observatory.symbols_in_scan":     "Simboli in scan",
+    "observatory.log_events":          "Log eventi",
+    "observatory.signals_table":       "Segnali AI",
+    "observatory.performance":         "Performance AI",
+    "observatory.col_time":            "ORA",
+    "observatory.col_symbol":          "SIMBOLO",
+    "observatory.col_dir":             "DIR",
+    "observatory.col_conf":            "CONF",
+    "observatory.col_strategy":        "STRATEGIA",
+    "observatory.predictions":         "Predizioni: {n}",
+    "observatory.hit_rate":            "Hit rate: {pct}",
+    "observatory.hit_rate_na":         "Hit rate: —",
+    "observatory.last50":              "Ultimi 50: {pct}% accuracy",
+    "observatory.last50_na":           "Ultimi 50: —",
+
+    # ---- workspace.analysis label (renamed to AI Observatory) ------------------
+    "workspace.analysis":              "Osservatorio AI",
 }
 
 
@@ -605,7 +631,33 @@ EN: dict[str, str] = {
 
     # ---- dashboard tab widget ---------------------------------------------------
     "workspace.tab_trading":           "Trading",
-    "workspace.tab_analysis":          "Analysis",
+
+    # ---- dashboard fundamentals strip ------------------------------------------
+    "dashboard.fund_pe":               "P/E",
+    "dashboard.fund_mktcap":           "Mkt Cap",
+    "dashboard.fund_div":              "Div.",
+    "dashboard.fund_beta":             "Beta",
+    "dashboard.fund_na":               "—",
+
+    # ---- AI Observatory workspace -----------------------------------------------
+    "observatory.title":               "AI Observatory",
+    "observatory.symbols_in_scan":     "Symbols in Scan",
+    "observatory.log_events":          "Event Log",
+    "observatory.signals_table":       "AI Signals",
+    "observatory.performance":         "AI Performance",
+    "observatory.col_time":            "TIME",
+    "observatory.col_symbol":          "SYMBOL",
+    "observatory.col_dir":             "DIR",
+    "observatory.col_conf":            "CONF",
+    "observatory.col_strategy":        "STRATEGY",
+    "observatory.predictions":         "Predictions: {n}",
+    "observatory.hit_rate":            "Hit rate: {pct}",
+    "observatory.hit_rate_na":         "Hit rate: —",
+    "observatory.last50":              "Last 50: {pct}% accuracy",
+    "observatory.last50_na":           "Last 50: —",
+
+    # ---- workspace.analysis label (renamed to AI Observatory) ------------------
+    "workspace.analysis":              "AI Observatory",
 }
 
 

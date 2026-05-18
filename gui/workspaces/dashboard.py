@@ -1,31 +1,34 @@
 """
-DashboardWorkspace — Cruscotto principale.
+DashboardWorkspace — Cruscotto principale (trader puro).
 
-Layout Bloomberg-style (Max, 2026-05-18):
+Layout Bloomberg-style (A.2, 2026-05-18):
 
     QHBoxLayout(root)
-    +-- WatchlistPanel  280-360px  (sempre visibile, fuori dai tab)
+    +-- WatchlistPanel       280-360px  (sempre visibile, fuori dai tab)
     +-- right_container (QWidget)
-        +-- _ChartArea    stretch=50  (placeholder/futuro CandlestickChart)
-        +-- _GaugeStrip   ~80px fissi (3 gauge: Hurst/Kelly/Volatility)
-        +-- QTabWidget    stretch=50  (2 macro-tab: Trading / Analisi)
-              ├── Tab "Trading"  → QSplitter H [PositionsPanel | EnginePanel]
-              └── Tab "Analisi"  → QSplitter H [AIAnalysisPanel | PortfolioPanel]
+        +-- _ChartArea         stretch=50  (placeholder/futuro CandlestickChart)
+        +-- _GaugeStrip        ~80px fissi (3 gauge: Hurst/Kelly/Volatility)
+        +-- _FundamentalsStrip ~36px fissi (P/E | Mkt Cap | Div | Beta per symbol)
+        +-- QTabWidget         stretch=50  (1 tab: Trading)
+              └── Tab "Trading"  → QSplitter H [PositionsPanel | EnginePanel]
 
-Vincoli layout:
-    - Tab attivo occupa almeno 50% altezza verticale (stretch 50/50 con chart)
-    - Ogni macro-tab mostra 2 panel affiancati 50/50 in QSplitter orizzontale
-    - Un solo macro-tab visibile alla volta (default QTabWidget)
+Decisione A.2:
+    - Rimosso tab "Analisi" (duplicava AnalysisWorkspace/AIObservatoryWorkspace).
+    - Rimossi self._ai_panel e self._portfolio dal cruscotto.
+    - Aggiunta _FundamentalsStrip: strip compatta ~36px tra gauge e tab, mostra
+      P/E | Mkt Cap | Div | Beta per current_symbol. Ascolta
+      AppState.current_symbol_changed → chiede dati a fundamental_feed (async).
+      Se dati non disponibili (forex, errore fetch) mostra "—".
 
 Demo liveness:
     QTimer 2s simula AppState per variabili senza emit dal core.
-    NON sovrascrive segnali Fase 5 (ai_result, kelly_update,
-    regime_update, loop_heartbeat, correlation_update).
+    NON sovrascrive segnali Fase 5.
 
 NON modifica main_window.py — integrazione affidata a Paky.
 """
 from __future__ import annotations
 
+import asyncio
 import random
 
 from PyQt6.QtCore import Qt, QTimer
@@ -47,9 +50,7 @@ from gui.widgets.info import Gauge, HelpIcon
 # Panel atomici
 from gui.panels.watchlist_panel import WatchlistPanel
 from gui.panels.positions_panel import PositionsPanel
-from gui.panels.ai_analysis_panel import AIAnalysisPanel
 from gui.panels.engine_panel import EnginePanel
-from gui.panels.portfolio_panel import PortfolioPanel
 
 
 # ── Palette (coerente con dark.qss) ─────────────────────────────────────────
@@ -68,10 +69,9 @@ _INFO_LIGHT   = "#58a6ff"
 
 _UI_STACK     = '"Segoe UI", "Inter", "SF Pro Display", sans-serif'
 
-# ── Chiavi i18n dei 2 macro-tab (usate in _apply_i18n) ───────────────────────
+# ── Chiavi i18n dei tab (usate in _apply_i18n) ────────────────────────────────
 _TAB_KEYS = [
     "workspace.tab_trading",
-    "workspace.tab_analysis",
 ]
 
 
@@ -276,6 +276,171 @@ class _GaugeStrip(QWidget):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# _FundamentalsStrip — strip compatta con P/E, Mkt Cap, Div, Beta
+# ═══════════════════════════════════════════════════════════════════════════
+
+class _FundamentalsStrip(QWidget):
+    """
+    Striscia orizzontale compatta ~36px con label fondamentali per current_symbol.
+
+    Layout: [Label simbolo] P/E: 15.2 | Mkt Cap: $2.5T | Div: 0.5% | Beta: 1.21
+
+    Ascolta AppState.current_symbol_changed. Quando il simbolo cambia
+    chiama fundamental_feed.get_fundamentals() in asyncio.
+    Se i dati non sono disponibili (forex, error), mostra "—".
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(36)
+        self.setStyleSheet(
+            f"background:{_BG_SURFACE};"
+            f"border-top:1px solid {_BORDER_DIM};"
+            f"border-bottom:1px solid {_BORDER_DIM};"
+        )
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(10, 0, 10, 0)
+        row.setSpacing(0)
+
+        # Label simbolo (grigio scuro, aggiornato su cambio symbol)
+        self._sym_lbl = QLabel("—")
+        self._sym_lbl.setStyleSheet(
+            f"color:{_ACCENT}; font-size:11px; font-weight:700;"
+            f" font-family:{_UI_STACK}; background:transparent; border:none;"
+            "  min-width:70px;"
+        )
+        row.addWidget(self._sym_lbl)
+
+        # Separatore
+        sep0 = QLabel("|")
+        sep0.setStyleSheet(f"color:{_BORDER}; background:transparent; border:none; padding:0 6px;")
+        row.addWidget(sep0)
+
+        # P/E
+        pe_title = QLabel(tr("dashboard.fund_pe") + ":")
+        pe_title.setStyleSheet(self._label_style(_MUTED))
+        row.addWidget(pe_title)
+        self._pe_lbl = QLabel(tr("dashboard.fund_na"))
+        self._pe_lbl.setStyleSheet(self._label_style(_TEXT))
+        row.addWidget(self._pe_lbl)
+
+        row.addWidget(self._sep())
+
+        # Mkt Cap
+        mc_title = QLabel(tr("dashboard.fund_mktcap") + ":")
+        mc_title.setStyleSheet(self._label_style(_MUTED))
+        row.addWidget(mc_title)
+        self._mc_lbl = QLabel(tr("dashboard.fund_na"))
+        self._mc_lbl.setStyleSheet(self._label_style(_TEXT))
+        row.addWidget(self._mc_lbl)
+
+        row.addWidget(self._sep())
+
+        # Div yield
+        div_title = QLabel(tr("dashboard.fund_div") + ":")
+        div_title.setStyleSheet(self._label_style(_MUTED))
+        row.addWidget(div_title)
+        self._div_lbl = QLabel(tr("dashboard.fund_na"))
+        self._div_lbl.setStyleSheet(self._label_style(_TEXT))
+        row.addWidget(self._div_lbl)
+
+        row.addWidget(self._sep())
+
+        # Beta
+        beta_title = QLabel(tr("dashboard.fund_beta") + ":")
+        beta_title.setStyleSheet(self._label_style(_MUTED))
+        row.addWidget(beta_title)
+        self._beta_lbl = QLabel(tr("dashboard.fund_na"))
+        self._beta_lbl.setStyleSheet(self._label_style(_TEXT))
+        row.addWidget(self._beta_lbl)
+
+        row.addStretch(1)
+
+        # Collega cambio simbolo
+        try:
+            AppState.instance().current_symbol_changed.connect(self._on_symbol_changed)
+            # Popola subito con il simbolo corrente
+            self._on_symbol_changed(AppState.instance().current_symbol)
+        except Exception:
+            pass
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _label_style(color: str) -> str:
+        return (
+            f"color:{color}; font-size:11px; font-weight:400;"
+            f" font-family:{_UI_STACK}; background:transparent; border:none;"
+            "  padding-left:4px; padding-right:4px;"
+        )
+
+    @staticmethod
+    def _sep() -> QLabel:
+        lbl = QLabel("|")
+        lbl.setStyleSheet(
+            f"color:{_BORDER}; background:transparent; border:none; padding:0 4px;"
+        )
+        return lbl
+
+    # ── Slot ──────────────────────────────────────────────────────────────────
+
+    def _on_symbol_changed(self, symbol: str) -> None:
+        """Aggiorna label simbolo e avvia fetch fondamentali async."""
+        self._sym_lbl.setText(symbol)
+        self._reset_labels()
+        # Fetch asincrono
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(self._fetch_fundamentals(symbol))
+            else:
+                # In test headless il loop non gira — nessun fetch
+                pass
+        except Exception:
+            pass  # loop non disponibile in test headless
+
+    def _reset_labels(self) -> None:
+        na = tr("dashboard.fund_na")
+        self._pe_lbl.setText(na)
+        self._mc_lbl.setText(na)
+        self._div_lbl.setText(na)
+        self._beta_lbl.setText(na)
+
+    async def _fetch_fundamentals(self, symbol: str) -> None:
+        """Chiede dati a fundamental_feed; se fallisce lascia '—'."""
+        try:
+            from data.fundamental.fundamental_feed import get_fundamentals
+            data = await get_fundamentals(symbol)
+            if data is None:
+                return
+            na = tr("dashboard.fund_na")
+            pe    = data.get("pe_ratio")
+            mc    = data.get("market_cap")
+            div   = data.get("dividend_yield")
+            beta  = data.get("beta")
+
+            self._pe_lbl.setText(f"{pe:.1f}"  if pe   is not None else na)
+            self._mc_lbl.setText(_fmt_mktcap(mc) if mc is not None else na)
+            self._div_lbl.setText(f"{div:.2f}%" if div is not None else na)
+            self._beta_lbl.setText(f"{beta:.2f}" if beta is not None else na)
+        except Exception:
+            pass  # fundamental_feed non disponibile o fetch fallito
+
+
+def _fmt_mktcap(v: float) -> str:
+    """Formatta market cap come $1.2T / $345B / $12M."""
+    if v >= 1e12:
+        return f"${v/1e12:.1f}T"
+    if v >= 1e9:
+        return f"${v/1e9:.0f}B"
+    if v >= 1e6:
+        return f"${v/1e6:.0f}M"
+    return f"${v:.0f}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # DashboardWorkspace — root widget
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -329,14 +494,14 @@ class DashboardWorkspace(QWidget):
         self._watchlist.setMaximumWidth(360)
         main_splitter.addWidget(self._watchlist)
 
-        # ── Destra: chart + gauge strip + tab widget ───────────────────────
+        # ── Destra: chart + gauge strip + fundamentals + tab widget ───────
         right_container = QWidget()
         right_container.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         right_col = QVBoxLayout(right_container)
         right_col.setContentsMargins(6, 0, 0, 0)
-        right_col.setSpacing(6)
+        right_col.setSpacing(4)
 
         # 1. Area chart (50% altezza — parità con tab widget)
         self._chart_area = _ChartArea()
@@ -346,7 +511,11 @@ class DashboardWorkspace(QWidget):
         self._gauge_strip = _GaugeStrip()
         right_col.addWidget(self._gauge_strip, stretch=0)
 
-        # 3. QTabWidget con 2 macro-tab (50% altezza — almeno 50% schermo)
+        # 3. Fundamentals strip (altezza fissa 36px) — A.2
+        self._fundamentals = _FundamentalsStrip()
+        right_col.addWidget(self._fundamentals, stretch=0)
+
+        # 4. QTabWidget con 1 tab Trading (50% altezza)
         self._tab_widget = QTabWidget()
         self._tab_widget.setTabPosition(QTabWidget.TabPosition.North)
         self._tab_widget.setMovable(False)
@@ -375,29 +544,19 @@ class DashboardWorkspace(QWidget):
             "}"
         )
 
-        # Panel atomici (attributi esposti per accesso esterno)
+        # Panel atomici
         self._positions = PositionsPanel()
         self._engine = EnginePanel()
-        self._ai_panel = AIAnalysisPanel()
-        self._portfolio = PortfolioPanel()
 
-        # Macro-tab 0: Trading — Posizioni + Engine affiancati 50/50
+        # Unico tab: Trading — Posizioni + Engine affiancati 50/50
         trading_split = QSplitter(Qt.Orientation.Horizontal)
         trading_split.addWidget(self._positions)
         trading_split.addWidget(self._engine)
         trading_split.setSizes([500, 500])
         trading_split.setHandleWidth(2)
 
-        # Macro-tab 1: Analisi — AI Analysis + Portfolio affiancati 50/50
-        analysis_split = QSplitter(Qt.Orientation.Horizontal)
-        analysis_split.addWidget(self._ai_panel)
-        analysis_split.addWidget(self._portfolio)
-        analysis_split.setSizes([500, 500])
-        analysis_split.setHandleWidth(2)
-
-        self._tab_widget.addTab(trading_split,  tr("workspace.tab_trading"))
-        self._tab_widget.addTab(analysis_split, tr("workspace.tab_analysis"))
-        self._tab_widget.setCurrentIndex(0)   # Trading di default
+        self._tab_widget.addTab(trading_split, tr("workspace.tab_trading"))
+        self._tab_widget.setCurrentIndex(0)
 
         right_col.addWidget(self._tab_widget, stretch=50)
 

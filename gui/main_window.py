@@ -11,7 +11,7 @@ Layout:
 Workspace (indice 0..5):
     0 — DashboardWorkspace    (locale)
     1 — OrderTicketWorkspace  (Marco — import graceful con fallback)
-    2 — AnalysisWorkspace     (Marco — import graceful con fallback)
+    2 — AIObservatoryWorkspace (Marco — import graceful con fallback)
     3 — BacktestWorkspace     (Marco — import graceful con fallback)
     4 — PatternsWorkspace     (Marco — import graceful con fallback)
     5 — SettingsWorkspace     (locale)
@@ -75,8 +75,9 @@ def _try_import_workspace(name: str) -> Optional[Type[QWidget]]:
             from gui.workspaces.order_ticket import OrderTicketWorkspace
             return OrderTicketWorkspace
         if name == "analysis":
-            from gui.workspaces.analysis import AnalysisWorkspace
-            return AnalysisWorkspace
+            # A.3: il workspace Analisi (Ctrl+3) è ora l'Osservatorio AI
+            from gui.workspaces.ai_observatory import AIObservatoryWorkspace
+            return AIObservatoryWorkspace
         if name == "backtest":
             from gui.workspaces.backtest import BacktestWorkspace
             return BacktestWorkspace
