@@ -39,13 +39,13 @@ _STYLE_COMBO = (
 )
 _STYLE_BTN_SAVE = (
     "QPushButton { background:#238636; color:white; border-radius:6px; "
-    "font-weight:bold; font-size:12px; padding:6px 12px; } "
+    "font-weight:bold; font-size:12px; padding:6px 14px; min-height:32px; } "
     "QPushButton:hover { background:#2ea043; } "
     "QPushButton:pressed { background:#1a7f37; }"
 )
 _STYLE_BTN_TEST = (
     "QPushButton { background:#21262d; color:#e6edf3; border:1px solid #30363d; "
-    "border-radius:6px; font-size:12px; padding:6px 12px; } "
+    "border-radius:6px; font-size:12px; padding:6px 14px; min-height:32px; } "
     "QPushButton:hover { background:#30363d; }"
 )
 _STYLE_GROUP = (
@@ -177,8 +177,14 @@ class BrokerPanel(QWidget):
         btn_row.setSpacing(8)
         self._btn_save = QPushButton(tr("broker.btn_save"))
         self._btn_save.setStyleSheet(_STYLE_BTN_SAVE)
+        self._btn_save.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self._btn_test = QPushButton(tr("broker.btn_test"))
         self._btn_test.setStyleSheet(_STYLE_BTN_TEST)
+        self._btn_test.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         btn_row.addWidget(self._btn_save)
         btn_row.addWidget(self._btn_test)
         root.addLayout(btn_row)

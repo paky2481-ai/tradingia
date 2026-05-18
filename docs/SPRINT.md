@@ -33,6 +33,7 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase 3.5 — Polish post visual check** — completata 2026-05-16 (commit `53ced06` + `db21dd2`). Fix groupbox titoli tagliati + contrasto AAA WCAG + rimozione tema placeholder
 - [x] **Fase 4 — 8 info widget atomici** — completata 2026-05-16 (commit `7f06b27`). ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable in `gui/widgets/info/`
 - [x] **Fase 5 — Arricchimento panel + 5 segnali SignalBus** — completata 2026-05-16 (commit `7246e63` + `fae14d4`). Pipeline live end-to-end: AutoConfig→GUI, RiskManager→Gauge, Engine loop→StatusDot, posizioni→Heatmap. PortfolioPanel nuovo non ancora integrato in workspace
+- [x] **Fase 5.5 — Polish post visual check** — completata 2026-05-18 (commit `1b95788` per A.2 header tabella + commit corrente per A.1 splitter Ordini + A.3 padding bottoni Broker + B refactor Cruscotto con panel atomici). Dashboard -580 LOC, EnginePanel non più orfano, pipeline Fase 5 ora visibile nel Cruscotto.
 - [ ] Fase 6 — Fix stati pulsanti via AppState ← PROSSIMO STEP
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus

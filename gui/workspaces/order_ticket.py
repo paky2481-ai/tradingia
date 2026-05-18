@@ -354,7 +354,7 @@ class OrderTicketWorkspace(QWidget):
 
         # Sinistra — form ordine (30%)
         self._form_panel = _OrderFormPanel()
-        self._form_panel.setMinimumWidth(280)
+        self._form_panel.setMinimumWidth(330)
         splitter.addWidget(self._form_panel)
 
         # Centro — tabella ordini (45%)
@@ -363,11 +363,11 @@ class OrderTicketWorkspace(QWidget):
 
         # Destra — broker panel (25%)
         self._broker_panel = BrokerPanel()
-        self._broker_panel.setMinimumWidth(200)
+        self._broker_panel.setMinimumWidth(420)
         splitter.addWidget(self._broker_panel)
 
-        # Ratio approssimati: 30 / 45 / 25
-        splitter.setSizes([300, 450, 250])
+        # Ratio approssimati: 22 / 47 / 31
+        splitter.setSizes([350, 750, 480])
         splitter.setStretchFactor(0, 0)   # form: dimensione relativamente fissa
         splitter.setStretchFactor(1, 1)   # tabella: espandibile
         splitter.setStretchFactor(2, 0)   # broker: relativamente fisso
