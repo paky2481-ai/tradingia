@@ -1,10 +1,12 @@
 """
-OrderTicketWorkspace — workspace per la gestione ordini.
+OrderTicketWorkspace — workspace "Operativo" (ex Ordini).
 
-Layout: QSplitter orizzontale 3 pannelli
-  Sinistra (30%)  Form nuovo ordine con campi SL/TP, risk info inline
-  Centro  (45%)   Tabella ordini attivi/storici (QTableWidget 8 col)
-  Destra  (25%)   BrokerPanel istanziato localmente
+Layout: QSplitter(V) root
+  Top (60%): QSplitter(H) → [PositionsPanel 50%] [EnginePanel 50%]
+  Bottom (40%): QSplitter(H) → [form 320-380px] [tabella espandibile] [broker 380-450px]
+
+Razionale: in alto STATO operativo (posizioni aperte, stato motore).
+In basso AZIONI (nuovo ordine, storico, broker config).
 
 I dati di risk (capitale a rischio, R:R, Kelly) sono placeholder statici.
 Il sync reale arriva via AppState/SignalBus — non gestito in questo workspace.
@@ -35,6 +37,8 @@ from PyQt6.QtWidgets import (
 
 from gui.i18n import tr
 from gui.panels.broker_panel import BrokerPanel
+from gui.panels.positions_panel import PositionsPanel
+from gui.panels.engine_panel import EnginePanel
 
 
 # ── Palette (coerente con dark.qss e dashboard.py) ───────────────────────────
@@ -361,9 +365,12 @@ class _OrderTablePanel(QWidget):
 
 class OrderTicketWorkspace(QWidget):
     """
-    Workspace per creazione e gestione ordini.
+    Workspace "Operativo" — stato operativo + gestione ordini.
 
-    Layout: QSplitter(H) → [form 30%] [tabella 45%] [broker panel 25%]
+    Layout:
+        QSplitter(V) root
+        ├── Top (60%):  QSplitter(H) → [PositionsPanel 50%] [EnginePanel 50%]
+        └── Bottom (40%): QSplitter(H) → [form ~350px] [tabella] [broker ~450px]
 
     Uso in MainWindow (a cura di Paky):
         ws = OrderTicketWorkspace()
@@ -379,26 +386,53 @@ class OrderTicketWorkspace(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(2)
-        root.addWidget(splitter)
+        # ── Splitter verticale radice ─────────────────────────────────────
+        v_splitter = QSplitter(Qt.Orientation.Vertical)
+        v_splitter.setHandleWidth(3)
+        root.addWidget(v_splitter)
 
-        # Sinistra — form ordine (30%)
+        # ── ZONA SUPERIORE: Posizioni + Engine (60% altezza) ─────────────
+        top_splitter = QSplitter(Qt.Orientation.Horizontal)
+        top_splitter.setHandleWidth(2)
+
+        self._positions = PositionsPanel()
+        top_splitter.addWidget(self._positions)
+
+        self._engine = EnginePanel()
+        top_splitter.addWidget(self._engine)
+
+        top_splitter.setSizes([500, 500])
+        top_splitter.setStretchFactor(0, 1)
+        top_splitter.setStretchFactor(1, 1)
+        v_splitter.addWidget(top_splitter)
+
+        # ── ZONA INFERIORE: Form + Tabella + Broker (40% altezza) ────────
+        bottom_splitter = QSplitter(Qt.Orientation.Horizontal)
+        bottom_splitter.setHandleWidth(2)
+
+        # Sinistra — form ordine
         self._form_panel = _OrderFormPanel()
-        self._form_panel.setMinimumWidth(330)
-        splitter.addWidget(self._form_panel)
+        self._form_panel.setMinimumWidth(320)
+        self._form_panel.setMaximumWidth(400)
+        bottom_splitter.addWidget(self._form_panel)
 
-        # Centro — tabella ordini (45%)
+        # Centro — tabella ordini (espandibile)
         self._order_table = _OrderTablePanel()
-        splitter.addWidget(self._order_table)
+        bottom_splitter.addWidget(self._order_table)
 
-        # Destra — broker panel (25%)
+        # Destra — broker panel
         self._broker_panel = BrokerPanel()
-        self._broker_panel.setMinimumWidth(420)
-        splitter.addWidget(self._broker_panel)
+        self._broker_panel.setMinimumWidth(380)
+        self._broker_panel.setMaximumWidth(500)
+        bottom_splitter.addWidget(self._broker_panel)
 
-        # Ratio approssimati: 22 / 47 / 31
-        splitter.setSizes([350, 750, 480])
-        splitter.setStretchFactor(0, 0)   # form: dimensione relativamente fissa
-        splitter.setStretchFactor(1, 1)   # tabella: espandibile
-        splitter.setStretchFactor(2, 0)   # broker: relativamente fisso
+        bottom_splitter.setSizes([350, 700, 450])
+        bottom_splitter.setStretchFactor(0, 0)   # form: relativamente fissa
+        bottom_splitter.setStretchFactor(1, 1)   # tabella: espandibile
+        bottom_splitter.setStretchFactor(2, 0)   # broker: relativamente fissa
+        v_splitter.addWidget(bottom_splitter)
+
+        # Ratio verticale: 60% top (stato) / 40% bottom (azioni)
+        v_splitter.setSizes([600, 400])
+        v_splitter.setStretchFactor(0, 3)
+        v_splitter.setStretchFactor(1, 2)

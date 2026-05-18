@@ -1,24 +1,16 @@
 """
 DashboardWorkspace — Cruscotto principale (trader puro).
 
-Layout Bloomberg-style (A.2, 2026-05-18):
+Layout Bloomberg-style (Fase A, 2026-05-18):
 
     QHBoxLayout(root)
-    +-- WatchlistPanel       280-360px  (sempre visibile, fuori dai tab)
+    +-- WatchlistPanel       280-360px  (sempre visibile)
     +-- right_container (QWidget)
-        +-- _ChartArea         stretch=50  (placeholder/futuro CandlestickChart)
-        +-- _GaugeStrip        ~80px fissi (3 gauge: Hurst/Kelly/Volatility)
+        +-- _ChartArea         stretch=1  (DOMINANTE — occupa tutta l'altezza residua)
+        +-- _GaugeStrip        ~82px fissi (3 gauge: Hurst/Kelly/Volatility)
         +-- _FundamentalsStrip ~36px fissi (P/E | Mkt Cap | Div | Beta per symbol)
-        +-- QTabWidget         stretch=50  (1 tab: Trading)
-              └── Tab "Trading"  → QSplitter H [PositionsPanel | EnginePanel]
 
-Decisione A.2:
-    - Rimosso tab "Analisi" (duplicava AnalysisWorkspace/AIObservatoryWorkspace).
-    - Rimossi self._ai_panel e self._portfolio dal cruscotto.
-    - Aggiunta _FundamentalsStrip: strip compatta ~36px tra gauge e tab, mostra
-      P/E | Mkt Cap | Div | Beta per current_symbol. Ascolta
-      AppState.current_symbol_changed → chiede dati a fundamental_feed (async).
-      Se dati non disponibili (forex, errore fetch) mostra "—".
+Posizioni + Engine spostati in OrderTicketWorkspace (workspace "Operativo", Ctrl+2).
 
 Demo liveness:
     QTimer 2s simula AppState per variabili senza emit dal core.
@@ -38,7 +30,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QSizePolicy,
     QSplitter,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -49,8 +40,6 @@ from gui.widgets.info import Gauge, HelpIcon
 
 # Panel atomici
 from gui.panels.watchlist_panel import WatchlistPanel
-from gui.panels.positions_panel import PositionsPanel
-from gui.panels.engine_panel import EnginePanel
 
 
 # ── Palette (coerente con dark.qss) ─────────────────────────────────────────
@@ -68,11 +57,6 @@ _ACCENT       = "#a371f7"
 _INFO_LIGHT   = "#58a6ff"
 
 _UI_STACK     = '"Segoe UI", "Inter", "SF Pro Display", sans-serif'
-
-# ── Chiavi i18n dei tab (usate in _apply_i18n) ────────────────────────────────
-_TAB_KEYS = [
-    "workspace.tab_trading",
-]
 
 
 def _label(
@@ -452,11 +436,11 @@ class DashboardWorkspace(QWidget):
         QHBoxLayout
         ├── WatchlistPanel  (280-360px, sempre visibile)
         └── right_container (QWidget, espandibile)
-            ├── _ChartArea     (stretch=65)
-            ├── _GaugeStrip    (80px fissi)
-            └── QTabWidget     (stretch=50)
-                ├── QSplitter H [PositionsPanel | EnginePanel]     [0] Trading
-                └── QSplitter H [AIAnalysisPanel | PortfolioPanel] [1] Analisi
+            ├── _ChartArea         (stretch=1 — DOMINANTE)
+            ├── _GaugeStrip        (82px fissi)
+            └── _FundamentalsStrip (36px fissi)
+
+    Posizioni + Engine sono nel workspace "Operativo" (Ctrl+2).
 
     Uso in MainWindow (a cura di Paky):
         ws = DashboardWorkspace()
@@ -503,74 +487,22 @@ class DashboardWorkspace(QWidget):
         right_col.setContentsMargins(6, 0, 0, 0)
         right_col.setSpacing(4)
 
-        # 1. Area chart (50% altezza — parità con tab widget)
+        # 1. Area chart — DOMINANTE: stretch=1 occupa tutto lo spazio verticale residuo
         self._chart_area = _ChartArea()
-        right_col.addWidget(self._chart_area, stretch=50)
+        right_col.addWidget(self._chart_area, stretch=1)
 
         # 2. Gauge strip (altezza fissa 82px)
         self._gauge_strip = _GaugeStrip()
         right_col.addWidget(self._gauge_strip, stretch=0)
 
-        # 3. Fundamentals strip (altezza fissa 36px) — A.2
+        # 3. Fundamentals strip (altezza fissa 36px)
         self._fundamentals = _FundamentalsStrip()
         right_col.addWidget(self._fundamentals, stretch=0)
-
-        # 4. QTabWidget con 1 tab Trading (50% altezza)
-        self._tab_widget = QTabWidget()
-        self._tab_widget.setTabPosition(QTabWidget.TabPosition.North)
-        self._tab_widget.setMovable(False)
-        self._tab_widget.setStyleSheet(
-            "QTabWidget::pane {"
-            f"  border: 1px solid {_BORDER};"
-            f"  background: {_BG_SURFACE};"
-            "}"
-            "QTabBar::tab {"
-            f"  background: {_BG_ELEVATED};"
-            f"  color: {_MUTED};"
-            "  padding: 5px 14px;"
-            "  font-size: 11px;"
-            f"  font-family: {_UI_STACK};"
-            f"  border: 1px solid {_BORDER_DIM};"
-            "  border-bottom: none;"
-            "  margin-right: 2px;"
-            "}"
-            "QTabBar::tab:selected {"
-            f"  background: {_BG_SURFACE};"
-            f"  color: {_TEXT};"
-            f"  border-color: {_BORDER};"
-            "}"
-            "QTabBar::tab:hover:!selected {"
-            f"  color: {_TEXT};"
-            "}"
-        )
-
-        # Panel atomici
-        self._positions = PositionsPanel()
-        self._engine = EnginePanel()
-
-        # Unico tab: Trading — Posizioni + Engine affiancati 50/50
-        trading_split = QSplitter(Qt.Orientation.Horizontal)
-        trading_split.addWidget(self._positions)
-        trading_split.addWidget(self._engine)
-        trading_split.setSizes([500, 500])
-        trading_split.setHandleWidth(2)
-
-        self._tab_widget.addTab(trading_split, tr("workspace.tab_trading"))
-        self._tab_widget.setCurrentIndex(0)
-
-        right_col.addWidget(self._tab_widget, stretch=50)
 
         main_splitter.addWidget(right_container)
         main_splitter.setSizes([320, 1100])
         main_splitter.setStretchFactor(0, 0)   # watchlist: fissa
         main_splitter.setStretchFactor(1, 1)   # destra: espandibile
-
-        # ── i18n dinamico: aggiorna nomi tab a cambio lingua ──────────────
-        try:
-            from gui.state.signal_bus import SignalBus
-            SignalBus.instance().language_changed.connect(self._apply_i18n)
-        except Exception:
-            pass  # bus non ancora disponibile in test headless
 
         # ── Demo liveness timer ───────────────────────────────────────────
         # Simula variabili AppState che non hanno ancora emit dal core engine.
@@ -585,13 +517,6 @@ class DashboardWorkspace(QWidget):
         self._demo_timer = QTimer(self)
         self._demo_timer.timeout.connect(self._demo_tick)
         self._demo_timer.start(2000)
-
-    # ── i18n ─────────────────────────────────────────────────────────────────
-
-    def _apply_i18n(self) -> None:
-        """Aggiorna i testi dei 2 macro-tab quando cambia la lingua."""
-        for idx, key in enumerate(_TAB_KEYS):
-            self._tab_widget.setTabText(idx, tr(key))
 
     # ── Demo tick ─────────────────────────────────────────────────────────────
 

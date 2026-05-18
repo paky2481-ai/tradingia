@@ -30,8 +30,8 @@ IT: dict[str, str] = {
 
     # ---- workspace labels -----------------------------------------------------
     "workspace.dashboard":         "Cruscotto",
-    "workspace.order":             "Ordini",
-    "workspace.order_ticket":      "Ordini",
+    "workspace.order":             "Operativo",
+    "workspace.order_ticket":      "Operativo",
     "workspace.analysis":          "Analisi",
     "workspace.backtest":          "Backtest",
     "workspace.patterns":          "Pattern",
@@ -351,8 +351,8 @@ EN: dict[str, str] = {
 
     # ---- workspace labels -----------------------------------------------------
     "workspace.dashboard":         "Dashboard",
-    "workspace.order":             "Order Ticket",
-    "workspace.order_ticket":      "Order Ticket",
+    "workspace.order":             "Operations",
+    "workspace.order_ticket":      "Operations",
     "workspace.analysis":          "Analysis",
     "workspace.backtest":          "Backtest",
     "workspace.patterns":          "Patterns",
