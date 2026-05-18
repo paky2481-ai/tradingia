@@ -23,7 +23,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QPushButton,
     QSizePolicy,
     QSpinBox,
@@ -127,12 +126,13 @@ class _OrderFormPanel(QGroupBox):
         lay.setContentsMargins(10, 18, 10, 10)
         lay.setSpacing(6)
 
-        # Symbol
+        # Symbol — Fase A.1: QComboBox popolato da INSTRUMENTS, sync con AppState
         lay.addWidget(_field_label(tr("order.field.symbol")))
-        self._symbol_edit = QLineEdit()
-        self._symbol_edit.setPlaceholderText(tr("order.placeholder.symbol"))
-        self._symbol_edit.setMinimumHeight(28)
-        lay.addWidget(self._symbol_edit)
+        self._symbol_combo = QComboBox()
+        self._symbol_combo.setMinimumHeight(28)
+        self._populate_symbol_combo()
+        lay.addWidget(self._symbol_combo)
+        self._connect_symbol_state()
 
         # Direction
         lay.addWidget(_field_label(tr("order.field.direction")))
@@ -225,6 +225,37 @@ class _OrderFormPanel(QGroupBox):
         show_price = order_type != "MARKET"
         self._price_label.setVisible(show_price)
         self._price_spin.setVisible(show_price)
+
+    def _populate_symbol_combo(self) -> None:
+        """Fase A.1 — popola il combo con INSTRUMENTS key/display."""
+        try:
+            from core.engine import INSTRUMENTS
+            for symbol_yf, (display, *_) in INSTRUMENTS.items():
+                self._symbol_combo.addItem(display, userData=symbol_yf)
+        except Exception:
+            # Fallback statico se engine non importabile (headless/test)
+            self._symbol_combo.addItem("EUR/USD", userData="EURUSD=X")
+
+    def _connect_symbol_state(self) -> None:
+        """Fase A.1 — pre-seleziona AppState.current_symbol e ascolta i cambiamenti."""
+        try:
+            from gui.state.app_state import AppState
+            state = AppState.instance()
+            self._sync_combo_to_symbol(state.current_symbol)
+            state.current_symbol_changed.connect(self._sync_combo_to_symbol)
+        except Exception:
+            pass
+
+    def _sync_combo_to_symbol(self, symbol_yf: str) -> None:
+        """Aggiorna la selezione del combo al simbolo passato."""
+        for i in range(self._symbol_combo.count()):
+            if self._symbol_combo.itemData(i) == symbol_yf:
+                self._symbol_combo.setCurrentIndex(i)
+                return
+
+    def current_symbol_yf(self) -> str:
+        """Ritorna il symbol_yf selezionato nel combo."""
+        return self._symbol_combo.currentData() or ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════

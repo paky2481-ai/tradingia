@@ -309,6 +309,15 @@ class AIAnalysisPanel(QWidget):
         except Exception:
             pass  # bus non disponibile in test headless
 
+        # Fase A.1 — ascolta AppState.current_symbol_changed
+        try:
+            from gui.state.app_state import AppState
+            AppState.instance().current_symbol_changed.connect(self._on_current_symbol_changed)
+            # Inizializza subito con il simbolo corrente
+            self._on_current_symbol_changed(AppState.instance().current_symbol)
+        except Exception:
+            pass
+
     # ── Public API ────────────────────────────────────────────────────────
 
     def set_symbol(self, symbol: str, df: pd.DataFrame, asset_type: str = "stock"):
@@ -399,6 +408,20 @@ class AIAnalysisPanel(QWidget):
         """Aggiorna Gauge Kelly."""
         try:
             self._gauge_kelly.set_value(kelly_pct)
+        except Exception:
+            pass
+
+    @pyqtSlot(str)
+    def _on_current_symbol_changed(self, symbol_yf: str):
+        """Fase A.1 — aggiorna titolo header con il simbolo corrente (display human-readable)."""
+        try:
+            from core.engine import INSTRUMENTS
+            display = INSTRUMENTS.get(symbol_yf, (symbol_yf,))[0]
+            self._lbl_title.setText(f"AI Analysis — {display}")
+            # Se il simbolo e' nuovo rispetto all'ultimo set_symbol, resetta stato
+            if symbol_yf != self._symbol:
+                self._symbol = symbol_yf
+                self._df = None
         except Exception:
             pass
 

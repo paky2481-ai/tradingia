@@ -219,6 +219,9 @@ class _BusQtEmitter(QObject):
     loop_heartbeat     = pyqtSignal(str)           # loop_name (es. "4h_scan")
     correlation_update = pyqtSignal(object)        # CorrelationUpdateEvent
 
+    # Fase A.1 — simbolo correntemente scansionato dal backend
+    current_scan_symbol = pyqtSignal(str, str)     # (symbol_yf, loop_name)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Signal Bus Singleton
@@ -299,6 +302,10 @@ class SignalBus:
     def emit_correlation_update(self, event: CorrelationUpdateEvent):
         """Matrice correlazioni posizioni aperte."""
         self.qt.correlation_update.emit(event)
+
+    def emit_current_scan_symbol(self, symbol: str, loop_name: str):
+        """Emette il simbolo che il backend sta elaborando adesso (Fase A.1)."""
+        self.qt.current_scan_symbol.emit(symbol, loop_name)
 
     # ── GUI → Engine ───────────────────────────────────────────────────────
 

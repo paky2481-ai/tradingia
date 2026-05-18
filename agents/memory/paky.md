@@ -5,6 +5,7 @@
 
 ## Decisioni recenti (max 20, FIFO)
 
+- 2026-05-18: Fase A.1 — Filo conduttore frontend/backend. (1) WatchlistPanel click → AppState.current_symbol. (2) Nuovo segnale `current_scan_symbol(str,str)` in SignalBus + `emit_current_scan_symbol`. (3) Emit nei 3 loop engine (4h_scan, trend_detect, position_check). (4) AIAnalysisPanel + ChartPanel ascoltano current_symbol_changed: aggiornano titolo/info bar. (5) OrderTicket: QLineEdit→QComboBox popolato da INSTRUMENTS, sync bidirezionale con AppState. (6) TopBar: chip simbolo human-readable tra engine btn e KPI. 4/4 quality gate PASS.
 - 2026-05-16: Fase 5.1 — Emit 5 segnali SignalBus in moduli core: `emit_loop_heartbeat` in `_scan_loop`/`_trend_detect_loop`/`_position_monitor_loop`/`_status_loop` di engine.py; `emit_ai_result` in `_scan_cycle` orchestrator dopo `evaluate_all`; `emit_kelly_update` in `_size_position` risk_manager con guard delta>0.005; `emit_regime_update` standalone in `auto_config._pipeline` dopo cycle analysis; `emit_correlation_update` via nuovo metodo `_emit_correlation_if_ready` in engine quando ≥2 posizioni in cache. Quality gate: PASS.
 - 2026-05-16: Fase 3 — ActivityBar integrata in main_window.py: layout root cambiato da QVBoxLayout a QHBoxLayout (ActivityBar 56px | right_col con TopBar+Stack). Fallback graceful se ActivityBar non disponibile (VBoxLayout + warning stdout). _switch_workspace ora chiama set_active(idx) per sync visivo. Quality gate: PASS (has_activity_bar=True, stack=6).
 - 2026-05-16: Fase 2 — SettingsWorkspace (gui/workspaces/settings.py, ~230 LOC): sezioni Generale/Broker/Rischio/Info, persistenza .env manuale+dotenv fallback, BrokerPanel popup. main_window.py esteso a 6 workspace con import graceful per workspace Marco, shortcut Ctrl+1..6, persistenza QSettings geometry+active_workspace. 43 chiavi nuove in strings.py IT+EN (incluse workspace.order_ticket e workspace.subtitle.*). Quality gate: PASS.
@@ -44,6 +45,7 @@
 - [x] Creare `gui/state/app_state.py` come singleton stato globale
 - [x] Creare `gui/i18n/` con 136 chiavi IT+EN, AppState.language + boot QSettings (Fase 1.6.2)
 - [x] SettingsWorkspace + integrazione 6 workspace in main_window.py con Ctrl+1..6 (Fase 2)
+- [x] Fase A.1 — filo conduttore: click watchlist→AppState, listener su AIPanel/ChartPanel/TopBar/OrderTicket, nuovo segnale current_scan_symbol
 - [ ] Fix stati pulsanti positions/broker collegandoli a `AppState`
 - [ ] DockArea drag-and-drop con pyqtgraph (oggi: workspace switching invece di dock)
 

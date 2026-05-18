@@ -221,6 +221,26 @@ class TopBar(QFrame):
 
         lay.addWidget(_make_separator())
 
+        # 1b. Symbol chip (Fase A.1) — simbolo correntemente selezionato ────────
+        self._symbol_prefix = QLabel(tr("topbar.symbol_label"))
+        self._symbol_prefix.setStyleSheet(
+            f"color:{_MUTED}; font-size:10px; font-weight:600;"
+            '  font-family:"Segoe UI","Inter",sans-serif;'
+            "  background:transparent; border:none; letter-spacing:0.4px;"
+        )
+        lay.addWidget(self._symbol_prefix, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._symbol_chip = QLabel("—")
+        self._symbol_chip.setStyleSheet(
+            f"color:{_TEXT}; font-size:12px; font-weight:700;"
+            '  font-family:"Consolas","Cascadia Code",monospace;'
+            "  background:transparent; border:none;"
+        )
+        self._symbol_chip.setToolTip(tr("topbar.symbol_tooltip"))
+        lay.addWidget(self._symbol_chip, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        lay.addWidget(_make_separator())
+
         # 2. EQUITY + sparkline ───────────────────────────────────────────────
         self._badge_equity = KPIBadge(
             tr("topbar.equity"),
@@ -303,6 +323,7 @@ class TopBar(QFrame):
         state.mode_changed.connect(self._on_mode)
         state.broker_latency_changed.connect(self._on_latency)
         state.broker_connected_changed.connect(self._on_broker_connected)
+        state.current_symbol_changed.connect(self._on_current_symbol)  # Fase A.1
 
         # Carica valori correnti al primo render
         self._on_engine_state(state.engine_running)
@@ -315,6 +336,7 @@ class TopBar(QFrame):
         self._on_mode(state.mode)
         self._on_latency(state.broker_latency)
         self._on_broker_connected(state.broker_connected)
+        self._on_current_symbol(state.current_symbol)  # Fase A.1
 
     # ── Slot AppState ─────────────────────────────────────────────────────────
 
@@ -394,6 +416,15 @@ class TopBar(QFrame):
     def _on_broker_connected(self, connected: bool) -> None:
         state = AppState.instance()
         self._broker_pill.update_state(connected, state.broker_latency)
+
+    def _on_current_symbol(self, symbol_yf: str) -> None:
+        """Fase A.1 — aggiorna chip simbolo con display human-readable."""
+        try:
+            from core.engine import INSTRUMENTS
+            display = INSTRUMENTS.get(symbol_yf, (symbol_yf,))[0]
+        except Exception:
+            display = symbol_yf
+        self._symbol_chip.setText(display)
 
     # ── Engine toggle ─────────────────────────────────────────────────────────
 

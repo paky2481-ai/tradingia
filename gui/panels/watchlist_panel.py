@@ -218,7 +218,14 @@ class WatchlistPanel(QWidget):
     def _on_row_clicked(self, row: int, _col: int):
         item = self._table.item(row, COL_SYMBOL)
         if item:
-            self.symbol_selected.emit(item.data(Qt.ItemDataRole.UserRole))
+            symbol_yf = item.data(Qt.ItemDataRole.UserRole)
+            # Fase A.1 — AppState e' la fonte di verita' per il simbolo corrente
+            try:
+                from gui.state.app_state import AppState
+                AppState.instance().current_symbol = symbol_yf
+            except Exception:
+                pass
+            self.symbol_selected.emit(symbol_yf)
 
     @pyqtSlot(str, float)
     def _on_regime_update(self, regime: str, hurst: float):

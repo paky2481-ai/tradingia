@@ -29,6 +29,28 @@ class ChartPanel(QWidget):
         self._timeframe = ""
         self._df: Optional[pd.DataFrame] = None
         self._setup_ui()
+        self._connect_state()
+
+    def _connect_state(self) -> None:
+        """Fase A.1 — ascolta AppState.current_symbol_changed."""
+        try:
+            from gui.state.app_state import AppState
+            AppState.instance().current_symbol_changed.connect(self._on_current_symbol_changed)
+        except Exception:
+            pass
+
+    def _on_current_symbol_changed(self, symbol_yf: str) -> None:
+        """Fase A.1 — aggiorna info bar quando cambia simbolo; fetch dati rimandato al workspace."""
+        try:
+            from core.engine import INSTRUMENTS
+            display = INSTRUMENTS.get(symbol_yf, (symbol_yf,))[0]
+        except Exception:
+            display = symbol_yf
+        # Aggiorna solo l'info bar (non fa fetch — il workspace gestira' il caricamento)
+        self._lbl_symbol.setText(display)
+        self._lbl_tf.setText("")
+        self._lbl_price.setText("—")
+        self._lbl_change.setText("")
 
     # ── Setup ──────────────────────────────────────────────────────────────
 

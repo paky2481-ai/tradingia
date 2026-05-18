@@ -155,6 +155,12 @@ class TradingEngine:
 
             for symbol, (display, strategy, asset_class, pip) in INSTRUMENTS.items():
                 try:
+                    # Fase A.1 — informa l'osservatorio quale simbolo sta iniziando
+                    try:
+                        self.bus.emit_current_scan_symbol(symbol, "4h_scan")
+                    except Exception:
+                        pass
+
                     if not self._in_session(now, asset_class):
                         continue
                     if now.weekday() == 4 and now.hour >= 20:
@@ -236,6 +242,12 @@ class TradingEngine:
 
             for symbol, (display, strategy, asset_class, _pip) in INSTRUMENTS.items():
                 try:
+                    # Fase A.1 — informa l'osservatorio quale simbolo sta analizzando trend
+                    try:
+                        self.bus.emit_current_scan_symbol(symbol, "trend_detect")
+                    except Exception:
+                        pass
+
                     last = self._last_trend_scan.get(symbol)
                     if last and (now - last).total_seconds() < TREND_SCAN_INTERVAL:
                         continue
@@ -305,6 +317,12 @@ class TradingEngine:
             for symbol in list(self._positions.keys()):
                 pos = self._positions[symbol]
                 try:
+                    # Fase A.1 — informa l'osservatorio quale posizione sta controllando
+                    try:
+                        self.bus.emit_current_scan_symbol(symbol, "position_check")
+                    except Exception:
+                        pass
+
                     df = await self._fetch_candles(symbol, "5m", bars=5)
                     if df is None:
                         continue
