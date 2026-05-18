@@ -237,20 +237,48 @@ class BacktestPanel(QWidget):
         parent_lay.insertWidget(idx, combo)
         self._sym_input = combo
 
-        # Sync iniziale + listener
+        # Sync iniziale + listener AppState → combo
         state = AppState.instance()
         self._sync_combo_to_symbol(state.current_symbol)
         state.current_symbol_changed.connect(self._sync_combo_to_symbol)
+        # Fase D — reverse sync: combo Backtest → AppState (in tempo reale)
+        combo.currentTextChanged.connect(self._on_backtest_symbol_changed)
 
     @pyqtSlot(str)
     def _sync_combo_to_symbol(self, sym_yf: str):
         """Aggiorna la selezione del combo quando AppState.current_symbol cambia."""
+        # Blocca i segnali per evitare loop con _on_backtest_symbol_changed
+        self._sym_input.blockSignals(True)
+        try:
+            for i in range(self._sym_input.count()):
+                if self._sym_input.itemData(i) == sym_yf:
+                    self._sym_input.setCurrentIndex(i)
+                    return
+            # Simbolo non in INSTRUMENTS: lascia il testo libero
+            self._sym_input.setEditText(sym_yf)
+        finally:
+            self._sym_input.blockSignals(False)
+
+    @pyqtSlot(str)
+    def _on_backtest_symbol_changed(self, text: str):
+        """Fase D — reverse sync: combo Backtest → AppState.current_symbol.
+        Propagato in tempo reale, così TopBar e form Operativo si aggiornano."""
+        if not text:
+            return
+        # Cerca symbol_yf corrispondente tra gli item INSTRUMENTS
         for i in range(self._sym_input.count()):
-            if self._sym_input.itemData(i) == sym_yf:
-                self._sym_input.setCurrentIndex(i)
-                return
-        # Simbolo non in INSTRUMENTS: lascia il testo libero
-        self._sym_input.setEditText(sym_yf)
+            if self._sym_input.itemText(i) == text and self._sym_input.itemData(i):
+                sym_yf = self._sym_input.itemData(i)
+                break
+        else:
+            # Custom symbol (es. MSFT, AAPL): usa il testo direttamente
+            sym_yf = text.strip().upper()
+        try:
+            state = AppState.instance()
+            if state.current_symbol != sym_yf:
+                state.current_symbol = sym_yf
+        except Exception:
+            pass
 
     # ── UI ───────────────────────────────────────────────────────────────────
 

@@ -24,23 +24,12 @@ from PyQt6.QtGui import QColor, QFont
 
 from core.signal_bus import (
     get_bus, PositionUpdateEvent, TradeOpenedEvent, TradeClosedEvent,
-    OpenTradeCommand, CloseTradeCommand,
+    CloseTradeCommand,
 )
 from gui.i18n import tr
 from gui.widgets.info import Sparkline, HelpIcon
 
 _UI = Path(__file__).parent.parent / "ui" / "positions_panel.ui"
-
-# Strumenti disponibili per trading manuale
-MANUAL_SYMBOLS = [
-    ("EUR/USD", "EURUSD=X"),
-    ("GBP/USD", "GBPUSD=X"),
-    ("XAU/USD", "GC=F"),
-    ("S&P 500", "^GSPC"),
-    ("DAX 40",  "^GDAXI"),
-    ("EUR/GBP", "EURGBP=X"),
-    ("USD/JPY", "JPY=X"),
-]
 
 _STYLE_GREEN  = "color: #3fb950; font-weight: bold;"
 _STYLE_RED    = "color: #f85149; font-weight: bold;"
@@ -80,13 +69,10 @@ class PositionsPanel(QWidget):
 
         # Ripristina i margini rimossi dal .ui per compatibilità PyQt6 uic
         self.posLayout.setContentsMargins(4, 6, 4, 4)
-        self.manualLayout.setContentsMargins(8, 8, 8, 8)
         self.logLayout.setContentsMargins(6, 6, 6, 6)
 
         self._build_pnl_header()
         self._setup_table()
-        self._setup_form()
-        self._setup_connections()
         self._connect_bus()
         self._connect_language_bus()
         self._update_table_visibility()
@@ -157,14 +143,6 @@ class PositionsPanel(QWidget):
         self._trade_log.verticalHeader().setVisible(False)
         self._trade_log.setEditTriggers(
             self._trade_log.EditTrigger.NoEditTriggers)
-
-    def _setup_form(self):
-        for display, _ in MANUAL_SYMBOLS:
-            self._cmb_symbol.addItem(display)
-
-    def _setup_connections(self):
-        self._btn_buy.clicked.connect(lambda: self._on_manual_trade("buy"))
-        self._btn_sell.clicked.connect(lambda: self._on_manual_trade("sell"))
 
     # ─────────────────────────────────────────────────────────────────────
     # Bus connections
@@ -311,23 +289,6 @@ class PositionsPanel(QWidget):
             self._trade_log.removeRow(0)
 
         self._update_table_visibility()
-
-    # ─────────────────────────────────────────────────────────────────────
-    # Azioni manuali
-    # ─────────────────────────────────────────────────────────────────────
-
-    def _on_manual_trade(self, direction: str):
-        idx    = self._cmb_symbol.currentIndex()
-        display, symbol = MANUAL_SYMBOLS[idx]
-        qty    = self._spin_qty.value()
-        sl     = self._spin_sl.value()
-        tp     = self._spin_tp.value()
-
-        cmd = OpenTradeCommand(
-            symbol=symbol, direction=direction,
-            quantity=qty, stop_loss=sl, take_profit=tp,
-        )
-        get_bus().send_command_sync(cmd)
 
     def _close_position(self, symbol: str):
         cmd = CloseTradeCommand(symbol=symbol)

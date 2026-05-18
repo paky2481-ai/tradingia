@@ -96,12 +96,24 @@ class EnginePanel(QWidget):
         self._lbl_dd.setStyleSheet(_STYLE_GRAY)
         self._lbl_positions.setStyleSheet(_STYLE_GRAY)
 
-        # Caption labels
-        for name in ("lblEquityCaption", "lblPnlCaption", "lblReturnCaption",
-                     "lblDdCaption", "lblPosCaption"):
+        # Caption labels — colore e background espliciti per non ereditare gradient QSS
+        _CAPTION_STYLE = (
+            "color: #a8b1bb; background: transparent; border: none;"
+            " font-size: 11px; font-weight: normal;"
+        )
+        _caption_texts = {
+            "lblEquityCaption":  "Equity",
+            "lblPnlCaption":     "P&L oggi",
+            "lblReturnCaption":  "Rendimento",
+            "lblDdCaption":      "Drawdown",
+            "lblPosCaption":     "Pos. Aperte",   # abbreviato: "Posizioni aperte" → troppo lungo
+        }
+        for name, short_text in _caption_texts.items():
             lbl = self.findChild(QLabel, name)
             if lbl:
-                lbl.setStyleSheet(_STYLE_GRAY)
+                lbl.setStyleSheet(_CAPTION_STYLE)
+                lbl.setText(short_text)
+                lbl.setMinimumWidth(60)
 
         self._btn_start.setStyleSheet("""
             QPushButton {
@@ -111,11 +123,17 @@ class EnginePanel(QWidget):
             QPushButton:hover { background: #2ea043; }
             QPushButton:pressed { background: #1a7f37; }
         """)
+        # Stile specifico al solo metricsFrame — NON usa "QFrame{}" generico
+        # per evitare che i QLabel figli ereditino border/gradient indesiderati
         self.metricsFrame.setStyleSheet("""
-            QFrame {
+            QFrame#metricsFrame {
                 background: #161b22;
                 border: 1px solid #30363d;
                 border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
             }
         """)
         self.scanGroup.setStyleSheet("""

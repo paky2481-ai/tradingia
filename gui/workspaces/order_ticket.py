@@ -74,6 +74,9 @@ def _field_label(text: str) -> QLabel:
         "  background:transparent; border:none; letter-spacing:0.4px;"
     )
     lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+    # Altezza minima esplicita: evita overlap con widget sottostante
+    # (text-transform+font-size:10px può collassare a 0 senza questo)
+    lbl.setMinimumHeight(16)
     return lbl
 
 
@@ -128,11 +131,13 @@ class _OrderFormPanel(QGroupBox):
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 18, 10, 10)
-        lay.setSpacing(6)
+        lay.setSpacing(8)
 
-        # Symbol — Fase A.1: QComboBox popolato da INSTRUMENTS, sync con AppState
+        # Symbol — Fase A.1 + D: QComboBox editable, popolato da INSTRUMENTS,
+        # sync bidirezionale con AppState (inclusi simboli custom es. MSFT)
         lay.addWidget(_field_label(tr("order.field.symbol")))
         self._symbol_combo = QComboBox()
+        self._symbol_combo.setEditable(True)
         self._symbol_combo.setMinimumHeight(28)
         self._populate_symbol_combo()
         lay.addWidget(self._symbol_combo)
@@ -241,25 +246,64 @@ class _OrderFormPanel(QGroupBox):
             self._symbol_combo.addItem("EUR/USD", userData="EURUSD=X")
 
     def _connect_symbol_state(self) -> None:
-        """Fase A.1 — pre-seleziona AppState.current_symbol e ascolta i cambiamenti."""
+        """Fase A.1 + D — pre-seleziona AppState.current_symbol, ascolta i cambiamenti
+        in entrambe le direzioni (AppState → combo e combo → AppState)."""
         try:
             from gui.state.app_state import AppState
             state = AppState.instance()
             self._sync_combo_to_symbol(state.current_symbol)
+            # AppState → combo (simbolo cambiato da altra sorgente)
             state.current_symbol_changed.connect(self._sync_combo_to_symbol)
+            # Combo → AppState (utente cambia manualmente il combo operativo)
+            self._symbol_combo.currentTextChanged.connect(
+                self._on_combo_text_changed
+            )
+        except Exception:
+            pass
+
+    def _on_combo_text_changed(self, text: str) -> None:
+        """Fase D — reverse sync: combo Operativo → AppState.current_symbol."""
+        if not text:
+            return
+        # Cerca se il testo corrisponde a un item INSTRUMENTS (userData = symbol_yf)
+        for i in range(self._symbol_combo.count()):
+            if self._symbol_combo.itemText(i) == text and self._symbol_combo.itemData(i):
+                sym_yf = self._symbol_combo.itemData(i)
+                break
+        else:
+            # Testo libero (es. "MSFT") — usalo direttamente come symbol_yf
+            sym_yf = text.strip().upper()
+        try:
+            from gui.state.app_state import AppState
+            state = AppState.instance()
+            # Evita loop: aggiorna solo se diverso dal valore corrente
+            if state.current_symbol != sym_yf:
+                state.current_symbol = sym_yf
         except Exception:
             pass
 
     def _sync_combo_to_symbol(self, symbol_yf: str) -> None:
-        """Aggiorna la selezione del combo al simbolo passato."""
-        for i in range(self._symbol_combo.count()):
-            if self._symbol_combo.itemData(i) == symbol_yf:
-                self._symbol_combo.setCurrentIndex(i)
-                return
+        """Fase A.1 + D — aggiorna la selezione del combo al simbolo passato.
+        Se il simbolo non è in INSTRUMENTS lo imposta come testo libero (custom)."""
+        # Blocca temporaneamente currentTextChanged per evitare loop
+        try:
+            self._symbol_combo.blockSignals(True)
+            for i in range(self._symbol_combo.count()):
+                if self._symbol_combo.itemData(i) == symbol_yf:
+                    self._symbol_combo.setCurrentIndex(i)
+                    return
+            # Simbolo custom (es. MSFT) — imposta come editText
+            self._symbol_combo.setEditText(symbol_yf)
+        finally:
+            self._symbol_combo.blockSignals(False)
 
     def current_symbol_yf(self) -> str:
         """Ritorna il symbol_yf selezionato nel combo."""
-        return self._symbol_combo.currentData() or ""
+        data = self._symbol_combo.currentData()
+        if data:
+            return data
+        # Combo editable — ritorna il testo libero
+        return self._symbol_combo.currentText().strip().upper() or ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════
