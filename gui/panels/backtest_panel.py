@@ -33,6 +33,8 @@ except ImportError:
 
 from backtesting.backtester import Backtester, BacktestResult
 from config.settings import settings
+from core.engine import INSTRUMENTS
+from gui.state.app_state import AppState
 from utils.logger import get_logger
 from gui.i18n import tr
 
@@ -199,6 +201,7 @@ class BacktestPanel(QWidget):
         self._result: Optional[BacktestResult] = None
 
         uic.loadUi(str(_UI), self)
+        self._swap_symbol_widget()
         self._apply_styles()
         self._build_metrics_grid()
         self._build_chart_content()
@@ -210,6 +213,44 @@ class BacktestPanel(QWidget):
         # Connect signals
         self._btn_run.clicked.connect(self._on_run_clicked)
         self._btn_export.clicked.connect(self._on_export_clicked)
+
+    # ── Symbol widget: swap QLineEdit -> QComboBox editable + AppState sync ───
+
+    def _swap_symbol_widget(self):
+        """Sostituisce il QLineEdit del .ui con QComboBox editable popolato
+        da INSTRUMENTS. L'utente puo' anche digitare simboli custom (es AAPL)."""
+        old = self._sym_input
+        parent_lay = old.parent().layout()
+        idx = parent_lay.indexOf(old)
+        parent_lay.removeWidget(old)
+        old.deleteLater()
+
+        combo = QComboBox()
+        combo.setEditable(True)
+        combo.setMinimumWidth(160)
+        combo.setMaximumWidth(200)
+        for sym_yf, (display, *_rest) in INSTRUMENTS.items():
+            combo.addItem(f"{display}  ({sym_yf})", userData=sym_yf)
+        # Default custom item per stock tipo AAPL
+        combo.lineEdit().setPlaceholderText("EUR/USD o AAPL...")
+
+        parent_lay.insertWidget(idx, combo)
+        self._sym_input = combo
+
+        # Sync iniziale + listener
+        state = AppState.instance()
+        self._sync_combo_to_symbol(state.current_symbol)
+        state.current_symbol_changed.connect(self._sync_combo_to_symbol)
+
+    @pyqtSlot(str)
+    def _sync_combo_to_symbol(self, sym_yf: str):
+        """Aggiorna la selezione del combo quando AppState.current_symbol cambia."""
+        for i in range(self._sym_input.count()):
+            if self._sym_input.itemData(i) == sym_yf:
+                self._sym_input.setCurrentIndex(i)
+                return
+        # Simbolo non in INSTRUMENTS: lascia il testo libero
+        self._sym_input.setEditText(sym_yf)
 
     # ── UI ───────────────────────────────────────────────────────────────────
 
@@ -315,7 +356,14 @@ class BacktestPanel(QWidget):
         if self._thread and self._thread.isRunning():
             return  # già in esecuzione
 
-        symbol   = self._sym_input.text().strip().upper() or "AAPL"
+        # QComboBox editable: cerca se il testo corrisponde a un item INSTRUMENT
+        # (userData = chiave Yahoo). Altrimenti usa il testo libero (custom es AAPL).
+        typed = self._sym_input.currentText().strip()
+        idx = self._sym_input.findText(typed)
+        if idx >= 0 and self._sym_input.itemData(idx):
+            symbol = self._sym_input.itemData(idx)
+        else:
+            symbol = typed.upper() or "AAPL"
         strategy = self._strat_combo.currentText()
         tf       = self._tf_combo.currentText()
         days     = self._days_spin.value()
