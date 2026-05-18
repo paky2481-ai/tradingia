@@ -13,6 +13,7 @@ Uso:
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 import os
 from pathlib import Path
@@ -22,6 +23,14 @@ try:
     import torch  # noqa: F401
 except Exception:
     pass
+
+# Silenzia i log HTTP noisy di yfinance/urllib3 (es. 401 quoteSummary su simboli
+# forex/index dove Yahoo blocca i fundamentals, 404 su simboli senza fundamental).
+# Il fallback chain yfinance -> Alpha Vantage -> FMP gestisce tutto in autonomia,
+# quei messaggi sono solo rumore.
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("peewee").setLevel(logging.CRITICAL)
 
 from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
 from PyQt6.QtWidgets import QApplication

@@ -419,6 +419,8 @@ class DashboardWorkspace(QWidget):
         # correlation_update — quelli sono di competenza del SignalBus Fase 5.
         self._demo_hurst: float = 0.62
         self._demo_equity: float = 10_000.0
+        self._demo_kelly: float = 0.023
+        self._demo_vol: float = 0.45
         self._tick_count: int = 0
 
         self._demo_timer = QTimer(self)
@@ -471,3 +473,13 @@ class DashboardWorkspace(QWidget):
         # 4. Latency jitter ogni 5 tick
         if self._tick_count % 5 == 0:
             state.broker_latency = random.randint(18, 85)
+
+        # 5. Kelly drift (simulazione finche' RiskManager non emette kelly_update)
+        self._demo_kelly += random.uniform(-0.003, 0.003)
+        self._demo_kelly = max(0.0, min(0.12, self._demo_kelly))
+        self._gauge_strip.set_kelly(self._demo_kelly)
+
+        # 6. Volatility drift (ATR percentile simulato)
+        self._demo_vol += random.uniform(-0.02, 0.02)
+        self._demo_vol = max(0.05, min(0.95, self._demo_vol))
+        self._gauge_strip.set_volatility(self._demo_vol)

@@ -35,7 +35,7 @@ _UI = Path(__file__).parent.parent / "ui" / "positions_panel.ui"
 MANUAL_SYMBOLS = [
     ("EUR/USD", "EURUSD=X"),
     ("GBP/USD", "GBPUSD=X"),
-    ("XAU/USD", "XAUUSD=X"),
+    ("XAU/USD", "GC=F"),
     ("S&P 500", "^GSPC"),
     ("DAX 40",  "^GDAXI"),
     ("EUR/GBP", "EURGBP=X"),

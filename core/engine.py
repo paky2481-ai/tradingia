@@ -55,7 +55,7 @@ INSTRUMENTS = {
     # symbol_yf  : (display,   strategy,   asset_class,  pip_size)
     "EURUSD=X"   : ("EUR/USD", "trend_4h", "forex",      0.00001),
     "GBPUSD=X"   : ("GBP/USD", "trend_4h", "forex",      0.00001),
-    "XAUUSD=X"   : ("XAU/USD", "trend_4h", "commodity",  0.01),
+    "GC=F"       : ("XAU/USD", "trend_4h", "commodity",  0.01),  # Yahoo: gold futures = proxy XAU/USD
     "^GSPC"      : ("S&P 500", "trend_4h", "index",      0.01),
     "^GDAXI"     : ("DAX 40",  "trend_4h", "index",      0.01),
     "EURGBP=X"   : ("EUR/GBP", "range_1h", "forex",      0.00001),

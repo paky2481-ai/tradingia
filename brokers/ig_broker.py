@@ -49,7 +49,7 @@ EPIC_MAP: Dict[str, str] = {
     "GBPUSD=X":  "CS.D.GBPUSD.CFD.IP",
     "EURGBP=X":  "CS.D.EURGBP.CFD.IP",
     "JPY=X":     "CS.D.USDJPY.CFD.IP",
-    "XAUUSD=X":  "CS.D.CFEGOLD.CFE.IP",
+    "GC=F":      "CS.D.CFEGOLD.CFE.IP",
     "^GSPC":     "IX.D.SPTRD.CFD.IP",      # US 500
     "^GDAXI":    "IX.D.DAX.CFD.IP",         # Germany 40
     "^FTSE":     "IX.D.FTSE.CFD.IP",        # UK 100
@@ -62,7 +62,7 @@ LOT_SIZE: Dict[str, float] = {
     "GBPUSD=X": 100_000,
     "EURGBP=X": 100_000,
     "JPY=X":    100_000,
-    "XAUUSD=X": 100,       # 1 lotto = 100 oz
+    "GC=F":     100,       # 1 lotto = 100 oz
     "^GSPC":    1.0,        # indice: contratti
     "^GDAXI":   1.0,
     "^FTSE":    1.0,

@@ -212,7 +212,7 @@ class AccountSync:
         _map = {
             "EURUSD=X": "EUR/USD", "GBPUSD=X": "GBP/USD",
             "EURGBP=X": "EUR/GBP", "JPY=X":    "USD/JPY",
-            "XAUUSD=X": "XAU/USD", "^GSPC":    "S&P 500",
+            "GC=F":     "XAU/USD", "^GSPC":    "S&P 500",
             "^GDAXI":   "DAX 40",
         }
         return _map.get(symbol, symbol)
