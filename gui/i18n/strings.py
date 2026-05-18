@@ -150,6 +150,20 @@ IT: dict[str, str] = {
     "help.volatility.body":        "ATR percentile rispetto allo storico 6 mesi. >0.7 = volatilità alta, prudenza. <0.3 = mercato fermo.",
     "help.confidence.body":        "Quanto il modello AI è sicuro della sua previsione. Sopra 0.7 considerato affidabile.",
 
+    # ---- help panel icons -----------------------------------------------------
+    "help.watchlist.title":        "Lista Strumenti",
+    "help.watchlist.body":         "Mostra i simboli monitorati con prezzo, variazione % e mini-grafico. <b>Uso</b>: clicca su un simbolo per impostarlo come strumento attivo (aggiorna il chart e l'analisi AI). Usa i bottoni Stocks/Crypto/Forex/Indices per filtrare per asset class.",
+    "help.positions.title":        "Posizioni Aperte",
+    "help.positions.body":         "Lista delle posizioni attive sul broker (PAPER o LIVE). Mostra direzione, prezzo di entrata, prezzo corrente e P&L. <b>Uso</b>: doppio click su una riga per dettagli; usa il form \"Apri Trade Manuale\" per piazzare un ordine senza passare dal motore automatico.",
+    "help.ai.title":               "Analisi AI",
+    "help.ai.body":                "Stato AI sul simbolo corrente: regime di mercato (trending/cycling/choppy), esponente di Hurst, confidenza della predizione, direzione long/short e % Kelly suggerita dal RiskManager. <b>Uso</b>: premi ▶ Analizza per forzare un ricalcolo immediato (in alternativa attendi il loop automatico 4h/1h).",
+    "help.engine.title":           "Motore Automatico",
+    "help.engine.body":            "Cuore del trading algoritmico. Mostra stato del motore, equity, P&L giornaliero, drawdown, e attività dei 4 loop async (4h_scan, 1h_scan, trend_detect, position_check). I LED pulsano quando il loop riceve un heartbeat. <b>Uso</b>: ▶ Avvia per attivare la scansione automatica; ■ Ferma per metterlo in pausa.",
+    "help.portfolio.title":        "Portafoglio",
+    "help.portfolio.body":         "Visione d'insieme del portafoglio: heatmap delle correlazioni tra posizioni aperte (rosso = correlate negativamente, verde = correlate positivamente) e ripartizione per asset class. <b>Uso</b>: posizioni correlate aumentano il rischio aggregato — preferisci asset poco correlati per diversificare.",
+    "help.broker.title":           "Configurazione Broker",
+    "help.broker.body":            "Selezione e credenziali del broker (Paper / IG / OANDA). <b>Uso</b>: 1) seleziona il broker dal dropdown, 2) inserisci credenziali se richieste, 3) <b>Salva impostazioni</b>, 4) <b>Testa connessione</b> per verificare. In modalità PAPER nessuna credenziale serve.",
+
     # ---- tooltips (KPI badge) -------------------------------------------------
     "tooltip.equity":              "Capitale totale (cash + valore posizioni aperte). La sparkline mostra l'andamento delle ultime 50 osservazioni.",
     "tooltip.pnl_day":             "Profitto/perdita realizzato + non realizzato di oggi. Resettato a mezzanotte UTC.",
@@ -182,7 +196,7 @@ IT: dict[str, str] = {
 
     # ---- AI analysis panel ----------------------------------------------------
     "ai.empty_state":              "Carica un simbolo e clicca\n\"Avvia Analisi AI\"",
-    "ai.btn_run":                  "Avvia Analisi AI  [{symbol}]",
+    "ai.btn_run":                  "▶ Analizza",
     "ai.analysis_error":           "Errore analisi:\n{error}",
     "ai.hurst_bias.trending":      "In trend",
     "ai.hurst_bias.reverting":     "Mean-reverting",
@@ -429,6 +443,20 @@ EN: dict[str, str] = {
     "help.volatility.body":        "ATR percentile versus 6-month history. >0.7 = high volatility, caution. <0.3 = quiet market.",
     "help.confidence.body":        "How confident the AI model is in its prediction. Above 0.7 considered reliable.",
 
+    # ---- help panel icons -----------------------------------------------------
+    "help.watchlist.title":        "Watchlist",
+    "help.watchlist.body":         "Shows monitored symbols with price, change %, and mini-chart. <b>Usage</b>: click a symbol to set it as the active instrument (updates chart and AI analysis). Use Stocks/Crypto/Forex/Indices to filter by asset class.",
+    "help.positions.title":        "Open Positions",
+    "help.positions.body":         "Active positions on the broker (PAPER or LIVE). Shows direction, entry price, current price and P&L. <b>Usage</b>: double-click a row for details; use \"Manual Trade\" form to place an order without the auto engine.",
+    "help.ai.title":               "AI Analysis",
+    "help.ai.body":                "AI status on the current symbol: market regime (trending/cycling/choppy), Hurst exponent, prediction confidence, long/short direction and Kelly % suggested by RiskManager. <b>Usage</b>: press ▶ Analyze to trigger an immediate recompute (otherwise wait for the 4h/1h auto loop).",
+    "help.engine.title":           "Auto Engine",
+    "help.engine.body":            "Heart of algorithmic trading. Shows engine state, equity, daily P&L, drawdown, and activity of the 4 async loops (4h_scan, 1h_scan, trend_detect, position_check). LEDs pulse on heartbeat. <b>Usage</b>: ▶ Start to enable auto-scan; ■ Stop to pause.",
+    "help.portfolio.title":        "Portfolio",
+    "help.portfolio.body":         "Portfolio overview: heatmap of correlations between open positions (red = negatively correlated, green = positively correlated) and asset class breakdown. <b>Usage</b>: correlated positions increase aggregate risk — prefer uncorrelated assets to diversify.",
+    "help.broker.title":           "Broker Configuration",
+    "help.broker.body":            "Broker selection and credentials (Paper / IG / OANDA). <b>Usage</b>: 1) select broker from dropdown, 2) enter credentials if needed, 3) <b>Save settings</b>, 4) <b>Test connection</b> to verify. In PAPER mode no credentials required.",
+
     # ---- tooltips (KPI badge) -------------------------------------------------
     "tooltip.equity":              "Total capital (cash + value of open positions). The sparkline shows the last 50 observations.",
     "tooltip.pnl_day":             "Realized + unrealized profit/loss for today. Reset at midnight UTC.",
@@ -461,7 +489,7 @@ EN: dict[str, str] = {
 
     # ---- AI analysis panel ----------------------------------------------------
     "ai.empty_state":              "Load a symbol and click\n\"Run AI Analysis\"",
-    "ai.btn_run":                  "Run AI Analysis  [{symbol}]",
+    "ai.btn_run":                  "▶ Analyze",
     "ai.analysis_error":           "Analysis error:\n{error}",
     "ai.hurst_bias.trending":      "Trending",
     "ai.hurst_bias.reverting":     "Reverting",

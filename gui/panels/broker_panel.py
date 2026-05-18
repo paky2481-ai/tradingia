@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLineEdit, QGroupBox, QFormLayout, QFrame,
     QScrollArea, QStackedWidget, QSizePolicy,
 )
+from gui.widgets.info import HelpIcon
 
 _ENV_PATH = Path(__file__).parent.parent.parent / ".env"
 
@@ -133,10 +134,16 @@ class BrokerPanel(QWidget):
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
 
-        # ── Title ────────────────────────────────────────────────────────
+        # ── Title + HelpIcon ─────────────────────────────────────────────
+        title_row = QHBoxLayout()
+        title_row.setSpacing(6)
         title = QLabel(tr("broker.settings_title"))
         title.setStyleSheet(_STYLE_TITLE)
-        root.addWidget(title)
+        title_row.addWidget(title)
+        self._help_icon = HelpIcon(tr("help.broker.title"), tr("help.broker.body"))
+        title_row.addWidget(self._help_icon)
+        title_row.addStretch()
+        root.addLayout(title_row)
         root.addWidget(_sep())
 
         # ── Status ───────────────────────────────────────────────────────
@@ -200,6 +207,7 @@ class BrokerPanel(QWidget):
         self._combo_broker.currentIndexChanged.connect(self._on_broker_changed)
         self._btn_save.clicked.connect(self._on_save)
         self._btn_test.clicked.connect(self._on_test)
+        self._connect_language_bus()
 
     # ─── Credential sub-panels ───────────────────────────────────────────
 
@@ -357,6 +365,16 @@ class BrokerPanel(QWidget):
             self._update_status_label(broker_id)
         except Exception as e:
             self._lbl_result.setText(tr("broker.load_error", error=e))
+
+    def _connect_language_bus(self):
+        """Aggiorna HelpIcon al cambio lingua runtime."""
+        try:
+            from core.signal_bus import get_bus
+            get_bus().qt.language_changed.connect(lambda _: self._help_icon.update_texts(
+                tr("help.broker.title"), tr("help.broker.body")
+            ))
+        except Exception:
+            pass
 
     def _on_broker_changed(self, idx: int):
         self._stack.setCurrentIndex(idx)

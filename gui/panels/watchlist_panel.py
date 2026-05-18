@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QLabel, QHBoxLayout,
 )
 from gui.i18n import tr
-from gui.widgets.info import RegimePill
+from gui.widgets.info import RegimePill, HelpIcon
 
 _UI = Path(__file__).parent.parent / "ui" / "watchlist_panel.ui"
 
@@ -88,6 +88,11 @@ class WatchlistPanel(QWidget):
         self.tabLayout.setContentsMargins(8, 4, 8, 4)
         self.searchLayout.setContentsMargins(8, 6, 8, 6)
 
+        # HelpIcon accanto al titolo header
+        self._help_icon = HelpIcon(tr("help.watchlist.title"), tr("help.watchlist.body"))
+        self.headerLayout.insertWidget(1, self._help_icon)
+        self._connect_language_bus()
+
         # Build tab_buttons dict from named widgets loaded by uic
         self._tab_buttons: Dict[str, "QPushButton"] = {
             "Stocks":  self._btn_tab_stocks,
@@ -135,6 +140,16 @@ class WatchlistPanel(QWidget):
 
         for name, btn in self._tab_buttons.items():
             btn.clicked.connect(lambda checked, n=name: self._load_list(n))
+
+    def _connect_language_bus(self):
+        """Aggiorna HelpIcon al cambio lingua runtime."""
+        try:
+            from core.signal_bus import get_bus
+            get_bus().qt.language_changed.connect(lambda _: self._help_icon.update_texts(
+                tr("help.watchlist.title"), tr("help.watchlist.body")
+            ))
+        except Exception:
+            pass
 
     def _connect_bus(self):
         """Fase 5.2 — collega regime_update per aggiornare pill per simbolo selezionato."""

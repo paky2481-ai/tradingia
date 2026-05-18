@@ -35,6 +35,8 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase 5 — Arricchimento panel + 5 segnali SignalBus** — completata 2026-05-16 (commit `7246e63` + `fae14d4`). Pipeline live end-to-end: AutoConfig→GUI, RiskManager→Gauge, Engine loop→StatusDot, posizioni→Heatmap. PortfolioPanel nuovo non ancora integrato in workspace
 - [x] **Fase 5.5 — Polish post visual check** — completata 2026-05-18 (commit `1b95788` + `1e20e83`). Dashboard -580 LOC, EnginePanel non più orfano.
 - [x] **Fase 5.6 — Cruscotto a tab a gruppi correlati** — completata 2026-05-18. WatchlistPanel sticky sinistra, chart 50% sempre visibile, gauge strip 82px fissi, 2 macro-tab "Trading" (Posizioni+Engine) e "Analisi" (AI+Portfolio) a 50% verticale. PortfolioPanel finalmente integrato.
+- [x] **Fase 5.7 — HelpIcon panel + dedupe bottone AI** — completata 2026-05-18. HelpIcon (?) accanto al titolo dei 6 panel atomici (Watchlist, Positions, AI, Engine, Portfolio, Broker) con tooltip "cosa fa + come si usa" tramite 12 chiavi i18n nuove. Bottone "Run AI Analysis" hardcoded → `tr("ai.btn_run")` → "▶ Analizza" / "▶ Analyze".
+- [x] **Fix yfinance HTTP 401** — completato 2026-05-18 (commit `29f89a6`). yfinance 1.2.0 → 1.3.0 con curl_cffi per anti-bot Yahoo.
 - [ ] Fase 6 — Fix stati pulsanti via AppState ← PROSSIMO STEP
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus

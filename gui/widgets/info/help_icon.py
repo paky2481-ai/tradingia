@@ -43,6 +43,16 @@ class HelpIcon(QLabel):
         self.setFixedSize(16, 16)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._apply_style()
+        self.setToolTip(f"<b>{title}</b><br>{body}")
+
+    def update_texts(self, title: str, body: str) -> None:
+        """Aggiorna title e body (per cambio lingua runtime senza ri-istanziare)."""
+        self._title = title
+        self._body = body
+        self.setToolTip(f"<b>{title}</b><br>{body}")
+
+    def _apply_style(self) -> None:
         self.setStyleSheet(
             "QLabel {"
             "  background: #21262d;"
@@ -57,8 +67,6 @@ class HelpIcon(QLabel):
             "  color: white;"
             "}"
         )
-        # Tooltip HTML nativo — visibile già al hover, max ~400 char per leggibilità
-        self.setToolTip(f"<b>{title}</b><br>{body}")
 
     # ── Event ──────────────────────────────────────────────────────────────────
 

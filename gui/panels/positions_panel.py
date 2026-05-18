@@ -27,7 +27,7 @@ from core.signal_bus import (
     OpenTradeCommand, CloseTradeCommand,
 )
 from gui.i18n import tr
-from gui.widgets.info import Sparkline
+from gui.widgets.info import Sparkline, HelpIcon
 
 _UI = Path(__file__).parent.parent / "ui" / "positions_panel.ui"
 
@@ -88,6 +88,7 @@ class PositionsPanel(QWidget):
         self._setup_form()
         self._setup_connections()
         self._connect_bus()
+        self._connect_language_bus()
         self._update_table_visibility()
 
     # ─────────────────────────────────────────────────────────────────────
@@ -122,6 +123,10 @@ class PositionsPanel(QWidget):
         self._equity_sparkline.set_values([0.0])
         hl.addWidget(self._equity_sparkline)
         hl.addStretch()
+
+        # HelpIcon
+        self._help_icon = HelpIcon(tr("help.positions.title"), tr("help.positions.body"))
+        hl.addWidget(self._help_icon)
 
         # Inserisco l'header all'inizio del layout principale del pannello
         try:
@@ -164,6 +169,15 @@ class PositionsPanel(QWidget):
     # ─────────────────────────────────────────────────────────────────────
     # Bus connections
     # ─────────────────────────────────────────────────────────────────────
+
+    def _connect_language_bus(self):
+        """Aggiorna HelpIcon al cambio lingua runtime."""
+        try:
+            get_bus().qt.language_changed.connect(lambda _: self._help_icon.update_texts(
+                tr("help.positions.title"), tr("help.positions.body")
+            ))
+        except Exception:
+            pass
 
     def _connect_bus(self):
         bus = get_bus()

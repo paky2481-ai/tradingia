@@ -26,7 +26,7 @@ from core.signal_bus import (
     get_bus, EngineStatusEvent, TrendAlertEvent, ScanResultEvent,
     TradeOpenedEvent, TradeClosedEvent,
 )
-from gui.widgets.info import StatusDot
+from gui.widgets.info import StatusDot, HelpIcon
 
 _UI = Path(__file__).parent.parent / "ui" / "engine_panel.ui"
 
@@ -77,8 +77,10 @@ class EnginePanel(QWidget):
 
         self._setup_styles()
         self._build_loop_dots()
+        self._add_help_icon()
         self._setup_connections()
         self._connect_bus()
+        self._connect_language_bus()
 
     # ─────────────────────────────────────────────────────────────────────
     # Setup
@@ -177,6 +179,25 @@ class EnginePanel(QWidget):
             self.rootLayout.insertWidget(idx + 1, dots_frame)
         except Exception:
             self.rootLayout.addWidget(dots_frame)
+
+    def _add_help_icon(self):
+        """Inserisce HelpIcon accanto al titolo nel headerLayout."""
+        from gui.i18n import tr
+        self._help_icon = HelpIcon(tr("help.engine.title"), tr("help.engine.body"))
+        # headerLayout è un QHBoxLayout diretto nel rootLayout — titolo all'index 0
+        header_layout = self.rootLayout.itemAt(0).layout()
+        if header_layout is not None:
+            header_layout.insertWidget(1, self._help_icon)
+
+    def _connect_language_bus(self):
+        """Aggiorna HelpIcon al cambio lingua runtime."""
+        from gui.i18n import tr
+        try:
+            get_bus().qt.language_changed.connect(lambda _: self._help_icon.update_texts(
+                tr("help.engine.title"), tr("help.engine.body")
+            ))
+        except Exception:
+            pass
 
     def _setup_connections(self):
         self._btn_start.clicked.connect(self._on_start_stop)

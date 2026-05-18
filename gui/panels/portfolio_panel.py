@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 
 from core.signal_bus import get_bus, PositionUpdateEvent, CorrelationUpdateEvent
 from gui.i18n import tr
-from gui.widgets.info import Heatmap, Gauge
+from gui.widgets.info import Heatmap, Gauge, HelpIcon
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
@@ -78,12 +78,20 @@ class PortfolioPanel(QWidget):
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
 
-        # ── Titolo ────────────────────────────────────────────────────────
+        # ── Titolo + HelpIcon ─────────────────────────────────────────────
+        title_row = QWidget()
+        title_hl = QHBoxLayout(title_row)
+        title_hl.setContentsMargins(0, 0, 0, 0)
+        title_hl.setSpacing(6)
         title = QLabel(tr("portfolio.title"))
         title.setStyleSheet(
             "color:#e6edf3; font-size:13px; font-weight:bold;"
         )
-        root.addWidget(title)
+        title_hl.addWidget(title)
+        self._help_icon = HelpIcon(tr("help.portfolio.title"), tr("help.portfolio.body"))
+        title_hl.addWidget(self._help_icon)
+        title_hl.addStretch()
+        root.addWidget(title_row)
         root.addWidget(_sep())
 
         # ── Sezione Heatmap correlazioni ──────────────────────────────────
@@ -157,6 +165,9 @@ class PortfolioPanel(QWidget):
             bus = get_bus()
             bus.qt.correlation_update.connect(self._on_correlation_update)
             bus.qt.position_update.connect(self._on_position_update)
+            bus.qt.language_changed.connect(lambda _: self._help_icon.update_texts(
+                tr("help.portfolio.title"), tr("help.portfolio.body")
+            ))
         except Exception:
             pass
 

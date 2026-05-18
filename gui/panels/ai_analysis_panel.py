@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (
 
 from gui.widgets.info import (
     RegimePill, Gauge, ConfidenceBar, BiDirectionalBar, FFTMini, Sparkline,
+    HelpIcon,
 )
 
 _UI = Path(__file__).parent.parent / "ui" / "ai_analysis_panel.ui"
@@ -161,6 +162,8 @@ class AIAnalysisPanel(QWidget):
         self._build_dynamic_content()
         self._connect_signals()
         self._connect_bus()
+        self._apply_i18n()
+        self._connect_language_bus()
 
     # ── UI Setup ──────────────────────────────────────────────────────────
 
@@ -168,6 +171,10 @@ class AIAnalysisPanel(QWidget):
         self.setStyleSheet("background:#0d1117; color:#e6edf3;")
         self._header.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
         self._lbl_title.setStyleSheet("color:#e6edf3; font-weight:bold; font-size:12px;")
+        # Inserisce HelpIcon subito dopo il titolo nel headerLayout
+        self._help_icon = HelpIcon(tr("help.ai.title"), tr("help.ai.body"))
+        header_layout = self._header.layout()
+        header_layout.insertWidget(1, self._help_icon)
         self._chk_auto.setStyleSheet("color:#a8b1bb; font-size:10px;")
         self._btn_run.setStyleSheet(
             "QPushButton { background:#238636; color:#fff; border:none; "
@@ -271,6 +278,22 @@ class AIAnalysisPanel(QWidget):
 
         self._hide_sections()
 
+    def _apply_i18n(self):
+        """Applica testi i18n al bottone e alla HelpIcon (cambio lingua runtime)."""
+        self._btn_run.setText(tr("ai.btn_run"))
+        if hasattr(self, "_help_icon"):
+            self._help_icon.update_texts(
+                tr("help.ai.title"), tr("help.ai.body")
+            )
+
+    def _connect_language_bus(self):
+        """Ascolta language_changed dal bus per aggiornare testi a runtime."""
+        try:
+            from core.signal_bus import get_bus
+            get_bus().qt.language_changed.connect(lambda _lang: self._apply_i18n())
+        except Exception:
+            pass
+
     def _connect_signals(self):
         self._chk_auto.toggled.connect(self._on_auto_toggled)
         self._btn_run.clicked.connect(self._on_run_clicked)
@@ -293,7 +316,7 @@ class AIAnalysisPanel(QWidget):
         self._symbol = symbol
         self._df = df
         self._asset_type = asset_type
-        self._btn_run.setText(tr("ai.btn_run", symbol=symbol))
+        self._btn_run.setText(tr("ai.btn_run"))
         self._btn_run.setEnabled(True)
 
         if self._auto_enabled:
