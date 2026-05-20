@@ -43,7 +43,8 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase C — Chart integration** — completata 2026-05-20 (commit `e43423d`). `_ChartArea` placeholder sostituito con `ChartPanel` reale nel Cruscotto; fetch OHLCV async (400 barre 1h da UniversalDataFeed) su boot + current_symbol_changed.
 - [ ] **Fase D — UX ordini + auto-download** — combo simbolo + sync bidirezionale fatti (A.1+commit 8595075); resta auto-download dati al primo click + rimozione data_panel
 - [ ] **Fase E — Pulizia + bug** — fix Pattern recognition, unifica le 2 watchlist, cleanup workspace ridondanti
-- [ ] **Fase 6 — Fix stati pulsanti via AppState** — engine_running → setEnabled() su Buy/Sell/CloseAll, loading state Test broker, quick-pick attivi
+- [x] **Fase 6 — Fix stati pulsanti via AppState** — completata 2026-05-20 (commit `3449306`). Submit ordine engine-gated, EnginePanel refactor su AppState.engine_running (sync con TopBar), loading state Test broker, Clear pattern condizionale.
+- [x] **Fix barra gigante chart** — completato 2026-05-20 (commit `267e38f`). Wick degenere (high==low) su candele forex generava un drawLine degenere che copriva tutto il grafico; ora la wick si disegna solo se high>low.
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
 - [ ] Fase 6 — Fix stati pulsanti via AppState (tutti i panel)
