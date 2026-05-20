@@ -31,6 +31,7 @@ class AppState(QObject):
     open_positions_changed   = pyqtSignal(int)
     win_rate_changed         = pyqtSignal(float)
     current_symbol_changed   = pyqtSignal(str)
+    current_scan_symbol_changed = pyqtSignal(str, str)  # (symbol_yf, loop_name) — Fase B
     current_regime_changed   = pyqtSignal(str)   # "trending"|"choppy"|"cycling"|"unknown"
     current_hurst_changed    = pyqtSignal(float)
     mode_changed             = pyqtSignal(str)   # "paper" | "live"
@@ -64,6 +65,8 @@ class AppState(QObject):
         self._open_positions    = 0
         self._win_rate          = 0.0
         self._current_symbol    = "EURUSD=X"
+        self._current_scan_symbol: str = ""      # Fase B — orfano se engine fermo
+        self._current_scan_loop:   str = ""      # Fase B — loop_name corrente
         self._current_regime    = "unknown"
         self._current_hurst     = 0.5
         self._mode              = "paper"
@@ -158,6 +161,33 @@ class AppState(QObject):
 
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+
+    @property
+    def current_scan_symbol(self) -> str:
+        """Simbolo che l'engine sta scansionando ADESSO (stringa vuota se fermo)."""
+        return self._current_scan_symbol
+
+    @property
+    def current_scan_loop(self) -> str:
+        """Nome del loop che ha emesso l'ultimo current_scan_symbol."""
+        return self._current_scan_loop
+
+    def set_scan_symbol(self, symbol: str, loop_name: str) -> None:
+        """Aggiorna il simbolo in scansione. Emette sempre (anche se uguale — heartbeat)."""
+        self._current_scan_symbol = symbol
+        self._current_scan_loop   = loop_name
+        self.current_scan_symbol_changed.emit(symbol, loop_name)
+
+    def clear_scan_symbol(self) -> None:
+        """Resetta a idle quando l'engine si ferma."""
+        if self._current_scan_symbol or self._current_scan_loop:
+            self._current_scan_symbol = ""
+            self._current_scan_loop   = ""
+            self.current_scan_symbol_changed.emit("", "")
+
+    # ------------------------------------------------------------------
+
     @property
     def current_regime(self) -> str:
         return self._current_regime
@@ -240,6 +270,7 @@ class AppState(QObject):
         bus.qt.engine_started.connect(self._on_engine_started)
         bus.qt.engine_stopped.connect(self._on_engine_stopped)
         bus.qt.engine_status.connect(self._on_engine_status)
+        bus.qt.current_scan_symbol.connect(self._on_scan_symbol)  # Fase B
 
     # ------------------------------------------------------------------
     # Slot interni (privati)
@@ -250,6 +281,11 @@ class AppState(QObject):
 
     def _on_engine_stopped(self) -> None:
         self.engine_running = False
+        self.clear_scan_symbol()  # Fase B — resetta chip scansione
+
+    def _on_scan_symbol(self, symbol: str, loop_name: str) -> None:
+        """Fase B — bridge SignalBus.current_scan_symbol → AppState."""
+        self.set_scan_symbol(symbol, loop_name)
 
     def _on_engine_status(self, ev) -> None:
         """Gestisce EngineStatusEvent: aggiorna equity, P&L, posizioni e mode."""

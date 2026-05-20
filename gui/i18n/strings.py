@@ -49,6 +49,8 @@ IT: dict[str, str] = {
     "topbar.engine_stop_tip":      "Ferma il motore di trading automatico",
     "topbar.symbol_label":         "Strumento:",
     "topbar.symbol_tooltip":       "Simbolo selezionato — tutti i pannelli sono sincronizzati su questo strumento",
+    "topbar.scan_label":           "SCAN:",
+    "topbar.scan_tooltip":         "Simbolo che il motore AI sta scansionando in questo momento",
 
     # ---- regime ---------------------------------------------------------------
     "regime.trending":             "IN TREND",
@@ -372,6 +374,8 @@ EN: dict[str, str] = {
     "topbar.engine_stop_tip":      "Stop the trading engine",
     "topbar.symbol_label":         "Symbol:",
     "topbar.symbol_tooltip":       "Selected symbol — all panels are synced to this instrument",
+    "topbar.scan_label":           "SCAN:",
+    "topbar.scan_tooltip":         "Symbol the AI engine is currently scanning",
 
     # ---- regime ---------------------------------------------------------------
     "regime.trending":             "TRENDING",

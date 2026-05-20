@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
 from gui.i18n import tr
 from gui.state.app_state import AppState
 from gui.widgets.info import HelpIcon, KPIBadge, RegimePill
+from gui.widgets.info.status_dot import StatusDot
 
 
 # ── Palette locale (coerente con dark.qss) ───────────────────────────────────
@@ -167,6 +168,105 @@ class _FlashLabel(QLabel):
         )
 
 
+class _ScanChip(QWidget):
+    """
+    Fase B — indicatore "engine sta scansionando X".
+
+    Layout: [StatusDot] [SCAN:] [EURUSD=X] [4h_scan]
+
+    - Visibile SOLO quando engine running e un simbolo e' in scan.
+    - StatusDot verde pulsante mentre in scan; idle quando fermo.
+    - Si nasconde (hide) quando engine fermo o chip vuoto.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+
+        self._dot = StatusDot(self)
+        self._dot.set_state("idle")
+        lay.addWidget(self._dot, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        lbl_prefix = QLabel(tr("topbar.scan_label"))
+        lbl_prefix.setStyleSheet(
+            f"color:{_MUTED}; font-size:10px; font-weight:600;"
+            '  font-family:"Segoe UI","Inter",sans-serif;'
+            "  background:transparent; border:none; letter-spacing:0.4px;"
+        )
+        lay.addWidget(lbl_prefix, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._symbol_lbl = QLabel("—")
+        self._symbol_lbl.setStyleSheet(
+            f"color:{_TEXT}; font-size:12px; font-weight:700;"
+            '  font-family:"Consolas","Cascadia Code",monospace;'
+            "  background:transparent; border:none;"
+        )
+        lay.addWidget(self._symbol_lbl, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._loop_lbl = QLabel("")
+        self._loop_lbl.setStyleSheet(
+            f"color:{_MUTED}; font-size:9px; font-weight:500;"
+            '  font-family:"Segoe UI","Inter",sans-serif;'
+            "  background:transparent; border:none;"
+        )
+        lay.addWidget(self._loop_lbl, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.setToolTip(tr("topbar.scan_tooltip"))
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(20)
+
+        # Timer idle — se non arriva un emit per 5s, torna a idle
+        self._idle_timer = QTimer(self)
+        self._idle_timer.setSingleShot(True)
+        self._idle_timer.setInterval(5000)
+        self._idle_timer.timeout.connect(self._on_idle_timeout)
+
+        # Nascosto di default (engine fermo)
+        self.hide()
+
+    # ── API pubblica ──────────────────────────────────────────────────────────
+
+    def update_scan(self, symbol: str, loop_name: str) -> None:
+        """Aggiorna display e resetta timer idle. Se symbol vuoto: nasconde."""
+        if not symbol:
+            self._go_idle()
+            return
+
+        # Display human-readable
+        try:
+            from core.engine import INSTRUMENTS
+            display = INSTRUMENTS.get(symbol, (symbol,))[0]
+        except Exception:
+            display = symbol
+
+        self._symbol_lbl.setText(display)
+        self._loop_lbl.setText(f"[{loop_name}]" if loop_name else "")
+        self._dot.set_state("loading")
+        self.show()
+
+        # Riavvia il timer idle
+        self._idle_timer.start()
+
+    def engine_stopped(self) -> None:
+        """Chiamato quando engine si ferma — nasconde subito."""
+        self._idle_timer.stop()
+        self._go_idle()
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _go_idle(self) -> None:
+        self._dot.set_state("idle")
+        self._symbol_lbl.setText("—")
+        self._loop_lbl.setText("")
+        self.hide()
+
+    def _on_idle_timeout(self) -> None:
+        """5s senza emit: dot torna idle ma rimane visibile (engine running)."""
+        self._dot.set_state("idle")
+
+
 class TopBar(QFrame):
     """
     Barra superiore Bloomberg-style, 42px fissi.
@@ -218,6 +318,12 @@ class TopBar(QFrame):
         self._engine_btn.setToolTip(tr("topbar.engine_start_tip"))
         self._engine_btn.clicked.connect(self._toggle_engine)
         lay.addWidget(self._engine_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        lay.addWidget(_make_separator())
+
+        # 1b-engine. ScanChip (Fase B) — simbolo in scansione dal backend ────────
+        self._scan_chip = _ScanChip()
+        lay.addWidget(self._scan_chip, 0, Qt.AlignmentFlag.AlignVCenter)
 
         lay.addWidget(_make_separator())
 
@@ -323,7 +429,8 @@ class TopBar(QFrame):
         state.mode_changed.connect(self._on_mode)
         state.broker_latency_changed.connect(self._on_latency)
         state.broker_connected_changed.connect(self._on_broker_connected)
-        state.current_symbol_changed.connect(self._on_current_symbol)  # Fase A.1
+        state.current_symbol_changed.connect(self._on_current_symbol)    # Fase A.1
+        state.current_scan_symbol_changed.connect(self._on_scan_symbol)  # Fase B
 
         # Carica valori correnti al primo render
         self._on_engine_state(state.engine_running)
@@ -349,6 +456,7 @@ class TopBar(QFrame):
             self._engine_btn.setText(tr("topbar.start"))
             self._engine_btn.setProperty("variant", "primary")
             self._engine_btn.setToolTip(tr("topbar.engine_start_tip"))
+            self._scan_chip.engine_stopped()  # Fase B — nascondi chip scansione
         # Forza il refresh dello stile QSS (il property non aggiorna automaticamente)
         self._engine_btn.style().unpolish(self._engine_btn)
         self._engine_btn.style().polish(self._engine_btn)
@@ -425,6 +533,10 @@ class TopBar(QFrame):
         except Exception:
             display = symbol_yf
         self._symbol_chip.setText(display)
+
+    def _on_scan_symbol(self, symbol: str, loop_name: str) -> None:
+        """Fase B — aggiorna il chip di scansione engine."""
+        self._scan_chip.update_scan(symbol, loop_name)
 
     # ── Engine toggle ─────────────────────────────────────────────────────────
 
