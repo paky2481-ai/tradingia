@@ -26,6 +26,7 @@
 - 2026-05-18: Task A+B — Dedupe bottone AI (ai.btn_run "Avvia Analisi AI [{symbol}]" -> "▶ Analizza"/"▶ Analyze", rimosso {symbol}). HelpIcon aggiunta a 6 panel via insertWidget/findChildren (no .ui modificati). Aggiunto HelpIcon.update_texts() per cambio lingua runtime. 12 chiavi help.* in strings.py IT+EN. Quality gate 4/4 PASS.
 - 2026-05-18: Fix 4 bug Workspace Operativo (A-B-C-D). A: _field_label setMinimumHeight(16)+spacing 6→8. B: metricsFrame QSS "QFrame{}" → "QFrame#metricsFrame{}"+QLabel{background:transparent} per caption leggibili, testo abbreviato "Posizioni aperte"→"Pos. Aperte". C: rimosso manualGroup da positions_panel.ui + _setup_form/_on_manual_trade/MANUAL_SYMBOLS/OpenTradeCommand da positions_panel.py. D: _symbol_combo editable + _sync_combo_to_symbol con setEditText per custom+blockSignals anti-loop + _on_combo_text_changed reverse-sync; BacktestPanel _on_backtest_symbol_changed con blockSignals. Quality gate 7/7 PASS.
 - 2026-05-20: Fase C — sostituito _ChartArea placeholder con ChartPanel reale in DashboardWorkspace. Fetch 400 barre 1h via asyncio.ensure_future (stesso pattern _FundamentalsStrip). _on_symbol_changed collega AppState.current_symbol_changed → _fetch_chart_data (silent fail headless). Rimossa classe _ChartArea, rimosso tr("dashboard.chart_placeholder/subtitle"). PatternsWorkspace non toccato. Quality gate 3/3 PASS (syntax, import, istanziazione 7 assert).
+- 2026-05-20: Fase D — ChartPanel reso autonomo nel fetch. Aggiunti selettori TF (1H/4H/1D/1W) + periodo (3M/1A/5A/MAX) come striscia dedicata 28px tra info bar e MA legend. Classe _SegmentedBar (toggle esclusivo, QSS property active). Mapping periodo→limit: barre_per_giorno * giorni, MAX→0. Rimossi _on_symbol_changed + _fetch_chart_data da DashboardWorkspace. Quality gate 3 file × (syntax+import+instance) = 9/9 PASS.
 
 ## Lezioni apprese (permanenti)
 
@@ -63,6 +64,7 @@
 - [x] Cruscotto visual fix — chart dominante, Positions+Engine spostati in workspace Operativo (Ctrl+2)
 - [x] Fix 4 bug Workspace Operativo: A layout form, B caption EnginePanel, C rimozione form manuale PositionsPanel, D sync simbolo custom end-to-end
 - [x] Fase C — Chart integration Cruscotto: _ChartArea rimossa, ChartPanel reale con fetch async 400 barre 1h
+- [x] Fase D — Selettore TF + periodo in ChartPanel autonomo; rimosso fetch da DashboardWorkspace
 
 ## Workflow
 

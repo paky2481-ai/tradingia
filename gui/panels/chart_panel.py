@@ -1,15 +1,23 @@
 """
 Chart Panel
 Hosts the CandlestickChart and a top info bar with symbol/price/change info.
+
+Fase D (2026-05-20):
+    - Selettore timeframe (1H / 4H / 1D / 1W) + selettore periodo (3M / 1A / 5A / MAX)
+      in una striscia dedicata (28px) tra info bar e MA legend.
+    - ChartPanel autonomo: gestisce fetch OHLCV internamente via asyncio.ensure_future.
+      Ascolta AppState.current_symbol_changed e ri-fetcha ad ogni cambio TF/periodo.
+    - Default: 1H + 1A.
+    - Pattern asyncio identico a _FundamentalsStrip in dashboard.py.
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 import pandas as pd
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy,
@@ -20,8 +28,128 @@ from gui.widgets.oscillator_chart import OscillatorChart
 from gui.i18n import tr
 
 
+# ── Mapping TF label → feed timeframe ────────────────────────────────────────
+_TF_MAP: dict[str, str] = {
+    "1H": "1h",
+    "4H": "4h",
+    "1D": "1d",
+    "1W": "1w",
+}
+
+# ── Barre approssimate per giorno per ogni timeframe ─────────────────────────
+_BARS_PER_DAY: dict[str, float] = {
+    "1H": 24.0,
+    "4H": 6.0,
+    "1D": 1.0,
+    "1W": 1.0 / 7.0,
+}
+
+# ── Giorni per ogni periodo ───────────────────────────────────────────────────
+_PERIOD_DAYS: dict[str, int] = {
+    "3M":  90,
+    "1A":  365,
+    "5A":  1825,
+    "MAX": 0,   # 0 = limit=0 → tutta la storia disponibile
+}
+
+# ── Etichette pulsanti ────────────────────────────────────────────────────────
+_TF_LABELS:     list[str] = ["1H", "4H", "1D", "1W"]
+_PERIOD_LABELS: list[str] = ["3M", "1A", "5A", "MAX"]
+
+
+def _compute_limit(tf_label: str, period_label: str) -> int:
+    """
+    Converte la coppia (timeframe, periodo) in numero di barre (limit).
+    MAX → 0 (feed restituisce tutta la storia disponibile).
+    """
+    days = _PERIOD_DAYS[period_label]
+    if days == 0:
+        return 0  # MAX
+    bars_per_day = _BARS_PER_DAY[tf_label]
+    return max(1, round(bars_per_day * days))
+
+
+# ── Stile QSS per i pulsanti segmented ───────────────────────────────────────
+_BTN_BASE = (
+    "QPushButton {"
+    "  background: #21262d;"
+    "  color: #a8b1bb;"
+    "  border: 1px solid #30363d;"
+    "  border-radius: 3px;"
+    "  font-size: 11px;"
+    "  font-weight: 600;"
+    "  padding: 1px 8px;"
+    "  min-height: 20px;"
+    "  max-height: 20px;"
+    "}"
+    "QPushButton:hover {"
+    "  background: #30363d;"
+    "  color: #e6edf3;"
+    "}"
+    "QPushButton[active=true] {"
+    "  background: #1f6feb;"
+    "  color: #ffffff;"
+    "  border-color: #388bfd;"
+    "}"
+)
+
+
+class _SegmentedBar(QWidget):
+    """
+    Barra di pulsanti toggle (uno solo attivo per volta).
+    Emette via callback on_changed(label: str).
+    """
+
+    def __init__(self, labels: list[str], default: str, parent=None):
+        super().__init__(parent)
+        self._active = default
+        self._buttons: dict[str, QPushButton] = {}
+        self._on_changed_cb = None
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(3)
+
+        for lbl in labels:
+            btn = QPushButton(lbl)
+            btn.setStyleSheet(_BTN_BASE)
+            btn.setCheckable(False)
+            btn.setProperty("active", lbl == default)
+            btn.clicked.connect(lambda checked, l=lbl: self._click(l))
+            self._buttons[lbl] = btn
+            row.addWidget(btn)
+
+    def _click(self, label: str) -> None:
+        if label == self._active:
+            return
+        self._active = label
+        self._refresh_styles()
+        if self._on_changed_cb:
+            self._on_changed_cb(label)
+
+    def _refresh_styles(self) -> None:
+        for lbl, btn in self._buttons.items():
+            btn.setProperty("active", lbl == self._active)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+            btn.update()
+
+    def set_on_changed(self, cb) -> None:
+        self._on_changed_cb = cb
+
+    @property
+    def active(self) -> str:
+        return self._active
+
+
 class ChartPanel(QWidget):
-    """Main chart area with info bar + candlestick chart."""
+    """
+    Main chart area con info bar + selettori TF/periodo + candlestick chart.
+
+    Fetch autonomo: ascolta AppState.current_symbol_changed e ri-fetcha
+    ad ogni cambio timeframe/periodo. Pattern asyncio identico a
+    _FundamentalsStrip in dashboard.py.
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,36 +158,98 @@ class ChartPanel(QWidget):
         self._df: Optional[pd.DataFrame] = None
         self._setup_ui()
         self._connect_state()
+        self._boot_fetch()
+
+    # ── Connessione AppState ──────────────────────────────────────────────────
 
     def _connect_state(self) -> None:
-        """Fase A.1 — ascolta AppState.current_symbol_changed."""
+        """Ascolta AppState.current_symbol_changed per aggiornare info bar e fetch."""
         try:
             from gui.state.app_state import AppState
-            AppState.instance().current_symbol_changed.connect(self._on_current_symbol_changed)
+            state = AppState.instance()
+            state.current_symbol_changed.connect(self._on_current_symbol_changed)
+        except Exception:
+            pass
+
+    def _boot_fetch(self) -> None:
+        """Fetch iniziale al boot con simbolo/TF/periodo correnti."""
+        try:
+            from gui.state.app_state import AppState
+            symbol = AppState.instance().current_symbol
+            if symbol:
+                self._trigger_fetch(symbol)
         except Exception:
             pass
 
     def _on_current_symbol_changed(self, symbol_yf: str) -> None:
-        """Fase A.1 — aggiorna info bar quando cambia simbolo; fetch dati rimandato al workspace."""
+        """Cambio simbolo: aggiorna info bar e avvia fetch."""
         try:
             from core.engine import INSTRUMENTS
             display = INSTRUMENTS.get(symbol_yf, (symbol_yf,))[0]
         except Exception:
             display = symbol_yf
-        # Aggiorna solo l'info bar (non fa fetch — il workspace gestira' il caricamento)
         self._lbl_symbol.setText(display)
         self._lbl_tf.setText("")
         self._lbl_price.setText("—")
         self._lbl_change.setText("")
+        self._trigger_fetch(symbol_yf)
 
-    # ── Setup ──────────────────────────────────────────────────────────────
+    def _trigger_fetch(self, symbol: str) -> None:
+        """Avvia fetch OHLCV asincrono con TF e periodo correnti."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(self._fetch_chart_data(symbol))
+            # Se il loop non gira (test headless) il chart resta in empty state — OK.
+        except Exception:
+            pass
+
+    async def _fetch_chart_data(self, symbol: str) -> None:
+        """Scarica OHLCV e popola il chart. Silent fail su errori."""
+        tf_label = self._tf_bar.active
+        period_label = self._period_bar.active
+        tf_feed = _TF_MAP[tf_label]
+        limit = _compute_limit(tf_label, period_label)
+        try:
+            from data.feed import UniversalDataFeed
+            df = await UniversalDataFeed().get_ohlcv(symbol, tf_feed, limit=limit)
+            if df is None or df.empty:
+                return
+            try:
+                from core.engine import INSTRUMENTS
+                display = INSTRUMENTS.get(symbol, (symbol,))[0]
+            except Exception:
+                display = symbol
+            self.load_data(df, display, tf_feed)
+        except Exception:
+            pass  # rete assente o simbolo invalido
+
+    def _on_tf_changed(self, tf_label: str) -> None:
+        """Cambio timeframe: ri-fetch."""
+        self._do_refetch()
+
+    def _on_period_changed(self, period_label: str) -> None:
+        """Cambio periodo: ri-fetch."""
+        self._do_refetch()
+
+    def _do_refetch(self) -> None:
+        """Recupera il simbolo corrente da AppState e avvia fetch."""
+        try:
+            from gui.state.app_state import AppState
+            symbol = AppState.instance().current_symbol
+            if symbol:
+                self._trigger_fetch(symbol)
+        except Exception:
+            pass
+
+    # ── Setup UI ─────────────────────────────────────────────────────────────
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── Info bar ───────────────────────────────────────────────────
+        # ── Info bar (56px) ───────────────────────────────────────────────
         info_bar = QWidget()
         info_bar.setStyleSheet("background:#161b22; border-bottom:1px solid #30363d;")
         info_bar.setFixedHeight(56)
@@ -67,7 +257,7 @@ class ChartPanel(QWidget):
         ib_layout.setContentsMargins(16, 0, 16, 0)
         ib_layout.setSpacing(16)
 
-        # Symbol + timeframe
+        # Symbol + timeframe badge
         self._lbl_symbol = QLabel("—")
         self._lbl_symbol.setStyleSheet(
             "font-size:18px; font-weight:700; color:#e6edf3; letter-spacing:0.5px;"
@@ -83,7 +273,7 @@ class ChartPanel(QWidget):
 
         ib_layout.addSpacing(8)
 
-        # OHLCV info (updated on hover by chart)
+        # OHLCV info (aggiornata al hover dal chart)
         self._lbl_open  = self._make_ohlcv_label("O")
         self._lbl_high  = self._make_ohlcv_label("H")
         self._lbl_low   = self._make_ohlcv_label("L")
@@ -107,7 +297,38 @@ class ChartPanel(QWidget):
 
         layout.addWidget(info_bar)
 
-        # ── MA Legend ─────────────────────────────────────────────────
+        # ── Selector bar (28px) ───────────────────────────────────────────
+        # Due gruppi di pulsanti: TF a sinistra, Periodo a destra.
+        # Altezza fissa per coerenza con MA legend.
+        selector_bar = QWidget()
+        selector_bar.setStyleSheet(
+            "background:#0d1117; border-bottom:1px solid #21262d;"
+        )
+        selector_bar.setFixedHeight(28)
+        sel_layout = QHBoxLayout(selector_bar)
+        sel_layout.setContentsMargins(12, 4, 12, 4)
+        sel_layout.setSpacing(0)
+
+        # Timeframe segmented
+        self._tf_bar = _SegmentedBar(_TF_LABELS, default="1H")
+        self._tf_bar.set_on_changed(self._on_tf_changed)
+        sel_layout.addWidget(self._tf_bar)
+
+        # Separatore verticale tra i due gruppi
+        sep = QLabel("|")
+        sep.setStyleSheet("color:#30363d; padding:0 10px; background:transparent;")
+        sel_layout.addWidget(sep)
+
+        # Periodo segmented
+        self._period_bar = _SegmentedBar(_PERIOD_LABELS, default="1A")
+        self._period_bar.set_on_changed(self._on_period_changed)
+        sel_layout.addWidget(self._period_bar)
+
+        sel_layout.addStretch()
+
+        layout.addWidget(selector_bar)
+
+        # ── MA Legend (28px) ──────────────────────────────────────────────
         legend = QWidget()
         legend.setStyleSheet("background:#0d1117; border-bottom:1px solid #161b22;")
         legend.setFixedHeight(28)
@@ -126,7 +347,7 @@ class ChartPanel(QWidget):
         leg_layout.addStretch()
         layout.addWidget(legend)
 
-        # ── Chart ──────────────────────────────────────────────────────
+        # ── Chart ─────────────────────────────────────────────────────────
         self._chart = CandlestickChart()
         self._chart.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -135,12 +356,12 @@ class ChartPanel(QWidget):
         self._chart.bar_hovered.connect(self._on_bar_hovered)
         layout.addWidget(self._chart)
 
-        # ── Oscillator sub-chart (AI-selected, hidden by default) ──────
+        # ── Oscillator sub-chart (AI-selected, hidden by default) ─────────
         self._oscillator = OscillatorChart()
         self._oscillator.hide()
         layout.addWidget(self._oscillator)
 
-        # ── Empty state ────────────────────────────────────────────────
+        # ── Empty state ───────────────────────────────────────────────────
         self._empty = QWidget()
         self._empty.setStyleSheet("background:#0d1117;")
         em_layout = QVBoxLayout(self._empty)
@@ -159,10 +380,10 @@ class ChartPanel(QWidget):
         lbl.setTextFormat(Qt.TextFormat.RichText)
         return lbl
 
-    # ── Public API ────────────────────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def load_data(self, df: pd.DataFrame, symbol: str, timeframe: str):
-        """Display a new OHLCV dataset."""
+        """Mostra un nuovo dataset OHLCV nel chart."""
         if df is None or df.empty:
             return
         self._df = df
@@ -172,7 +393,7 @@ class ChartPanel(QWidget):
         self._lbl_symbol.setText(symbol)
         self._lbl_tf.setText(timeframe)
 
-        # Show last bar OHLCV
+        # Mostra l'ultima barra nell'OHLCV info
         last = df.iloc[-1]
         self._update_ohlcv_labels(last)
         self._update_price_badge(last)
@@ -185,10 +406,9 @@ class ChartPanel(QWidget):
         self._chart.set_ma_visible(ma20, ma50, ma200)
 
     def show_oscillator(self, column_name: str) -> None:
-        """Display the AI-selected oscillator sub-chart."""
+        """Mostra il sub-chart oscillatore selezionato dall'AI."""
         if self._df is None:
             return
-        # Compute indicator if not in df
         df = self._df
         if column_name not in df.columns:
             try:
@@ -210,22 +430,19 @@ class ChartPanel(QWidget):
         else:
             self._oscillator.set_oscillator(column_name, df[column_name].reset_index(drop=True))
 
-        # Link oscillator X-axis to main price plot so zoom/pan stays in sync
+        # Linka l'asse X dell'oscillatore al price plot per zoom/pan in sync
         self._oscillator.link_x_axis(self._chart._price_plot)
         self._oscillator.show()
 
     def update_live_tick(self, bar: dict, symbol: str):
-        """Update the last candle and info bar with a live tick."""
+        """Aggiorna l'ultima candela e l'info bar con un tick live."""
         if symbol != self._symbol:
             return
         price = bar.get("price")
         if price is None:
             return
 
-        # Update price badge
         self._lbl_price.setText(f"{price:.4f}")
-
-        # Update chart last bar
         self._chart.update_last_bar({
             "close": price,
             "high": bar.get("high", price),
@@ -233,10 +450,10 @@ class ChartPanel(QWidget):
             "volume": bar.get("volume", 0),
         })
 
-    # ── Internals ─────────────────────────────────────────────────────────
+    # ── Internals ─────────────────────────────────────────────────────────────
 
     def _on_bar_hovered(self, bar: dict):
-        """Update OHLCV info bar from chart crosshair hover."""
+        """Aggiorna OHLCV info bar dal crosshair hover del chart."""
         self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {bar['open']:.4f}")
         self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {bar['high']:.4f}")
         self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {bar['low']:.4f}")
@@ -244,7 +461,6 @@ class ChartPanel(QWidget):
         self._lbl_vol.setText(  f"<span style='color:#6e7681'>V</span> {int(bar['volume']):,}")
 
     def _update_ohlcv_labels(self, row):
-        o = row.get("open", row["open"] if "open" in row.index else None)
         self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {row['open']:.4f}")
         self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {row['high']:.4f}")
         self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {row['low']:.4f}")

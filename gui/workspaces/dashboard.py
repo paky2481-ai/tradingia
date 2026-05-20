@@ -12,10 +12,9 @@ Layout Bloomberg-style (Fase C, 2026-05-20):
 
 Posizioni + Engine spostati in OrderTicketWorkspace (workspace "Operativo", Ctrl+2).
 
-Fetch dati:
-    Al boot e ad ogni cambio current_symbol, carica 400 barre 1h da UniversalDataFeed
-    in modo asincrono (asyncio.ensure_future, stesso pattern di _FundamentalsStrip).
-    Se il loop non gira (test headless) il fetch viene silenziosamente saltato.
+Fetch dati chart:
+    Delegato a ChartPanel (autonomo da Fase D, 2026-05-20).
+    ChartPanel gestisce TF/periodo e fetch interno via asyncio.ensure_future.
 
 Demo liveness:
     QTimer 2s simula AppState per variabili senza emit dal core.
@@ -468,6 +467,7 @@ class DashboardWorkspace(QWidget):
         # Simula variabili AppState che non hanno ancora emit dal core engine.
         # NON tocca: ai_result, kelly_update, regime_update, loop_heartbeat,
         # correlation_update — quelli sono di competenza del SignalBus Fase 5.
+        # Il fetch dati chart e' ora gestito direttamente da ChartPanel.
         self._demo_hurst: float = 0.62
         self._demo_equity: float = 10_000.0
         self._demo_kelly: float = 0.023
@@ -477,45 +477,6 @@ class DashboardWorkspace(QWidget):
         self._demo_timer = QTimer(self)
         self._demo_timer.timeout.connect(self._demo_tick)
         self._demo_timer.start(2000)
-
-        # ── Fetch dati chart ──────────────────────────────────────────────
-        # Collega cambio simbolo → reload chart. Poi carica il simbolo iniziale.
-        try:
-            state.current_symbol_changed.connect(self._on_symbol_changed)
-            self._on_symbol_changed(state.current_symbol)
-        except Exception:
-            pass  # in test headless AppState potrebbe non avere il segnale
-
-    # ── Fetch dati chart ──────────────────────────────────────────────────────
-
-    def _on_symbol_changed(self, symbol: str) -> None:
-        """Avvia fetch OHLCV asincrono quando cambia il simbolo corrente."""
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(self._fetch_chart_data(symbol))
-            # Se il loop non gira (test headless) il chart resta in empty state — OK.
-        except Exception:
-            pass
-
-    async def _fetch_chart_data(self, symbol: str) -> None:
-        """Scarica 400 barre 1h e popola ChartPanel. Silent fail su errori."""
-        _TF = "1h"
-        _LIMIT = 400
-        try:
-            from data.feed import UniversalDataFeed
-            df = await UniversalDataFeed().get_ohlcv(symbol, _TF, limit=_LIMIT)
-            if df is None or df.empty:
-                return
-            # Ricava il nome display (es. "BTC/USD") da INSTRUMENTS se disponibile
-            try:
-                from core.engine import INSTRUMENTS
-                display = INSTRUMENTS.get(symbol, (symbol,))[0]
-            except Exception:
-                display = symbol
-            self._chart_panel.load_data(df, display, _TF)
-        except Exception:
-            pass  # rete assente o simbolo invalido → chart rimane in empty state
 
     # ── Demo tick ─────────────────────────────────────────────────────────────
 
