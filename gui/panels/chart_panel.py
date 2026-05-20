@@ -9,6 +9,10 @@ Fase D (2026-05-20):
       Ascolta AppState.current_symbol_changed e ri-fetcha ad ogni cambio TF/periodo.
     - Default: 1H + 1A.
     - Pattern asyncio identico a _FundamentalsStrip in dashboard.py.
+
+Fase D — loading feedback (2026-05-20):
+    - StatusDot nella selector bar: "loading" durante il fetch, "idle" a riposo, "error" su fail.
+    - _empty_label aggiornata con testo contestuale (downloading / errore / vuoto).
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ from PyQt6.QtWidgets import (
 
 from gui.widgets.candlestick_chart import CandlestickChart
 from gui.widgets.oscillator_chart import OscillatorChart
+from gui.widgets.info import StatusDot
 from gui.i18n import tr
 
 
@@ -196,16 +201,21 @@ class ChartPanel(QWidget):
 
     def _trigger_fetch(self, symbol: str) -> None:
         """Avvia fetch OHLCV asincrono con TF e periodo correnti."""
+        # Feedback immediato: mostra loading state prima che il coroutine parta
+        self._set_loading_state(symbol)
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 asyncio.ensure_future(self._fetch_chart_data(symbol))
             # Se il loop non gira (test headless) il chart resta in empty state — OK.
+            else:
+                # In test headless: torna subito a idle (nessun fetch, ma neanche loading perpetuo)
+                self._set_idle_state()
         except Exception:
-            pass
+            self._set_idle_state()
 
     async def _fetch_chart_data(self, symbol: str) -> None:
-        """Scarica OHLCV e popola il chart. Silent fail su errori."""
+        """Scarica OHLCV e popola il chart. Mostra stato loading/error/idle."""
         tf_label = self._tf_bar.active
         period_label = self._period_bar.active
         tf_feed = _TF_MAP[tf_label]
@@ -214,6 +224,8 @@ class ChartPanel(QWidget):
             from data.feed import UniversalDataFeed
             df = await UniversalDataFeed().get_ohlcv(symbol, tf_feed, limit=limit)
             if df is None or df.empty:
+                # Simbolo non trovato (dati assenti o rete assente)
+                self._set_error_state(symbol)
                 return
             try:
                 from core.engine import INSTRUMENTS
@@ -221,8 +233,32 @@ class ChartPanel(QWidget):
             except Exception:
                 display = symbol
             self.load_data(df, display, tf_feed)
+            # load_data nasconde _empty e mostra il chart — StatusDot torna idle
+            self._status_dot.set_state("idle")
         except Exception:
-            pass  # rete assente o simbolo invalido
+            self._set_error_state(symbol)
+
+    # ── Loading state helpers ──────────────────────────────────────────────────
+
+    def _set_loading_state(self, symbol: str) -> None:
+        """Mostra il dot loading e aggiorna il testo dell'empty state."""
+        self._status_dot.set_state("loading")
+        self._empty_label.setText(tr("chart.loading_symbol", symbol=symbol))
+        # Assicura che l'empty widget sia visibile (il chart potrebbe essere nascosto)
+        self._chart.setVisible(False)
+        self._empty.setVisible(True)
+
+    def _set_idle_state(self) -> None:
+        """Torna allo stato idle senza errori (usato in test headless)."""
+        self._status_dot.set_state("idle")
+        self._empty_label.setText(tr("chart.empty_state"))
+
+    def _set_error_state(self, symbol: str) -> None:
+        """Mostra il dot errore e aggiorna il testo dell'empty state."""
+        self._status_dot.set_state("error")
+        self._empty_label.setText(tr("chart.error_symbol", symbol=symbol))
+        self._chart.setVisible(False)
+        self._empty.setVisible(True)
 
     def _on_tf_changed(self, tf_label: str) -> None:
         """Cambio timeframe: ri-fetch."""
@@ -326,6 +362,11 @@ class ChartPanel(QWidget):
 
         sel_layout.addStretch()
 
+        # StatusDot — feedback visivo loading/idle/error del fetch dati
+        self._status_dot = StatusDot()
+        self._status_dot.set_state("idle")
+        sel_layout.addWidget(self._status_dot)
+
         layout.addWidget(selector_bar)
 
         # ── MA Legend (28px) ──────────────────────────────────────────────
@@ -366,10 +407,10 @@ class ChartPanel(QWidget):
         self._empty.setStyleSheet("background:#0d1117;")
         em_layout = QVBoxLayout(self._empty)
         em_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        em_lbl = QLabel(tr("chart.empty_state"))
-        em_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        em_lbl.setStyleSheet("color:#6e7681; font-size:16px;")
-        em_layout.addWidget(em_lbl)
+        self._empty_label = QLabel(tr("chart.empty_state"))
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet("color:#6e7681; font-size:16px;")
+        em_layout.addWidget(self._empty_label)
         layout.addWidget(self._empty)
 
         self._chart.setVisible(False)

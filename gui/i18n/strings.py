@@ -209,6 +209,8 @@ IT: dict[str, str] = {
 
     # ---- chart ----------------------------------------------------------------
     "chart.empty_state":           "Seleziona un simbolo e clicca\n\"Carica Dati Storici\"",
+    "chart.loading_symbol":        "Scaricamento dati per {symbol}...",
+    "chart.error_symbol":          "Dati non disponibili per {symbol}.\nVerifica il simbolo o la connessione.",
 
     # ---- data panel -----------------------------------------------------------
     "data.error.no_symbol":        "Inserisci prima un simbolo.",
@@ -530,6 +532,8 @@ EN: dict[str, str] = {
 
     # ---- chart ----------------------------------------------------------------
     "chart.empty_state":           "Select a symbol and click\n\"Load Historical Data\"",
+    "chart.loading_symbol":        "Downloading data for {symbol}...",
+    "chart.error_symbol":          "Data not available for {symbol}.\nCheck the symbol or your connection.",
 
     # ---- data panel -----------------------------------------------------------
     "data.error.no_symbol":        "Enter a symbol first.",

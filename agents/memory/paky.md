@@ -13,6 +13,7 @@
 - 2026-05-20: **Fase 6 — stati pulsanti via AppState**: submit ordine engine-gated, EnginePanel refactor su `AppState.engine_running` (fonte unica, sync con TopBar), loading state Test broker, Clear pattern condizionale. (Task interrotto da ECONNRESET, completato e validato da Max — commit `3449306`.)
 - 2026-05-20: **Robustezza feed** — `data/feed.py`: sessione curl_cffi HTTP/1.1 su singleton YfData (elimina CURLE_HTTP2/curl:16), retry backoff esponenziale (0.5/1.5/3s, 3 tentativi) in `_run_with_retry` attorno a `_download`/`_download_since`/`_get_quote`. Rimosso path-4 fallback ridondante. QG: 9/9 forex OK, FAKESYM=X fallisce in 7.9s.
 - 2026-05-20: **Fase E — pulizia codice morto**: rimossi `data_panel.py`, `data_panel.ui`, `analysis.py` (shim). `PatternObserver` espone property pubblica `observations` (snapshot sincrono di `_obs` per QTimer GUI); `pattern_panel._poll_observer` usa la property invece di `._obs`. Commit `5b1fbed`.
+- 2026-05-20: **Fase D — loading feedback ChartPanel**: aggiunto `StatusDot` nella selector bar; `_empty_label` aggiornabile runtime; 3 helper `_set_loading_state`/`_set_idle_state`/`_set_error_state`; 2 nuove chiavi i18n IT+EN (`chart.loading_symbol`, `chart.error_symbol`). Non committato (in attesa validazione Max).
 
 ## Lezioni apprese (permanenti)
 
