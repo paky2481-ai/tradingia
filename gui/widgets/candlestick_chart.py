@@ -142,6 +142,7 @@ class VolumeItem(pg.GraphicsObject):
     def __init__(self):
         super().__init__()
         self._picture: Optional[QPicture] = None
+        self._data: Optional[pd.DataFrame] = None
         self._bounds = QRectF()
 
     def set_data(self, df: pd.DataFrame):
@@ -241,6 +242,13 @@ class VolumeAxisItem(pg.AxisItem):
         return result
 
 
+class PriceAxisItem(pg.AxisItem):
+    """Y-axis for price: always 3 decimal places, independent of zoom/range."""
+
+    def tickStrings(self, values, scale, spacing):
+        return [f"{v:.3f}" for v in values]
+
+
 class CandlestickChart(QWidget):
     """
     Complete candlestick chart widget with:
@@ -288,7 +296,11 @@ class CandlestickChart(QWidget):
         # ── Price plot ─────────────────────────────────────────────────
         self._price_plot = self._graphics_layout.addPlot(
             row=0, col=0,
-            axisItems={"bottom": self._time_axis},
+            axisItems={
+                "bottom": self._time_axis,
+                "left":   PriceAxisItem(orientation="left"),
+                "right":  PriceAxisItem(orientation="right"),
+            },
         )
         self._price_plot.setMinimumHeight(260)
         self._style_plot(self._price_plot, show_xaxis=False)
@@ -402,10 +414,12 @@ class CandlestickChart(QWidget):
         else:
             ts_col = None
 
-        # Build human-readable time labels
+        # Build human-readable time labels.
+        # "1w" (selettore UI) e "1wk" (yfinance) sono sinonimi: entrambi daily-or-above.
+        _DATE_ONLY_TF = {"1d", "1w", "1wk", "1mo"}
         if ts_col:
             ts = pd.to_datetime(self._df[ts_col])
-            if timeframe in ("1d", "1wk", "1mo"):
+            if timeframe in _DATE_ONLY_TF:
                 labels = ts.dt.strftime("%Y-%m-%d").tolist()
             else:
                 labels = ts.dt.strftime("%m-%d %H:%M").tolist()
@@ -505,7 +519,7 @@ class CandlestickChart(QWidget):
         # Label prezzo sull'asse Y destro (segue solo il cursore verticale)
         x_range = vb.viewRange()[0]
         self._cursor_price_label.setPos(x_range[1], y)
-        self._cursor_price_label.setText(f" {y:.2f} ")
+        self._cursor_price_label.setText(f" {y:.3f} ")
 
         idx = int(round(x))
         if self._df is not None and 0 <= idx < len(self._df):
@@ -515,8 +529,8 @@ class CandlestickChart(QWidget):
             # OHLC tooltip vicino al cursore (in alto a sinistra rispetto al cursore)
             self._price_label.setPos(x, y)
             self._price_label.setText(
-                f"  {date_str}   C: {row['close']:.2f}"
-                f"   O: {row['open']:.2f}   H: {row['high']:.2f}   L: {row['low']:.2f}  "
+                f"  {date_str}   C: {row['close']:.3f}"
+                f"   O: {row['open']:.3f}   H: {row['high']:.3f}   L: {row['low']:.3f}  "
             )
             self.bar_hovered.emit({
                 "date":   date_str,
@@ -528,4 +542,4 @@ class CandlestickChart(QWidget):
             })
         else:
             self._price_label.setPos(x, y)
-            self._price_label.setText(f"  {y:.4f}  ")
+            self._price_label.setText(f"  {y:.3f}  ")

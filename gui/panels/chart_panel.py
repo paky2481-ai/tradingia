@@ -442,7 +442,7 @@ class ChartPanel(QWidget):
         if price is None:
             return
 
-        self._lbl_price.setText(f"{price:.4f}")
+        self._lbl_price.setText(f"{price:.3f}")
         self._chart.update_last_bar({
             "close": price,
             "high": bar.get("high", price),
@@ -454,24 +454,24 @@ class ChartPanel(QWidget):
 
     def _on_bar_hovered(self, bar: dict):
         """Aggiorna OHLCV info bar dal crosshair hover del chart."""
-        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {bar['open']:.4f}")
-        self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {bar['high']:.4f}")
-        self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {bar['low']:.4f}")
-        self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {bar['close']:.4f}")
+        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {bar['open']:.3f}")
+        self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {bar['high']:.3f}")
+        self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {bar['low']:.3f}")
+        self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {bar['close']:.3f}")
         self._lbl_vol.setText(  f"<span style='color:#6e7681'>V</span> {int(bar['volume']):,}")
 
     def _update_ohlcv_labels(self, row):
-        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {row['open']:.4f}")
-        self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {row['high']:.4f}")
-        self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {row['low']:.4f}")
-        self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {row['close']:.4f}")
+        self._lbl_open.setText( f"<span style='color:#6e7681'>O</span> {row['open']:.3f}")
+        self._lbl_high.setText( f"<span style='color:#3fb950'>H</span> {row['high']:.3f}")
+        self._lbl_low.setText(  f"<span style='color:#f85149'>L</span> {row['low']:.3f}")
+        self._lbl_close.setText(f"<span style='color:#e6edf3'>C</span> {row['close']:.3f}")
         vol = row.get("volume", 0)
         self._lbl_vol.setText(  f"<span style='color:#6e7681'>V</span> {int(vol):,}")
 
     def _update_price_badge(self, last_row):
         price = last_row["close"]
         open_ = last_row["open"]
-        self._lbl_price.setText(f"{price:.4f}")
+        self._lbl_price.setText(f"{price:.3f}")
 
         change = price - open_
         pct = (change / open_) * 100 if open_ else 0
