@@ -226,8 +226,27 @@ class _OrderFormPanel(QGroupBox):
             "QPushButton#PrimaryButton:pressed {"
             "  background:#8c55f5;"
             "}"
+            "QPushButton#PrimaryButton:disabled {"
+            "  background:#30363d; color:#6e7681;"
+            "}"
         )
         lay.addWidget(self._submit_btn)
+
+        # Fase 6 — collega stato motore: submit abilitato solo se engine running
+        self._connect_engine_state()
+
+    def _connect_engine_state(self) -> None:
+        """Fase 6 — abilita/disabilita submit in base a AppState.engine_running."""
+        try:
+            from gui.state.app_state import AppState
+            state = AppState.instance()
+            state.engine_running_changed.connect(self._on_engine_state)
+            self._on_engine_state(state.engine_running)
+        except Exception:
+            pass
+
+    def _on_engine_state(self, running: bool) -> None:
+        self._submit_btn.setEnabled(running)
 
     def _on_type_changed(self, order_type: str) -> None:
         """Mostra/nasconde il campo Price in base al tipo ordine."""

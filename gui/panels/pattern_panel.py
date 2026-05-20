@@ -105,6 +105,8 @@ class PatternPanel(QWidget):
     def _connect_signals(self):
         self._status_filter.currentTextChanged.connect(self._refresh_table)
         self._btn_clear.clicked.connect(self._clear_terminal)
+        # Fase 6 — Clear disabilitato se tabella vuota
+        self._update_clear_state()
 
     # ── Bus connection ─────────────────────────────────────────────────────
 
@@ -231,6 +233,14 @@ class PatternPanel(QWidget):
             filter_status not in ("Tutti", status),
         )
 
+    def _update_clear_state(self):
+        """Fase 6 — Clear abilitato solo se ci sono righe FAILED o EXPIRED da rimuovere."""
+        has_clearable = any(
+            (self._table.item(r, 3) or QTableWidgetItem("")).text() in ("FAILED", "EXPIRED")
+            for r in range(self._table.rowCount())
+        )
+        self._btn_clear.setEnabled(has_clearable)
+
     def _update_count(self):
         total = self._table.rowCount()
         forming = sum(
@@ -238,6 +248,7 @@ class PatternPanel(QWidget):
             if (self._table.item(r, 3) or QTableWidgetItem("")).text() == "FORMING"
         )
         self._lbl_count.setText(f"{total} pattern ({forming} forming)")
+        self._update_clear_state()
 
     def _refresh_table(self):
         """Riapplica il filtro status a tutte le righe."""

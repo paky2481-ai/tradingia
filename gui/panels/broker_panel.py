@@ -495,6 +495,10 @@ class BrokerPanel(QWidget):
             return
 
         self._btn_test.setEnabled(False)
+        # Fase 6 — loading state visivo via QSS property
+        self._btn_test.setProperty("loading", True)
+        self._btn_test.style().unpolish(self._btn_test)
+        self._btn_test.style().polish(self._btn_test)
         self._lbl_result.setStyleSheet(_STYLE_GRAY)
         self._lbl_result.setText(tr("broker.test_in_progress"))
         asyncio.ensure_future(self._async_test(broker_id))
@@ -516,6 +520,10 @@ class BrokerPanel(QWidget):
             self._lbl_result.setStyleSheet(_STYLE_RED)
             self._lbl_result.setText(tr("broker.test_error", error=e))
         finally:
+            # Fase 6 — ripristina loading state
+            self._btn_test.setProperty("loading", False)
+            self._btn_test.style().unpolish(self._btn_test)
+            self._btn_test.style().polish(self._btn_test)
             self._btn_test.setEnabled(True)
 
     async def _do_test(self, broker_id: str):

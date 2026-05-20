@@ -81,6 +81,7 @@ class EnginePanel(QWidget):
         self._setup_connections()
         self._connect_bus()
         self._connect_language_bus()
+        self._connect_app_state()
 
     # ─────────────────────────────────────────────────────────────────────
     # Setup
@@ -217,6 +218,43 @@ class EnginePanel(QWidget):
         except Exception:
             pass
 
+    def _connect_app_state(self):
+        """Fase 6 — sincronizza UI con AppState.engine_running (fonte unica di verità)."""
+        try:
+            from gui.state.app_state import AppState
+            state = AppState.instance()
+            state.engine_running_changed.connect(self._on_engine_state_changed)
+            # Applica stato iniziale
+            self._on_engine_state_changed(state.engine_running)
+        except Exception:
+            pass
+
+    def _on_engine_state_changed(self, running: bool) -> None:
+        """Aggiorna UI bottone e label in base ad AppState (sovrascrive _on_engine_started/stopped)."""
+        self._running = running
+        if running:
+            self._lbl_state.setText("● ATTIVO")
+            self._lbl_state.setStyleSheet(_STYLE_GREEN)
+            self._btn_start.setText("■  Ferma Engine")
+            self._btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #6e271e; color: white;
+                    border-radius: 6px; font-weight: bold; font-size: 13px;
+                }
+                QPushButton:hover { background: #f85149; }
+            """)
+        else:
+            self._lbl_state.setText("⏸ FERMO")
+            self._lbl_state.setStyleSheet(_STYLE_GRAY)
+            self._btn_start.setText("▶  Avvia Engine")
+            self._btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #238636; color: white;
+                    border-radius: 6px; font-weight: bold; font-size: 13px;
+                }
+                QPushButton:hover { background: #2ea043; }
+            """)
+
     def _setup_connections(self):
         self._btn_start.clicked.connect(self._on_start_stop)
 
@@ -260,31 +298,21 @@ class EnginePanel(QWidget):
 
     @pyqtSlot()
     def _on_engine_started(self):
-        self._running = True
-        self._lbl_state.setText("● ATTIVO")
-        self._lbl_state.setStyleSheet(_STYLE_GREEN)
-        self._btn_start.setText("■  Ferma Engine")
-        self._btn_start.setStyleSheet("""
-            QPushButton {
-                background: #6e271e; color: white;
-                border-radius: 6px; font-weight: bold; font-size: 13px;
-            }
-            QPushButton:hover { background: #f85149; }
-        """)
+        """Bus reale → aggiorna AppState (che a sua volta aggiorna la UI tramite _on_engine_state_changed)."""
+        try:
+            from gui.state.app_state import AppState
+            AppState.instance().engine_running = True
+        except Exception:
+            self._running = True
 
     @pyqtSlot()
     def _on_engine_stopped(self):
-        self._running = False
-        self._lbl_state.setText("⏸ FERMO")
-        self._lbl_state.setStyleSheet(_STYLE_GRAY)
-        self._btn_start.setText("▶  Avvia Engine")
-        self._btn_start.setStyleSheet("""
-            QPushButton {
-                background: #238636; color: white;
-                border-radius: 6px; font-weight: bold; font-size: 13px;
-            }
-            QPushButton:hover { background: #2ea043; }
-        """)
+        """Bus reale → aggiorna AppState (che a sua volta aggiorna la UI tramite _on_engine_state_changed)."""
+        try:
+            from gui.state.app_state import AppState
+            AppState.instance().engine_running = False
+        except Exception:
+            self._running = False
 
     @pyqtSlot(object)
     def _on_scan_result(self, ev: ScanResultEvent):
@@ -380,10 +408,24 @@ class EnginePanel(QWidget):
     # ─────────────────────────────────────────────────────────────────────
 
     def _on_start_stop(self):
+        """Fase 6 — usa AppState come fonte di verità, poi avvia/ferma engine reale."""
         import asyncio
-        if self._running:
+        try:
+            from gui.state.app_state import AppState
+            running = AppState.instance().engine_running
+        except Exception:
+            running = self._running
+
+        if running:
             if self._engine:
                 asyncio.ensure_future(self._engine.stop())
+            else:
+                # Nessun engine reale — aggiorna solo AppState (utile in demo/headless)
+                try:
+                    from gui.state.app_state import AppState
+                    AppState.instance().engine_running = False
+                except Exception:
+                    pass
         else:
             if self._engine is None:
                 from core.engine import TradingEngine
