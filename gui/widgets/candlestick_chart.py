@@ -205,22 +205,148 @@ class VolumeItem(pg.GraphicsObject):
 
 
 class TimeAxisItem(pg.AxisItem):
-    """X-axis that shows datetime labels from DataFrame index."""
+    """X-axis with adaptive datetime labels that respond to zoom level.
+
+    Internamente tiene una lista di pd.Timestamp (datetime reali).
+    tickStrings() sceglie il formato in base all'arco temporale fra due tick
+    (spacing in barre × durata per barra), implementando sia il formato
+    adattivo per fascia che il contesto gerarchico ai confini di unità.
+    """
+
+    # Mesi abbreviati in italiano
+    _MESI_IT = ["", "Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+                "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
 
     def __init__(self, timestamps=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._timestamps: list[str] = timestamps or []
+        # Accetta sia list[str] (retrocompatibilità) che list[pd.Timestamp]
+        self._timestamps: list = []
+        self._bar_seconds: float = 3600.0   # default: 1h
         self.setStyle(tickLength=-5)
+        if timestamps is not None:
+            self.set_timestamps(timestamps)
 
-    def set_timestamps(self, timestamps: list[str]):
-        self._timestamps = timestamps
+    # ── Public API ──────────────────────────────────────────────────────────
+
+    def set_timestamps(self, timestamps):
+        """Accetta list[pd.Timestamp], pd.DatetimeIndex, o list[str] (legacy)."""
+        if timestamps is None:
+            self._timestamps = []
+            return
+        if len(timestamps) == 0:
+            self._timestamps = []
+            return
+        first = timestamps[0]
+        if isinstance(first, str):
+            # Legacy: stringa già formattata — teniamo as-is, non usiamo formato adattivo
+            self._timestamps = list(timestamps)
+        else:
+            # pd.Timestamp o datetime — converti a lista
+            self._timestamps = list(pd.Timestamp(t) if not isinstance(t, pd.Timestamp) else t
+                                    for t in timestamps)
+
+    def set_timeframe(self, timeframe: str):
+        """Calcola durata per barra in secondi dal timeframe (es. '1h', '1d')."""
+        mapping = {
+            "1m": 60,        "3m": 180,       "5m": 300,
+            "15m": 900,      "30m": 1800,
+            "1h": 3600,      "2h": 7200,      "4h": 14400,
+            "6h": 21600,     "8h": 28800,     "12h": 43200,
+            "1d": 86400,     "1w": 604800,    "1wk": 604800,
+            "1mo": 2592000,  "1M": 2592000,
+        }
+        self._bar_seconds = float(mapping.get(timeframe, 3600))
+
+    def timestamp_at(self, idx: int) -> "pd.Timestamp | None":
+        """Restituisce il timestamp all'indice idx, o None se fuori range."""
+        if not self._timestamps:
+            return None
+        if not isinstance(self._timestamps[0], pd.Timestamp):
+            return None
+        idx = int(idx)
+        if 0 <= idx < len(self._timestamps):
+            return self._timestamps[idx]
+        return None
+
+    # ── Formato adattivo ────────────────────────────────────────────────────
+
+    def _fmt_month(self, m: int) -> str:
+        """Restituisce il mese abbreviato in italiano."""
+        return self._MESI_IT[m] if 1 <= m <= 12 else f"{m:02d}"
+
+    def _format_label(self, ts: "pd.Timestamp", arc_seconds: float,
+                      prev_ts: "pd.Timestamp | None") -> str:
+        """Formato adattivo con contesto gerarchico ai confini di unità.
+
+        arc_seconds: arco temporale in secondi fra due tick adiacenti.
+        prev_ts: timestamp del tick precedente (per rilevare cambio di unità).
+
+        Fasce:
+          >= 365 d  → solo anno (es. "2025")
+          >= 25 d   → mese + anno (es. "Gen 2025");
+                      se cambio anno mostra l'anno in evidenza
+          >= 20 h   → giorno + mese (es. "15 Gen");
+                      al confine di anno aggiunge l'anno
+          < 20 h    → "15 Gen 14:00";
+                      se il giorno non cambia rispetto al prev mostra "14:00"
+                      al confine di giorno mostra "15 Gen 14:00"
+        """
+        GIORNO = 86400
+        ORA = 3600
+
+        if arc_seconds >= 365 * GIORNO:
+            # Fascia annuale
+            label = str(ts.year)
+            return label
+
+        if arc_seconds >= 25 * GIORNO:
+            # Fascia mensile
+            base = f"{self._fmt_month(ts.month)} {ts.year}"
+            if prev_ts is not None and prev_ts.year != ts.year:
+                return str(ts.year)   # confine anno: metti in evidenza solo anno
+            return base
+
+        if arc_seconds >= 20 * ORA:
+            # Fascia giornaliera
+            base = f"{ts.day} {self._fmt_month(ts.month)}"
+            if prev_ts is not None and prev_ts.year != ts.year:
+                return f"{ts.day} {self._fmt_month(ts.month)} {ts.year}"
+            return base
+
+        # Fascia intra-day
+        time_part = f"{ts.hour:02d}:{ts.minute:02d}"
+        if prev_ts is None:
+            return f"{ts.day} {self._fmt_month(ts.month)} {time_part}"
+        if prev_ts.date() != ts.date():
+            # Confine giorno — aggiungi data per contesto
+            return f"{ts.day} {self._fmt_month(ts.month)} {time_part}"
+        return time_part
 
     def tickStrings(self, values, scale, spacing):
+        # Se la lista contiene stringhe (legacy), comportamento invariato
+        if not self._timestamps or (
+                len(self._timestamps) > 0 and isinstance(self._timestamps[0], str)):
+            strings = []
+            for v in values:
+                idx = int(v)
+                if 0 <= idx < len(self._timestamps):
+                    strings.append(self._timestamps[idx])
+                else:
+                    strings.append("")
+            return strings
+
+        # spacing è in "unità barra" — moltiplicato per la durata per barra dà secondi
+        arc_seconds = float(spacing) * self._bar_seconds
+
         strings = []
+        prev_ts = None
         for v in values:
             idx = int(v)
             if 0 <= idx < len(self._timestamps):
-                strings.append(self._timestamps[idx])
+                ts = self._timestamps[idx]
+                label = self._format_label(ts, arc_seconds, prev_ts)
+                strings.append(label)
+                prev_ts = ts
             else:
                 strings.append("")
         return strings
@@ -414,17 +540,14 @@ class CandlestickChart(QWidget):
         else:
             ts_col = None
 
-        # Build human-readable time labels.
-        # "1w" (selettore UI) e "1wk" (yfinance) sono sinonimi: entrambi daily-or-above.
-        _DATE_ONLY_TF = {"1d", "1w", "1wk", "1mo"}
+        # Passa datetime reali agli assi per etichette adattive allo zoom.
+        # set_timeframe() configura la durata per barra usata da tickStrings().
         if ts_col:
-            ts = pd.to_datetime(self._df[ts_col])
-            if timeframe in _DATE_ONLY_TF:
-                labels = ts.dt.strftime("%Y-%m-%d").tolist()
-            else:
-                labels = ts.dt.strftime("%m-%d %H:%M").tolist()
-            self._time_axis.set_timestamps(labels)
-            self._vol_time_axis.set_timestamps(labels)
+            ts_series = pd.to_datetime(self._df[ts_col])
+            dt_list = ts_series.tolist()   # list[pd.Timestamp]
+            for ax in (self._time_axis, self._vol_time_axis):
+                ax.set_timestamps(dt_list)
+                ax.set_timeframe(timeframe)
 
         self._candle_item.set_data(self._df)
         self._vol_item.set_data(self._df)
@@ -524,8 +647,18 @@ class CandlestickChart(QWidget):
         idx = int(round(x))
         if self._df is not None and 0 <= idx < len(self._df):
             row = self._df.iloc[idx]
-            timestamps = self._time_axis._timestamps
-            date_str = timestamps[idx] if idx < len(timestamps) else ""
+            # Ricava la stringa data dal timestamp reale (massimo contesto per il tooltip)
+            ts_obj = self._time_axis.timestamp_at(idx)
+            if ts_obj is not None:
+                # Tooltip: sempre data + ora completa per massima chiarezza
+                if ts_obj.hour == 0 and ts_obj.minute == 0:
+                    date_str = ts_obj.strftime("%Y-%m-%d")
+                else:
+                    date_str = ts_obj.strftime("%Y-%m-%d %H:%M")
+            else:
+                raw = self._time_axis._timestamps
+                entry = raw[idx] if 0 <= idx < len(raw) else ""
+                date_str = entry if isinstance(entry, str) else str(entry)
             # OHLC tooltip vicino al cursore (in alto a sinistra rispetto al cursore)
             self._price_label.setPos(x, y)
             self._price_label.setText(

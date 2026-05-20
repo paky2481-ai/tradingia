@@ -28,8 +28,11 @@
 - 2026-05-20: Fase C — sostituito _ChartArea placeholder con ChartPanel reale in DashboardWorkspace. Fetch 400 barre 1h via asyncio.ensure_future (stesso pattern _FundamentalsStrip). _on_symbol_changed collega AppState.current_symbol_changed → _fetch_chart_data (silent fail headless). Rimossa classe _ChartArea, rimosso tr("dashboard.chart_placeholder/subtitle"). PatternsWorkspace non toccato. Quality gate 3/3 PASS (syntax, import, istanziazione 7 assert).
 - 2026-05-20: Fase D — ChartPanel reso autonomo nel fetch. Aggiunti selettori TF (1H/4H/1D/1W) + periodo (3M/1A/5A/MAX) come striscia dedicata 28px tra info bar e MA legend. Classe _SegmentedBar (toggle esclusivo, QSS property active). Mapping periodo→limit: barre_per_giorno * giorni, MAX→0. Rimossi _on_symbol_changed + _fetch_chart_data da DashboardWorkspace. Quality gate 3 file × (syntax+import+instance) = 9/9 PASS.
 - 2026-05-20: Fix Bug A (asse X weekly) + Bug B (3 decimali prezzo): set _DATE_ONLY_TF = {"1d","1w","1wk","1mo"} in load_data; PriceAxisItem(pg.AxisItem) con tickStrings f"{v:.3f}" applicato a left+right del price plot via axisItems dict; .2f→.3f su crosshair label, tooltip OHLC, info bar chart_panel; bonus fix VolumeItem._data=None in __init__ (AttributeError headless). Quality gate syntax+import+instance+bug-A+bug-B+regressioni: ALL PASS.
+- 2026-05-20: Asse X adattivo allo zoom — TimeAxisItem riscritto: _timestamps ora list[pd.Timestamp] (non stringhe), set_timeframe() calcola bar_seconds, tickStrings() calcola arc_seconds=spacing*bar_seconds e sceglie formato (1h→"14:00"|"15 Gen 14:00", 1d→"15 Gen", 1mo→"Gen 2025", 1y→"2025") con contesto gerarchico ai confini (cambio anno mostra l'anno). load_data() passa datetime grezzi + timeframe a entrambi gli assi. Retrocompatibilità list[str] conservata. Quality gate: syntax+import+istanziazione+5 test tickStrings+4 regression workspace ALL PASS.
 
 ## Lezioni apprese (permanenti)
+
+- **TimeAxisItem adattivo:** pyqtgraph passa `spacing` in unità-barra a `tickStrings()`. Moltiplicarlo per `bar_seconds` dà l'arco temporale in secondi tra due tick — usare questo valore come unico discriminante per il formato adattivo. Soglie: <20h→intraday, <20h=fascia, >=25d→mensile, >=365d→annuale.
 
 - **pyqtgraph performance:** usare `QPicture` caching per rendering candlestick. Aggiornare solo l'ultima barra su tick live, NON full redraw.
 - **`setAutoVisible(y=True)`:** asse Y si adatta solo alle candele visibili (X range), non all'intero dataset → essenziale per zoom comportamentale corretto.
@@ -67,6 +70,7 @@
 - [x] Fase C — Chart integration Cruscotto: _ChartArea rimossa, ChartPanel reale con fetch async 400 barre 1h
 - [x] Fase D — Selettore TF + periodo in ChartPanel autonomo; rimosso fetch da DashboardWorkspace
 - [x] Fix Bug A (date weekly asse X) + Bug B (3 decimali prezzo ovunque): candlestick_chart.py + chart_panel.py
+- [x] Asse X adattivo allo zoom: TimeAxisItem con datetime reali + tickStrings formato-per-fascia + contesto gerarchico ai confini anno/mese
 
 ## Workflow
 
