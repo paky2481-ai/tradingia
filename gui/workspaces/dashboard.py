@@ -1,16 +1,21 @@
 """
 DashboardWorkspace — Cruscotto principale (trader puro).
 
-Layout Bloomberg-style (Fase A, 2026-05-18):
+Layout Bloomberg-style (Fase C, 2026-05-20):
 
     QHBoxLayout(root)
     +-- WatchlistPanel       280-360px  (sempre visibile)
     +-- right_container (QWidget)
-        +-- _ChartArea         stretch=1  (DOMINANTE — occupa tutta l'altezza residua)
+        +-- ChartPanel         stretch=1  (DOMINANTE — candlestick chart reale)
         +-- _GaugeStrip        ~82px fissi (3 gauge: Hurst/Kelly/Volatility)
         +-- _FundamentalsStrip ~36px fissi (P/E | Mkt Cap | Div | Beta per symbol)
 
 Posizioni + Engine spostati in OrderTicketWorkspace (workspace "Operativo", Ctrl+2).
+
+Fetch dati:
+    Al boot e ad ogni cambio current_symbol, carica 400 barre 1h da UniversalDataFeed
+    in modo asincrono (asyncio.ensure_future, stesso pattern di _FundamentalsStrip).
+    Se il loop non gira (test headless) il fetch viene silenziosamente saltato.
 
 Demo liveness:
     QTimer 2s simula AppState per variabili senza emit dal core.
@@ -40,6 +45,7 @@ from gui.widgets.info import Gauge, HelpIcon
 
 # Panel atomici
 from gui.panels.watchlist_panel import WatchlistPanel
+from gui.panels.chart_panel import ChartPanel
 
 
 # ── Palette (coerente con dark.qss) ─────────────────────────────────────────
@@ -145,52 +151,6 @@ class _GaugeCard(QFrame):
 
     def set_value(self, v: float) -> None:
         self._gauge.set_value(v)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# _ChartArea — placeholder chart (futuro CandlestickChart)
-# ═══════════════════════════════════════════════════════════════════════════
-
-class _ChartArea(QFrame):
-    """
-    Area chart: per ora placeholder grafico.
-    Quando CandlestickChart sarà pronto, basterà
-    sostituire il contenuto di ph_lay senza toccare
-    il layout esterno (DashboardWorkspace).
-    """
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("ChartPlaceholder")
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.setStyleSheet(
-            "#ChartPlaceholder {"
-            f"  background:{_BG_BASE};"
-            f"  border:1px solid {_BORDER};"
-            "  border-radius:6px;"
-            "}"
-        )
-
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        chart_main = QLabel(tr("dashboard.chart_placeholder"))
-        chart_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        chart_main.setStyleSheet(
-            f"color:{_MUTED}; font-size:22px; font-weight:300;"
-            f" font-family:{_UI_STACK}; background:transparent; border:none;"
-            "  letter-spacing:3px;"
-        )
-        lay.addWidget(chart_main)
-
-        chart_sub = QLabel(tr("dashboard.chart_subtitle"))
-        chart_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        chart_sub.setStyleSheet(
-            f"color:#30363d; font-size:12px; font-weight:400;"
-            f" font-family:{_UI_STACK}; background:transparent; border:none;"
-        )
-        lay.addWidget(chart_sub)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -436,7 +396,7 @@ class DashboardWorkspace(QWidget):
         QHBoxLayout
         ├── WatchlistPanel  (280-360px, sempre visibile)
         └── right_container (QWidget, espandibile)
-            ├── _ChartArea         (stretch=1 — DOMINANTE)
+            ├── ChartPanel         (stretch=1 — DOMINANTE)
             ├── _GaugeStrip        (82px fissi)
             └── _FundamentalsStrip (36px fissi)
 
@@ -488,8 +448,8 @@ class DashboardWorkspace(QWidget):
         right_col.setSpacing(4)
 
         # 1. Area chart — DOMINANTE: stretch=1 occupa tutto lo spazio verticale residuo
-        self._chart_area = _ChartArea()
-        right_col.addWidget(self._chart_area, stretch=1)
+        self._chart_panel = ChartPanel()
+        right_col.addWidget(self._chart_panel, stretch=1)
 
         # 2. Gauge strip (altezza fissa 82px)
         self._gauge_strip = _GaugeStrip()
@@ -517,6 +477,45 @@ class DashboardWorkspace(QWidget):
         self._demo_timer = QTimer(self)
         self._demo_timer.timeout.connect(self._demo_tick)
         self._demo_timer.start(2000)
+
+        # ── Fetch dati chart ──────────────────────────────────────────────
+        # Collega cambio simbolo → reload chart. Poi carica il simbolo iniziale.
+        try:
+            state.current_symbol_changed.connect(self._on_symbol_changed)
+            self._on_symbol_changed(state.current_symbol)
+        except Exception:
+            pass  # in test headless AppState potrebbe non avere il segnale
+
+    # ── Fetch dati chart ──────────────────────────────────────────────────────
+
+    def _on_symbol_changed(self, symbol: str) -> None:
+        """Avvia fetch OHLCV asincrono quando cambia il simbolo corrente."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(self._fetch_chart_data(symbol))
+            # Se il loop non gira (test headless) il chart resta in empty state — OK.
+        except Exception:
+            pass
+
+    async def _fetch_chart_data(self, symbol: str) -> None:
+        """Scarica 400 barre 1h e popola ChartPanel. Silent fail su errori."""
+        _TF = "1h"
+        _LIMIT = 400
+        try:
+            from data.feed import UniversalDataFeed
+            df = await UniversalDataFeed().get_ohlcv(symbol, _TF, limit=_LIMIT)
+            if df is None or df.empty:
+                return
+            # Ricava il nome display (es. "BTC/USD") da INSTRUMENTS se disponibile
+            try:
+                from core.engine import INSTRUMENTS
+                display = INSTRUMENTS.get(symbol, (symbol,))[0]
+            except Exception:
+                display = symbol
+            self._chart_panel.load_data(df, display, _TF)
+        except Exception:
+            pass  # rete assente o simbolo invalido → chart rimane in empty state
 
     # ── Demo tick ─────────────────────────────────────────────────────────────
 
