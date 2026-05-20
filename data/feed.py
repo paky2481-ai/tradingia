@@ -8,6 +8,7 @@ import asyncio
 import json
 import os
 import pickle
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
@@ -18,6 +19,93 @@ from utils.timeframes import YFINANCE_PERIOD_MAP, resample_ohlcv
 from config.settings import settings
 
 logger = get_logger.bind(name="data.feed")
+
+# ---------------------------------------------------------------------------
+# Sessione HTTP/1.1 condivisa per yfinance
+# curl_cffi usa HTTP/2 di default; con Yahoo Finance questo causa errori
+# sporadici CURLE_HTTP2 (curl:16). Forziamo HTTP/1.1 sulla sessione singleton
+# di yfinance per eliminare la causa radice.
+# ---------------------------------------------------------------------------
+
+def _init_yfinance_http1_session() -> None:
+    """
+    Configura il singleton YfData di yfinance con una sessione curl_cffi
+    forzata a HTTP/1.1, eliminando gli errori CURLE_HTTP2 (curl:16) sporadici.
+    Chiamata una volta sola all'import del modulo.
+    """
+    try:
+        from curl_cffi.requests import Session as CurlSession
+        from curl_cffi import CurlHttpVersion
+        import yfinance.data as yfdata
+
+        session = CurlSession(
+            impersonate="chrome",
+            http_version=CurlHttpVersion.V1_1,
+        )
+        # Imposta la sessione nel singleton YfData (già istanziato o da istanziare)
+        yfdata.YfData(session=session)
+        logger.info("yfinance: sessione HTTP/1.1 attivata (mitigazione curl:16)")
+    except Exception as exc:
+        # Non bloccante: se fallisce, yfinance usa la sua sessione HTTP/2 di default
+        logger.warning(f"yfinance HTTP/1.1 setup fallito (fallback a HTTP/2): {exc}")
+
+
+_init_yfinance_http1_session()
+
+# ---------------------------------------------------------------------------
+# Helper retry con backoff esponenziale
+# Usato per avvolgere le sole chiamate di rete (_download, _download_since,
+# _get_quote). Indipendente dalla cache e dalla logica di business.
+# ---------------------------------------------------------------------------
+
+_RETRY_DELAYS = (0.5, 1.5, 3.0)   # secondi tra i tentativi (3 tentativi totali)
+
+
+def _run_with_retry(fn, *args, symbol: str = "", **kwargs):
+    """
+    Esegue fn(*args, **kwargs) fino a 3 volte con backoff esponenziale.
+    Ritorna il risultato al primo tentativo riuscito (df non vuoto).
+    Propaga l'eccezione dell'ultimo tentativo se tutti falliscono.
+
+    "Riuscito" significa: nessuna eccezione E df non None/vuoto.
+    Se il df è vuoto su tutti e 3 i tentativi lo ritorna comunque
+    (potrebbe essere un simbolo realmente senza dati, non un errore di rete).
+    """
+    last_exc: Optional[Exception] = None
+    last_df = None
+
+    for attempt, delay in enumerate((*_RETRY_DELAYS, None), start=1):
+        try:
+            result = fn(*args, **kwargs)
+            # Successo: df con dati → ritorna subito
+            if result is not None and (not hasattr(result, "empty") or not result.empty):
+                if attempt > 1:
+                    logger.info(f"Retry OK: {symbol} al tentativo {attempt}")
+                return result
+            # df vuoto: teniamo il risultato ma ritentiamo comunque
+            last_df = result
+            last_exc = None
+            if delay is not None:
+                logger.warning(
+                    f"Risposta vuota per {symbol} (tentativo {attempt}/3) "
+                    f"— retry tra {delay}s"
+                )
+                time.sleep(delay)
+        except Exception as exc:
+            last_exc = exc
+            if delay is not None:
+                logger.warning(
+                    f"Errore di rete per {symbol} (tentativo {attempt}/3): {exc} "
+                    f"— retry tra {delay}s"
+                )
+                time.sleep(delay)
+            else:
+                # Ultimo tentativo fallito
+                logger.error(f"Tutti i retry falliti per {symbol}: {exc}")
+                raise
+
+    # Tutti i tentativi hanno dato df vuoto (nessuna eccezione)
+    return last_df
 
 
 def sanitize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
@@ -227,30 +315,35 @@ class YFinanceFeed:
             return None
 
     def _download_since(self, symbol: str, since: "datetime", interval: str) -> pd.DataFrame:
-        start_str = since.strftime("%Y-%m-%d")
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(start=start_str, interval=interval, auto_adjust=True)
-        if df.empty:
+        def _do():
+            start_str = since.strftime("%Y-%m-%d")
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start_str, interval=interval, auto_adjust=True)
+            if df.empty:
+                return df
+            df.columns = [c.lower() for c in df.columns]
+            df = df[["open", "high", "low", "close", "volume"]].copy()
+            df.index = pd.to_datetime(df.index, utc=True)
+            df.index.name = "timestamp"
+            df.dropna(inplace=True)
             return df
-        df.columns = [c.lower() for c in df.columns]
-        df = df[["open", "high", "low", "close", "volume"]].copy()
-        df.index = pd.to_datetime(df.index, utc=True)
-        df.index.name = "timestamp"
-        df.dropna(inplace=True)
-        return df
+
+        return _run_with_retry(_do, symbol=symbol)
 
     def _download(self, symbol: str, period: str, interval: str) -> pd.DataFrame:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval, auto_adjust=True)
-        if df.empty:
+        def _do():
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period=period, interval=interval, auto_adjust=True)
+            if df.empty:
+                return df
+            df.columns = [c.lower() for c in df.columns]
+            df = df[["open", "high", "low", "close", "volume"]].copy()
+            df.index = pd.to_datetime(df.index, utc=True)
+            df.index.name = "timestamp"
+            df.dropna(inplace=True)
             return df
 
-        df.columns = [c.lower() for c in df.columns]
-        df = df[["open", "high", "low", "close", "volume"]].copy()
-        df.index = pd.to_datetime(df.index, utc=True)
-        df.index.name = "timestamp"
-        df.dropna(inplace=True)
-        return df
+        return _run_with_retry(_do, symbol=symbol)
 
     async def fetch_quote(self, symbol: str) -> Optional[Dict]:
         try:
@@ -261,12 +354,16 @@ class YFinanceFeed:
             return None
 
     def _get_quote(self, symbol: str) -> Dict:
-        try:
+        def _do():
             ticker = yf.Ticker(symbol)
             info = ticker.fast_info
+            price = getattr(info, "last_price", None)
+            if price is None:
+                # Risposta vuota: trattiamo come fallimento transiente per il retry
+                return None
             return {
                 "symbol": symbol,
-                "price": getattr(info, "last_price", None),
+                "price": price,
                 "open": getattr(info, "open", None),
                 "high": getattr(info, "day_high", None),
                 "low": getattr(info, "day_low", None),
@@ -274,6 +371,12 @@ class YFinanceFeed:
                 "market_cap": getattr(info, "market_cap", None),
                 "timestamp": datetime.utcnow().isoformat(),
             }
+
+        try:
+            result = _run_with_retry(_do, symbol=symbol)
+            if result is None:
+                return {"symbol": symbol, "price": None, "timestamp": datetime.utcnow().isoformat()}
+            return result
         except Exception:
             return {"symbol": symbol, "price": None, "timestamp": datetime.utcnow().isoformat()}
 
@@ -442,6 +545,7 @@ class UniversalDataFeed:
                         return _clean(db_df)
 
         # ── 3. Primo download: scarica l'intera storia ──────────────────
+        # (include già retry con backoff in _download/_download_since)
         logger.info(f"First download (full history): {symbol} {timeframe}")
         df = await self.yf_feed.fetch(symbol, timeframe, limit=0)
         if df is not None:
@@ -449,13 +553,8 @@ class UniversalDataFeed:
                 await store.store(symbol, timeframe, df)
             return _clean(_tail(df))
 
-        # ── 4. Fallback: rispetta il limit originale (0 = storia completa)
-        df = await self.yf_feed.fetch(symbol, timeframe, limit)
-        if df is not None:
-            if store:
-                asyncio.create_task(store.store(symbol, timeframe, df))
-            return _clean(df)
-        return df
+        # Simbolo non trovato dopo tutti i retry — resa senza ulteriori chiamate
+        return None
 
     async def _persist(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
         """Background task: store bars in SQLite (fire-and-forget)."""

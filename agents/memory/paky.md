@@ -11,6 +11,7 @@
 - 2026-05-16: **Fase 5.1** — emit dei 5 segnali SignalBus nei moduli core (engine loop heartbeat, orchestrator ai_result, risk_manager kelly_update, auto_config regime_update, engine correlation_update).
 - 2026-05-18: **Fase A.1 — filo conduttore**: WatchlistPanel click → `AppState.current_symbol`; nuovo segnale `current_scan_symbol(str,str)` + emit nei loop engine; AIAnalysisPanel/ChartPanel ascoltano `current_symbol_changed`; OrderTicket QComboBox con sync bidirezionale; chip simbolo TopBar.
 - 2026-05-20: **Fase 6 — stati pulsanti via AppState**: submit ordine engine-gated, EnginePanel refactor su `AppState.engine_running` (fonte unica, sync con TopBar), loading state Test broker, Clear pattern condizionale. (Task interrotto da ECONNRESET, completato e validato da Max — commit `3449306`.)
+- 2026-05-20: **Robustezza feed** — `data/feed.py`: sessione curl_cffi HTTP/1.1 su singleton YfData (elimina CURLE_HTTP2/curl:16), retry backoff esponenziale (0.5/1.5/3s, 3 tentativi) in `_run_with_retry` attorno a `_download`/`_download_since`/`_get_quote`. Rimosso path-4 fallback ridondante. QG: 9/9 forex OK, FAKESYM=X fallisce in 7.9s.
 
 ## Lezioni apprese (permanenti)
 
@@ -23,6 +24,7 @@
   - `pydantic_settings`: `extra = "ignore"` nel `class Config` per ignorare variabili di sub-settings
   - `tickFont` via `setStyle` genera warning `pointSize=-1` su Qt6 → non impostarlo
 - **Virtual env:** sempre `.venv312/Scripts/python.exe`, mai il Python 3.14 di sistema (torch DLL rotto).
+- **yfinance 1.3.0 + curl_cffi 0.15.0**: YfData è un singleton; accetta solo `curl_cffi.requests.Session` (non requests standard). Passare `Session(impersonate="chrome", http_version=CurlHttpVersion.V1_1)` all'init del singleton elimina CURLE_HTTP2 sporadici. Il parametro `http_version` sta in `BaseSession.__init__` (via `**kwargs`), non nella firma visibile di `Session.__init__`.
 - **AsyncIO + Qt:** GUI ed Engine condividono lo stesso event loop via `qasync` — niente threading.
 
 ## Pattern di codice scoperti
