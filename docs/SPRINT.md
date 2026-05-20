@@ -55,6 +55,20 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 
 ---
 
+## 🔬 Validazione statistica pattern recognition — 2026-05-20
+
+Tom + Chloe hanno validato se il pattern recognition ha un edge economico reale.
+
+- Prima versione errata: baseline non confrontabile col segnale → hit rate gonfiati al 97%. Tom l'ha corretta.
+- Versione corretta (`scripts/validate_patterns_net_return.py`, entry barra+1 + costi reali): **19/21 pattern con expected return netto negativo o non significativo**, peggio della baseline casuale (mean -0.081%).
+- Solo Doji (+0.51%, neutral → non azionabile) e Ascending Triangle (+1.91%, N dominato da SPY/QQQ/AAPL → sospetto data-snooping) con CI 95% positivo.
+- **Verdetto: il pattern recognition NON ha edge economico dimostrabile.** Declassato a filtro di conferma secondario, mai generatore di segnale a cui collegare capitale.
+- Direzioni di alpha reale proposte da Chloe: momentum cross-sectional (con filtro regime/VIX), mean reversion su spread cointegrati.
+
+**Prossimo step strategico**: scegliere con l'utente la fonte di alpha su cui puntare e progettarne la validazione con lo stesso rigore.
+
+---
+
 ## 🎨 Fase 1.5 — Polish difetti gate review (PROSSIMO STEP)
 
 Difetti identificati nello screenshot del gate review (2026-05-14, app live su Windows). Organizzati in 3 ondate per impatto/effort.

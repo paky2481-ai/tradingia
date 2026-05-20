@@ -7,6 +7,8 @@
 
 - 2026-05-14: Confermati 7 strumenti operativi: EUR/USD, GBP/USD, XAU/USD, S&P, DAX, EUR/GBP, USD/JPY. Liquidi e con spread bassi.
 - 2026-05-14: Strategia split: trend_4h per forex/indici/oro, range_1h per cross laterali (EUR/GBP, USD/JPY).
+- 2026-05-20: Analisi validazione pattern (Tom): win rate 97% su avg_move=0% è un falso edge — target geometrico minuscolo tocca rumore di mercato, non segnale predittivo. Sistema NON tradeable fino a integrazione di stop loss reali e costi di transazione nel backtest.
+- 2026-05-20: Verdetto finale pattern recognition: 19/21 netti negativi dopo costi realistici. Ascending Triangle +1.91% = data-snooping su SPY/QQQ/AAPL in bull market. Sistema accantonato come segnale primario. Alpha reale: momentum cross-sectional con filtro VIX, oppure mean reversion su spread cointegrati.
 
 ## Lezioni apprese (permanenti)
 
@@ -16,6 +18,9 @@
 - **Slippage realistico:** stimare 1-2 pip su forex liquidi, 0.5-1 punti su indici, 0.20-0.50$ su oro. Nel backtest se non lo modelli, i risultati sono ottimistici.
 - **Correlazioni nascoste:** EUR/USD e GBP/USD correlazione ~0.7 → mai entrambe long allo stesso tempo (raddoppia il rischio).
 - **VIX > 25:** ridurre size del 50%. VIX > 35: solo strategie mean-rev, no breakout.
+- **Win rate alto + avg_move zero = trappola**: target geometrico minuscolo genera hit rate artificialmente alto. L'unica metrica che conta è E[P&L netto] = (win_rate × avg_win) - (loss_rate × avg_loss) - costi. Se avg_move è zero, E[P&L] è negativo per definizione dopo i costi.
+- **Bull market bias nei pattern di inversione**: su dati 2015-2025 i pattern bullish (Engulfing, Morning Star) sembrano funzionare perché il mercato tende a salire comunque. Testare sempre su regimi bear e alta volatilità separati prima di trarre conclusioni.
+- **Candlestick pattern = zero edge su mercati moderni**: con HFT e algo che leggono gli stessi pattern, il segnale viene arbitraggiato prima dell'esecuzione. Edge documentato robusto: momentum cross-sectional (1-12 mesi) e mean reversion su spread cointegrati.
 
 ## Domande critiche da farsi sempre
 
@@ -27,7 +32,12 @@
 
 ## Task aperti
 
-- [ ] Validazione statistica pattern su mercati reali (con Tom)
+- [x] Validazione statistica pattern su mercati reali (con Tom) — COMPLETATO, risultati analizzati
+- [ ] PatternBacktester: integrare invalidation_price come stop loss e calcolare avg_loss / R:R ratio reale — BASSA PRIORITA' (pattern non ha edge primario)
+- [ ] Valutare implementazione momentum cross-sectional su universo >200 simboli con filtro VIX
+- [ ] Valutare modulo cointegrazione per mean reversion su spread (SPY/QQQ, XAU/XAG, EUR/DXY)
+- [ ] Aggiungere costi di transazione per asset class nel backtest (0.15% azioni, 0.05% forex major, 0.20% crypto round-trip)
+- [ ] Separare backtest per regime (trending/ranging/alta vol) per isolare dove l'edge è concentrato
 - [ ] Backtesting walk-forward su dati 2020-2025 per verificare robustezza strategie
 - [ ] Definire trailing stop dinamico basato su ATR invece di percentuale fissa
 - [ ] Revisione asset class config per mercato corrente (2026)

@@ -20,6 +20,7 @@
 - 2026-05-20: **Fase D — auto-download** (commit `a10c81b`). Anche qui lo scope si è sgonfiato: l'auto-download esisteva già (fetch async + `DataCache` disco TTL 5min). Gap reale = feedback visivo assente. Fix: `ChartPanel` mostra `StatusDot` loading/idle/error + label contestuale; errori di rete non più silenziosi. Pattern ricorrente: le fasi residue del piano vanno SEMPRE indagate read-only prima — la descrizione del piano sovrastima il lavoro.
 - 2026-05-20: **Fase B — backend visibile** (commit `7aecb57`). Segnale `current_scan_symbol` era orfano lato AppState (bypassava la fonte unica, hard-wired all'Observatory). Fix: bridge in AppState + property; nuovo `_ScanChip` TopBar (StatusDot + simbolo + loop) dopo il bottone engine; reset idle 5s + hide su stop. Micro-debito residuo: `AIObservatoryWorkspace` ancora agganciato diretto al bus invece che ad AppState (nessuna regressione, fan-out OK).
 - 2026-05-20: **Smoke test finale → Sprint GUI CHIUSO**. Marco: avvio senza crash, 6 screenshot benchmark, Fasi B/D/E PASS. Polish: empty-state `ChartPanel` neutro (commit `5a63415` — il testo citava il pulsante "Carica Dati Storici" rimosso in Fase D). Lo sprint GUI Bloomberg-grade è formalmente concluso.
+- 2026-05-20: **Validazione statistica pattern recognition → NIENTE EDGE**. Tom: prima validazione aveva baseline non confrontabile (hit rate gonfiati al 97%); corretta con esecuzione realistica (entry barra+1 + costi) → 19/21 pattern netto negativo, peggio della baseline casuale. Solo Doji e Ascending Triangle con CI>0 ma non affidabili. Chloe conferma: i pattern candlestick "da manuale" sono folklore, l'edge è stato arbitraggiato via. Decisione: pattern recognition declassato a filtro di conferma secondario, mai segnale primario. Direzioni di alpha reale proposte: momentum cross-sectional + mean reversion su spread cointegrati. Script: `scripts/validate_patterns_net_return.py`.
 - 2026-05-20: **Robustezza data feed** (commit `78c42db`). Errori intermittenti `curl: (16)` (CURLE_HTTP2): yfinance via curl_cffi usava HTTP/2. Fix: sessione curl_cffi HTTP/1.1 forzata sul singleton YfData + retry backoff esponenziale (0.5/1.5/3s) attorno alle chiamate di rete. Rimosso path-4 fallback ridondante. Memorie agenti compattate (commit `e31aee5`).
 
 ## Lezioni apprese (permanenti)
@@ -30,6 +31,7 @@
 - **Encoding Windows trap**: PowerShell `Get-Content -Raw` legge in CP1252; salvare poi con `Set-Content -Encoding utf8` corrompe i byte multibyte UTF-8 (▶ € → · ✦) in mojibake. Per find&replace su file UTF-8 usare ESCLUSIVAMENTE Python (`Path.read_text/write_text(encoding="utf-8")`). Per stampare Unicode in stdout dai test: `$env:PYTHONIOENCODING="utf-8"`.
 - **Commit message PowerShell**: il here-string `git commit -m @'...'@` in PS 5.1 spezza su `+ <-> && `. Workaround: `git commit -F file.txt` con messaggio in file UTF-8, oppure `-m` multipli senza caratteri operatore.
 - **Diagnosi rendering**: quando più fix falliscono in fila, isolare la variabile con dati di test modificati (es. allargare le wick) discrimina la causa reale invece di tirare a indovinare.
+- **Validazione = baseline confrontabile**: un hit rate "stellare" (es. 97%) è quasi sempre un artefatto. La baseline deve usare ESATTAMENTE la stessa definizione di successo del segnale testato, altrimenti il p-value è privo di senso. L'unico numero che decide è il rendimento NETTO per trade dopo costi reali — non l'hit rate.
 - **pandas >= 2.2**: alias di frequenza maiuscoli (`H`, `T`, `S`) rimossi — usare minuscoli (`h`, `min`, `s`) in `resample()`.
 
 ## Consigli dati all'utente
@@ -38,11 +40,12 @@
 
 ## Task aperti
 
-- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: **Sprint GUI Bloomberg-grade CHIUSO** (Fasi 0→6 + A/B/C/D/E + smoke test, screenshot in `screenshots/benchmark-2026-05-20/`). Possibili prossimi fronti — non più GUI:
-   - **Bridge tick-live** — `ChartPanel.update_live_tick()` ↔ SignalBus (ha senso solo con trading live attivo).
-   - **Validazione statistica pattern recognition** (Tom + Chloe) — task strategico rimasto in sospeso.
-   - Micro-debito GUI: uniformare `AIObservatoryWorkspace` a leggere `current_scan_symbol` da AppState.
-   - Decisione strategica utente: lo sprint GUI è finito — chiedere all'utente dove vuole portare il prodotto (live trading? validazione modelli? deployment?).
+- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: Sprint GUI chiuso + validazione pattern recognition conclusa (niente edge — vedi Decisioni recenti). Decisione strategica aperta con l'utente: su quale fonte di alpha puntare. Opzioni proposte da Chloe:
+   - **Momentum cross-sectional** con filtro regime/VIX — costruibile sull'architettura esistente.
+   - **Mean reversion su spread cointegrati** (pairs trading) — costruibile sull'architettura esistente.
+   - Prima di implementare: Tom + Chloe devono progettare il protocollo di validazione (stesso rigore appena applicato ai pattern) così non si costruisce su sabbia.
+- [ ] Pattern recognition: declassare a filtro di conferma secondario nel codice (oggi `PatternStrategy` lo usa come generatore di segnale). Rimuovere/ridisegnare Ascending/Descending Triangle e Doji.
+- [ ] Micro-debito GUI: uniformare `AIObservatoryWorkspace` a leggere `current_scan_symbol` da AppState. Bridge tick-live (solo con trading live).
 - [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico, da rivalutare dopo refactor GUI
 
 ## Workflow
