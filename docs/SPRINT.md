@@ -40,7 +40,7 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **Fase A — Filo conduttore architetturale (single-instrument trader + multi-instrument AI backend)** — completata 2026-05-18 (commit `1a932cb` + `9c97abf`). AppState.current_symbol sync end-to-end, current_scan_symbol signal, Cruscotto trader-puro 1 tab Trading + Fundamentals strip, Osservatorio AI sostituisce workspace Analisi.
 - [x] **Fix 4 bug Workspace Operativo (A-B-C-D)** — completato 2026-05-18 (commit `8595075`). A: layout form Operativo, B: caption EnginePanel leggibili, C: rimozione form manuale duplicato in PositionsPanel, D: combo editable + sync bidirezionale simboli custom (MSFT, AAPL) end-to-end Operativo↔AppState↔Backtest.
 - [ ] **Fase B — Backend visibile** — chip simbolo TopBar fatto in A.1; resta polish + indicatore "engine sta scansionando X"
-- [ ] **Fase C — Chart integration** — sostituisce ChartArea placeholder con CandlestickChart, fetch dati on current_symbol ← candidato prossimo step
+- [x] **Fase C — Chart integration** — completata 2026-05-20 (commit `e43423d`). `_ChartArea` placeholder sostituito con `ChartPanel` reale nel Cruscotto; fetch OHLCV async (400 barre 1h da UniversalDataFeed) su boot + current_symbol_changed.
 - [ ] **Fase D — UX ordini + auto-download** — combo simbolo + sync bidirezionale fatti (A.1+commit 8595075); resta auto-download dati al primo click + rimozione data_panel
 - [ ] **Fase E — Pulizia + bug** — fix Pattern recognition, unifica le 2 watchlist, cleanup workspace ridondanti
 - [ ] **Fase 6 — Fix stati pulsanti via AppState** — engine_running → setEnabled() su Buy/Sell/CloseAll, loading state Test broker, quick-pick attivi

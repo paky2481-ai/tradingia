@@ -36,4 +36,4 @@ Ogni agente legge la propria memoria in `agents/memory/<nome>.md` all'inizio del
 
 ## Today
 
-2026-05-14 — sprint attivo: refactor radicale GUI Bloomberg-style + sistema agenti. Vedi `docs/SPRINT.md`.
+2026-05-20 — Fase C completata (chart integration nel Cruscotto). Prossimo step: Fase 6 / E / B / D. Vedi `docs/SPRINT.md`.
