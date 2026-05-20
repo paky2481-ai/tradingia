@@ -16,6 +16,7 @@
 - 2026-05-20: **Selettore timeframe + quick-range** (commit `26f55cf`). Striscia con 2 `_SegmentedBar` (TF 1H/4H/1D/1W + periodo 3M/1A/5A/MAX). `ChartPanel` reso autonomo nel fetch (ascolta current_symbol + propri selettori), fetch rimosso da `DashboardWorkspace`. Default 1H+1A.
 - 2026-05-20: **4 fix post visual check** (commit `9c75216` data + `5b06406` chart). (1) `sanitize_ohlcv()` in `data/feed.py`: clampa barre OHLCV corrotte (es. GBPUSD 2012 low=0.637) preservando i movimenti reali. (2) date asse X weekly. (3) `PriceAxisItem` decimali fissi. (4) resample `4H`→`4h`. Delega parallela Tom (data) + Marco (chart).
 - 2026-05-20: **Asse X temporale adattivo** (commit `2c961de`). `TimeAxisItem` tiene `pd.Timestamp` reali, formatta dinamicamente in base allo zoom (anno/mese+anno/giorno+mese/ora) con contesto gerarchico ai confini.
+- 2026-05-20: **Robustezza data feed** (commit `78c42db`). Errori intermittenti `curl: (16)` (CURLE_HTTP2): yfinance via curl_cffi usava HTTP/2. Fix: sessione curl_cffi HTTP/1.1 forzata sul singleton YfData + retry backoff esponenziale (0.5/1.5/3s) attorno alle chiamate di rete. Rimosso path-4 fallback ridondante. Memorie agenti compattate (commit `e31aee5`).
 
 ## Lezioni apprese (permanenti)
 
@@ -38,7 +39,6 @@
    - Fase B — Backend visibile polish: indicatore "engine sta scansionando X"
    - Fase D resto — auto-download al primo click simbolo non in cache
    - Bridge tick-live: collegare `ChartPanel.update_live_tick()` al SignalBus
-   - Robustezza data feed: errori intermittenti `curl: (16)` (HTTP/2) + "possibly delisted" da yfinance — valutare retry/fallback HTTP/1.1
 - [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico, da rivalutare dopo refactor GUI
 
 ## Workflow
