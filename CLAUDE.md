@@ -36,4 +36,4 @@ Ogni agente legge la propria memoria in `agents/memory/<nome>.md` all'inizio del
 
 ## Today
 
-2026-05-20 — Fasi B + D + E completate. Resta: smoke test finale + screenshot benchmark, bridge tick-live. Vedi `docs/SPRINT.md`.
+2026-05-20 — Sprint GUI Bloomberg-grade CHIUSO (Fasi B/D/E + smoke test). Residuo opzionale: bridge tick-live. Vedi `docs/SPRINT.md`.

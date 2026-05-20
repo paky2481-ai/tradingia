@@ -19,6 +19,7 @@
 - 2026-05-20: **Fase E — pulizia** (commit `5b1fbed`). Indagine read-only ha sgonfiato lo scope: watchlist NON duplicata, pattern pipeline integra. Vero lavoro = codice morto: rimossi `data_panel.py`+`.ui` e `analysis.py` shim; debito tecnico chiuso (`PatternObserver.observations` property pubblica vs `._obs`).
 - 2026-05-20: **Fase D — auto-download** (commit `a10c81b`). Anche qui lo scope si è sgonfiato: l'auto-download esisteva già (fetch async + `DataCache` disco TTL 5min). Gap reale = feedback visivo assente. Fix: `ChartPanel` mostra `StatusDot` loading/idle/error + label contestuale; errori di rete non più silenziosi. Pattern ricorrente: le fasi residue del piano vanno SEMPRE indagate read-only prima — la descrizione del piano sovrastima il lavoro.
 - 2026-05-20: **Fase B — backend visibile** (commit `7aecb57`). Segnale `current_scan_symbol` era orfano lato AppState (bypassava la fonte unica, hard-wired all'Observatory). Fix: bridge in AppState + property; nuovo `_ScanChip` TopBar (StatusDot + simbolo + loop) dopo il bottone engine; reset idle 5s + hide su stop. Micro-debito residuo: `AIObservatoryWorkspace` ancora agganciato diretto al bus invece che ad AppState (nessuna regressione, fan-out OK).
+- 2026-05-20: **Smoke test finale → Sprint GUI CHIUSO**. Marco: avvio senza crash, 6 screenshot benchmark, Fasi B/D/E PASS. Polish: empty-state `ChartPanel` neutro (commit `5a63415` — il testo citava il pulsante "Carica Dati Storici" rimosso in Fase D). Lo sprint GUI Bloomberg-grade è formalmente concluso.
 - 2026-05-20: **Robustezza data feed** (commit `78c42db`). Errori intermittenti `curl: (16)` (CURLE_HTTP2): yfinance via curl_cffi usava HTTP/2. Fix: sessione curl_cffi HTTP/1.1 forzata sul singleton YfData + retry backoff esponenziale (0.5/1.5/3s) attorno alle chiamate di rete. Rimosso path-4 fallback ridondante. Memorie agenti compattate (commit `e31aee5`).
 
 ## Lezioni apprese (permanenti)
@@ -37,10 +38,11 @@
 
 ## Task aperti
 
-- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: Fasi B, D, E chiuse. Prossimo step:
-   - **Smoke test finale + screenshot di benchmark** (chiusura formale sprint GUI) — in corso.
-   - **Bridge tick-live** — collegare `ChartPanel.update_live_tick()` al SignalBus (fase a sé, ha senso solo con trading live).
-   - Micro-debito: uniformare `AIObservatoryWorkspace` a leggere `current_scan_symbol` da AppState.
+- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: **Sprint GUI Bloomberg-grade CHIUSO** (Fasi 0→6 + A/B/C/D/E + smoke test, screenshot in `screenshots/benchmark-2026-05-20/`). Possibili prossimi fronti — non più GUI:
+   - **Bridge tick-live** — `ChartPanel.update_live_tick()` ↔ SignalBus (ha senso solo con trading live attivo).
+   - **Validazione statistica pattern recognition** (Tom + Chloe) — task strategico rimasto in sospeso.
+   - Micro-debito GUI: uniformare `AIObservatoryWorkspace` a leggere `current_scan_symbol` da AppState.
+   - Decisione strategica utente: lo sprint GUI è finito — chiedere all'utente dove vuole portare il prodotto (live trading? validazione modelli? deployment?).
 - [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico, da rivalutare dopo refactor GUI
 
 ## Workflow

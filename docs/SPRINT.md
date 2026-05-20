@@ -49,10 +49,9 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [x] **4 fix post visual check selettore** — completato 2026-05-20 (commit `9c75216` + `5b06406`). Sanitize barre OHLCV corrotte (clamping 75-125% corpo candela), fix resample 4h ('4H'→'4h'), date asse X weekly, decimali asse prezzo fissi a millesimi.
 - [x] **Asse X temporale adattivo** — completato 2026-05-20 (commit `2c961de`). TimeAxisItem tiene datetime reali e formatta dinamicamente in base allo zoom (anno/mese+anno/giorno+mese/ora) con contesto gerarchico ai confini.
 - [x] **Robustezza data feed** — completato 2026-05-20 (commit `78c42db`). Sessione curl_cffi HTTP/1.1 forzata su yfinance (elimina errori CURLE_HTTP2/curl:16) + retry con backoff esponenziale sulle chiamate di rete.
-- [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
-- [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
-- [ ] Fase 6 — Fix stati pulsanti via AppState (tutti i panel)
-- [ ] Smoke test finale + screenshot di benchmark
+- [x] **Smoke test finale + screenshot di benchmark** — completata 2026-05-20. Marco: avvio senza crash, 6 screenshot benchmark in `screenshots/benchmark-2026-05-20/`, verifica Fasi B/D/E PASS. Polish post-test: empty-state `ChartPanel` reso neutro (commit `5a63415`, testo citava un pulsante rimosso in Fase D).
+
+> **Sprint GUI Bloomberg-grade: CHIUSO.** Residuo opzionale: bridge tick-live (`ChartPanel.update_live_tick()` ↔ SignalBus) — fase a sé, ha senso solo con trading live. Micro-debito: uniformare `AIObservatoryWorkspace` a leggere `current_scan_symbol` da AppState.
 
 ---
 
