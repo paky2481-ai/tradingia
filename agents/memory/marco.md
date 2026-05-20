@@ -2,75 +2,37 @@
 
 > File aggiornato dall'agente Marco stesso al termine di ogni task.
 > Marco legge questo file all'inizio di ogni sessione per recuperare contesto.
+> Lo storico dettagliato delle fasi sta in `docs/SPRINT.md` — qui solo il recente + lezioni permanenti.
 
 ## Decisioni recenti (max 20, FIFO)
 
-- 2026-05-14: Audit GUI completo — identificati problemi: 4 dock bottom compressi a 360px, 3 dock right ristretti, font Segoe UI inconsistente (13px QSS vs 10px app.py), QTabBar senza stile QSS.
-- 2026-05-14: Fix candlestick "doppie": `autoRange()` → `setAutoVisible(y=True)` + `setXRange()`.
-- 2026-05-14: Fix performance MA lines: loop O(n²) → `np.convolve` (50× più veloce).
-- 2026-05-14: Creati 4 widget MVP libreria `gui/widgets/info/` (Sparkline+area gradient, KPIBadge, RegimePill, Gauge con halo marker) + `gui/styles/dark.qss` 1203 righe Bloomberg-grade. `load_stylesheet()` aggiornato con fallback su `dark_theme.qss`.
-- 2026-05-14: Completati 3 deliverable gate review Fase 1 — HelpIcon, TopBar Bloomberg 42px, DashboardWorkspace 807 LOC.
-- 2026-05-14: Applicati 7 fix layout post-review: QGroupBox margin-top 14→10px, QPushButton primary max-height 28px, spacer TopBar spostato prima di mode/broker pill, header colonne _PositionsPanel, _GaugeCard inner QFrame con bordo esplicito, P&L con prefisso €, regime/hurst AppState come unica sorgente di verità.
-- 2026-05-14: Verificati fix 8-11 _AIPanel (Ondata 2): titolo QGroupBox senza separatori spurii, predizione RichText single-label, footer pinned con QFrame border-top, Sparkline hit_miss mode con dot verde/rosso e baseline tratteggiata. Quality gate: DashboardWorkspace import + istanziazione OK.
-- 2026-05-15: Ondata 3 polish finale — tooltip anchor KPIBadge (event() già presente da Ondata 2), asset icon.png 256x256 candela verde su trasparente creato in gui/assets/, centering BrokerPill dot: U+25CF→U+2022 + vertical-align:middle + AlignVCenter. Quality gate import OK.
-- 2026-05-15: Audit i18n completato — 27 file scansionati (9 con stringhe UI rilevanti), 87 stringhe da tradurre, 50 chiavi già in tabella SPRINT.md, 37 NUOVE chiavi da aggiungere.
-- 2026-05-16: Fase 1.6 Step 3 — refactoring tr() su 8 panel atomici (ai_analysis, backtest, broker, pattern, chart, watchlist, data, positions). Tutte le chiavi erano già in strings.py. pattern_panel: _COLUMNS usato solo per len(), intestazioni reali nel .ui — aggiunto _apply_i18n() che sovrascrive a runtime col 2 e 6. Quality gate: 8/8 SYNTAX OK, 8/8 import PASS, istanziazione headless PASS, test IT/EN runtime PASS.
-- 2026-05-16: Fase 2 — Creati 4 workspace (order_ticket, analysis, backtest, patterns). Aggiunte 22 chiavi order.* a strings.py (IT+EN). Struttura: QSplitter per order_ticket (form+tabella+broker) e patterns (pattern+chart), QSplitter nested per analysis (AI+chart top, data bottom), full-width con padding 12px per backtest. Quality gate: 4/4 SYNTAX OK, 4/4 IMPORT OK, 4/4 INSTANCE OK offscreen, 22/22 chiavi i18n presenti.
-- 2026-05-16: Fase 3 — ActivityBar 56px creata (gui/widgets/activity_bar.py, 126 LOC). 6 _ActivityButton con QSS property "active" + unpolish/polish per refresh stato. QSS self-contained nel modulo (non dipende dal foglio globale). Icone scelte: ⌖ ↗ ○ ▦ ✦ ⚙. Tutti e 3 i quality gate PASS (import, istanziazione 56px/6 btn, segnale workspace_changed).
-- 2026-05-16: Fase 4 — 8 widget atomici creati in gui/widgets/info/: ConfidenceBar (25H), BiDirectionalBar (22H), Heatmap (mouseMoveEvent tooltip cell), PingIndicator (dot glow + latency), StatusDot (QTimer pulsante loading), LiveLabel (flash QTimer 100ms via stylesheet), FFTMini (barre+gradiente+triangolo peak), NumericTable (QTableWidget Bloomberg-grade + sparkline cell). 2 chiavi i18n aggiunte (bidir.bear/bull IT+EN). Quality gate: 8/8 SYNTAX OK, 8/8 IMPORT OK, 8/8 INSTANCE OK offscreen.
-- 2026-05-16: Fase 5.2 — Arricchiti 4 panel (ai_analysis, watchlist, positions, engine) con 13 info widget + listener bus Fase 5. Creato PortfolioPanel nuovo standalone. 9 chiavi i18n aggiunte (engine.loop.*, portfolio.*, positions.total_pnl). QTimer idle 60s per loop dots. Quality gate: 6/6 SYNTAX OK, 5/5 IMPORT OK, 5/5 INSTANCE OK, tutti emit PASS.
-- 2026-05-18: Fase 5.5 — A.1: splitter OrderTicket [300,450,250]→[350,750,480], minWidth broker 200→420, form 280→330. A.3: padding bottoni BrokerPanel 12px→14px + min-height:32px nei QSS inline + setSizePolicy Expanding/Fixed. B: DashboardWorkspace refactored 863→~280 LOC — rimossi _WatchlistPanel, _PositionsPanel, _AIPanel; sostituiti con panel atomici. Layout scelto: sinistra V-split a 3 (Watchlist 40%+Positions 35%+Engine 25%), centro chart+gauge, destra AIAnalysisPanel. Demo timer NON tocca segnali Fase 5. Quality gate 4/4 PASS.
-- 2026-05-18: Refactor cruscotto Bloomberg-style (Max) — DashboardWorkspace riscritto ~310 LOC. _CenterPanel spezzato in _ChartArea (standalone) + _GaugeStrip (82px fissi, 3 gauge). QTabWidget 4 tab: Posizioni/AIAnalysis/Engine/Portfolio. Watchlist sempre visibile sinistra 280-360px. 4 chiavi i18n aggiunte (workspace.tab_*). Quality gate 4/4 PASS (sintassi, import, istanziazione 9 assert, i18n IT+EN).
-- 2026-05-18: Fase 5.6 — 4 tab flat → 2 macro-tab a gruppi correlati. Tab "Trading" (QSplitter H: Positions+Engine 50/50), Tab "Analisi" (QSplitter H: AI+Portfolio 50/50). Stretch chart 65→50, tab 35→50. 4 chiavi i18n rimosse, 2 aggiunte (tab_trading/tab_analysis). Quality gate 5/5 PASS.
-- 2026-05-18: Cruscotto semplificato — rimossi QTabWidget, _positions, _engine, _TAB_KEYS, _apply_i18n. Chart stretch=1 DOMINANTE (Expanding, nessun limite superiore). Positions+Engine spostati in OrderTicketWorkspace (layout QSplitter V: top 60% positions+engine, bottom 40% form+tabella+broker). i18n "Ordini"→"Operativo" (IT), "Order Ticket"→"Operations" (EN). Quality gate 5/5 PASS.
-- 2026-05-18: Task A+B — Dedupe bottone AI (ai.btn_run "Avvia Analisi AI [{symbol}]" -> "▶ Analizza"/"▶ Analyze", rimosso {symbol}). HelpIcon aggiunta a 6 panel via insertWidget/findChildren (no .ui modificati). Aggiunto HelpIcon.update_texts() per cambio lingua runtime. 12 chiavi help.* in strings.py IT+EN. Quality gate 4/4 PASS.
-- 2026-05-18: Fix 4 bug Workspace Operativo (A-B-C-D). A: _field_label setMinimumHeight(16)+spacing 6→8. B: metricsFrame QSS "QFrame{}" → "QFrame#metricsFrame{}"+QLabel{background:transparent} per caption leggibili, testo abbreviato "Posizioni aperte"→"Pos. Aperte". C: rimosso manualGroup da positions_panel.ui + _setup_form/_on_manual_trade/MANUAL_SYMBOLS/OpenTradeCommand da positions_panel.py. D: _symbol_combo editable + _sync_combo_to_symbol con setEditText per custom+blockSignals anti-loop + _on_combo_text_changed reverse-sync; BacktestPanel _on_backtest_symbol_changed con blockSignals. Quality gate 7/7 PASS.
-- 2026-05-20: Fase C — sostituito _ChartArea placeholder con ChartPanel reale in DashboardWorkspace. Fetch 400 barre 1h via asyncio.ensure_future (stesso pattern _FundamentalsStrip). _on_symbol_changed collega AppState.current_symbol_changed → _fetch_chart_data (silent fail headless). Rimossa classe _ChartArea, rimosso tr("dashboard.chart_placeholder/subtitle"). PatternsWorkspace non toccato. Quality gate 3/3 PASS (syntax, import, istanziazione 7 assert).
-- 2026-05-20: Fase D — ChartPanel reso autonomo nel fetch. Aggiunti selettori TF (1H/4H/1D/1W) + periodo (3M/1A/5A/MAX) come striscia dedicata 28px tra info bar e MA legend. Classe _SegmentedBar (toggle esclusivo, QSS property active). Mapping periodo→limit: barre_per_giorno * giorni, MAX→0. Rimossi _on_symbol_changed + _fetch_chart_data da DashboardWorkspace. Quality gate 3 file × (syntax+import+instance) = 9/9 PASS.
-- 2026-05-20: Fix Bug A (asse X weekly) + Bug B (3 decimali prezzo): set _DATE_ONLY_TF = {"1d","1w","1wk","1mo"} in load_data; PriceAxisItem(pg.AxisItem) con tickStrings f"{v:.3f}" applicato a left+right del price plot via axisItems dict; .2f→.3f su crosshair label, tooltip OHLC, info bar chart_panel; bonus fix VolumeItem._data=None in __init__ (AttributeError headless). Quality gate syntax+import+instance+bug-A+bug-B+regressioni: ALL PASS.
-- 2026-05-20: Asse X adattivo allo zoom — TimeAxisItem riscritto: _timestamps ora list[pd.Timestamp] (non stringhe), set_timeframe() calcola bar_seconds, tickStrings() calcola arc_seconds=spacing*bar_seconds e sceglie formato (1h→"14:00"|"15 Gen 14:00", 1d→"15 Gen", 1mo→"Gen 2025", 1y→"2025") con contesto gerarchico ai confini (cambio anno mostra l'anno). load_data() passa datetime grezzi + timeframe a entrambi gli assi. Retrocompatibilità list[str] conservata. Quality gate: syntax+import+istanziazione+5 test tickStrings+4 regression workspace ALL PASS.
+- 2026-05-14→16: **Fasi 1→5 GUI completate** (storico in `docs/SPRINT.md`): libreria `gui/widgets/info/` (13 widget atomici), `dark.qss` 1203 LOC Bloomberg-grade, TopBar 42px, DashboardWorkspace, 4 workspace, ActivityBar 56px, refactor `tr()` su tutti i panel, arricchimento panel con listener SignalBus.
+- 2026-05-18: **Cruscotto refactor** — da V-split illeggibile a chart sempre visibile + 2 macro-tab (Trading=Positions+Engine, Analisi=AI+Portfolio). Positions+Engine spostati in workspace Operativo. `_ChartArea` + `_GaugeStrip` separati. HelpIcon su 6 panel via `insertWidget`/`findChildren` (no modifica .ui).
+- 2026-05-18: **Fix 4 bug Workspace Operativo** — `_field_label` minHeight, `metricsFrame` QSS scoped `#metricsFrame`, rimosso form manuale duplicato da PositionsPanel, `_symbol_combo` editable con sync bidirezionale anti-loop (`blockSignals`).
+- 2026-05-20: **Fase C** — `_ChartArea` placeholder → `ChartPanel` reale in DashboardWorkspace, fetch async (pattern `_FundamentalsStrip`).
+- 2026-05-20: **Selettore TF + periodo** — `ChartPanel` reso autonomo nel fetch. Striscia 28px con 2 `_SegmentedBar` (toggle esclusivo, QSS property `active`). Mapping periodo→limit, MAX→0. Rimosso fetch da DashboardWorkspace.
+- 2026-05-20: **Fix date weekly + decimali** — `_DATE_ONLY_TF = {1d,1w,1wk,1mo}` in load_data; `PriceAxisItem` con `tickStrings` `.3f` fissi su left+right; decimali uniformati a millesimi su crosshair/tooltip/info bar; fix `VolumeItem._data=None` in `__init__`.
+- 2026-05-20: **Asse X adattivo** — `TimeAxisItem` riscritto: `_timestamps` ora `list[pd.Timestamp]`, `set_timeframe()` calcola `bar_seconds`, `tickStrings()` usa `arc_seconds=spacing*bar_seconds` per scegliere il formato con contesto gerarchico ai confini. Retrocompat `list[str]` conservata.
 
 ## Lezioni apprese (permanenti)
 
-- **TimeAxisItem adattivo:** pyqtgraph passa `spacing` in unità-barra a `tickStrings()`. Moltiplicarlo per `bar_seconds` dà l'arco temporale in secondi tra due tick — usare questo valore come unico discriminante per il formato adattivo. Soglie: <20h→intraday, <20h=fascia, >=25d→mensile, >=365d→annuale.
-
-- **pyqtgraph performance:** usare `QPicture` caching per rendering candlestick. Aggiornare solo l'ultima barra su tick live, NON full redraw.
-- **`setAutoVisible(y=True)`:** asse Y si adatta solo alle candele visibili (X range), non all'intero dataset → essenziale per zoom comportamentale corretto.
-- **PyQt6 QSS limitations:** `QGraphicsItem` (pyqtgraph charts) NON è stilabile via QSS. Theming va fatto via `pg.setConfigOptions(background, foreground)` o `setBackground()`.
-- **Densità Bloomberg vs Material:** Material 3 ha padding 8-16px standard, troppo per trading UI. Target 4-8px micro-padding.
-- **Color palette ridotta:** 8 colori semantici (bull/bear/neutral/warn/info/accent/bg/surface) sono sufficienti per qualsiasi trading UI. Più colori = cognitive load.
-- **Font numerico:** sempre monospace tabulare (Roboto Mono / JetBrains Mono) per cifre allineate.
-- **Animazioni:** mai > 200ms, sempre discrete. Flash al tick: 100ms fade. No transitions globali QSS.
-- **QFrame border vs QSS globale:** `QFrame { border: none; }` nel QSS globale NON sovrascrive gli stili inline (specificità inline > QSS). Ma per bordi garantiti su card, usare un QFrame figlio con stylesheet diretta anziché affidarsi a objectName + regola `#ID` (che può confliggersi con re-parenting).
+- **TimeAxisItem adattivo:** pyqtgraph passa `spacing` in unità-barra a `tickStrings()`. `spacing*bar_seconds` = arco temporale tra due tick → unico discriminante del formato. Soglie: >=365g annuale, >=25g mensile, >=20h giornaliero, <20h intraday.
+- **pyqtgraph rendering:** `QPicture` caching per candlestick; aggiornare solo l'ultima barra su tick live, non full redraw. Pen sempre cosmetico `width=0` (in QPicture il pen scala con la trasformazione → forex esplode). Wick degenere (`high==low`) = `drawLine` da un punto a se stesso che esplode: disegnare solo se `h>l`.
+- **`setAutoVisible(y=True)`:** asse Y si adatta alle sole candele visibili — essenziale per zoom corretto.
+- **PyQt6 QSS:** `QGraphicsItem` (pyqtgraph) NON stilabile via QSS — theming via `pg.setConfigOptions`/`setBackground()`. `QFrame{border:none}` globale NON sovrascrive stili inline (specificità inline > QSS); per bordi garantiti usare QFrame figlio con stylesheet diretta.
+- **Densità Bloomberg:** micro-padding 4-8px (non 8-16 Material). 8 colori semantici bastano. Font numerico monospace tabulare. Animazioni mai > 200ms (flash tick 100ms).
 
 ## Pattern di rendering scoperti
 
-- **Sparkline lightweight:** `QPicture` + `QPainter.drawPolyline()` su widget custom 80x24 → < 0.1ms per render
-- **Gauge orizzontale:** `QPainter.drawRect()` + zone colorate background + marker triangolare → 1 LOC
-- **LiveLabel flash:** `QPropertyAnimation` su `palette()` color durata 100ms easing OutQuad
-- **NumericTable:** `QTableWidget` + custom `QStyledItemDelegate` per cell-level color coding senza setStyleSheet
+- **Sparkline:** `QPicture` + `QPainter.drawPolyline()` su widget 80x24 → < 0.1ms.
+- **Gauge orizzontale:** `drawRect()` + zone colorate + marker triangolare.
+- **LiveLabel flash:** `QPropertyAnimation` su `palette()` color 100ms easing OutQuad.
+- **NumericTable:** `QTableWidget` + `QStyledItemDelegate` per color coding cell-level senza setStyleSheet.
+- **_SegmentedBar:** barra di pulsanti toggle esclusivo con QSS property `active` + `unpolish/polish` per refresh.
 
 ## Task aperti
 
-- [x] Creare libreria `gui/widgets/info/` — 4 widget MVP creati (Sparkline, KPIBadge, RegimePill, Gauge)
-- [x] Definire QSS unificato `gui/styles/dark.qss` — DONE (1203 righe, copertura completa)
-- [x] Implementare `TopBar` con 8 KPI badge usando KPIBadge + sparkline — DONE (425 LOC)
-- [x] Creare `HelpIcon` riutilizzabile con tooltip + MessageBox dark-styled — DONE (99 LOC)
-- [x] Creare `DashboardWorkspace` MVP per gate review — DONE (807 LOC, liveness demo 2s)
-- [x] Restanti 8 micro-componenti: ConfidenceBar, BiDirectionalBar, Heatmap, PingIndicator, StatusDot, LiveLabel, FFTMini, NumericTable — DONE Fase 4
-- [x] Riprogettare `WatchlistPanel` — aggiunta colonna REGIME con RegimePill (soluzione non invasiva: non ricostruisce l'intera tabella)
-- [ ] Integrare DashboardWorkspace in MainWindow (a cura di Paky)
-- [x] Fase 2 — Creati 4 workspace rimanenti: OrderTicketWorkspace, AnalysisWorkspace, BacktestWorkspace, PatternsWorkspace
-- [x] Fase 3 — ActivityBar widget creato, export in gui/widgets/__init__.py, quality gate PASS
-- [x] Fase 5.5 — A.1 splitter Ordini, A.3 padding broker buttons, B DashboardWorkspace refactor con panel atomici
-- [x] Refactor cruscotto Bloomberg-style — _ChartArea + _GaugeStrip separati, QTabWidget 4 tab, WatchlistPanel always-visible
-- [x] Fase 5.6 — 4 tab flat → 2 macro-tab (Trading=Positions+Engine, Analisi=AI+Portfolio), stretch 50/50, quality gate 5/5 PASS
-- [x] Cruscotto visual fix — chart dominante, Positions+Engine spostati in workspace Operativo (Ctrl+2)
-- [x] Fix 4 bug Workspace Operativo: A layout form, B caption EnginePanel, C rimozione form manuale PositionsPanel, D sync simbolo custom end-to-end
-- [x] Fase C — Chart integration Cruscotto: _ChartArea rimossa, ChartPanel reale con fetch async 400 barre 1h
-- [x] Fase D — Selettore TF + periodo in ChartPanel autonomo; rimosso fetch da DashboardWorkspace
-- [x] Fix Bug A (date weekly asse X) + Bug B (3 decimali prezzo ovunque): candlestick_chart.py + chart_panel.py
-- [x] Asse X adattivo allo zoom: TimeAxisItem con datetime reali + tickStrings formato-per-fascia + contesto gerarchico ai confini anno/mese
+- [ ] Integrare eventuali nuovi widget richiesti dalle fasi B-E
 
 ## Workflow
 

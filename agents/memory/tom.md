@@ -5,9 +5,8 @@
 
 ## Decisioni recenti (max 20, FIFO)
 
-- 2026-05-14: Calibrate soglie confidenza pattern per asset class (vedi commit `0519a43`).
-- 2026-05-14: AutoConfig.price_direction migrato da `hurst > 0.5` a 20-bar return per evitare bias confirmazione (vedi CLAUDE.md sprint recenti).
-- 2026-05-20: Bug A (OHLCV outlier): aggiunta `sanitize_ohlcv` in `data/feed.py` con clamping LOW_RATIO_FLOOR=0.75 applicata centralmente in `get_ohlcv`. Bug B (resample 4h): corretto `"4H"` → `"4h"` in `utils/timeframes.py`. Quality gate: tutti e 3 i test superati.
+- 2026-05-14: Calibrate soglie confidenza pattern per asset class (commit `0519a43`); `AutoConfig.price_direction` migrato da `hurst > 0.5` a 20-bar return (no bias confermazione).
+- 2026-05-20: Bug A (OHLCV outlier): aggiunta `sanitize_ohlcv` in `data/feed.py`, clamping `LOW_RATIO_FLOOR=0.75` applicato centralmente in `get_ohlcv`. Bug B (resample 4h): corretto `"4H"` → `"4h"` in `utils/timeframes.py`. Quality gate: 3/3 test PASS.
 
 ## Lezioni apprese (permanenti)
 
