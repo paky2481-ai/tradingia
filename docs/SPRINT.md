@@ -45,6 +45,7 @@ L'utente ha lanciato la demo dopo il fix QShortcut e ha confermato: **"così mi 
 - [ ] **Fase E — Pulizia + bug** — fix Pattern recognition, unifica le 2 watchlist, cleanup workspace ridondanti
 - [x] **Fase 6 — Fix stati pulsanti via AppState** — completata 2026-05-20 (commit `3449306`). Submit ordine engine-gated, EnginePanel refactor su AppState.engine_running (sync con TopBar), loading state Test broker, Clear pattern condizionale.
 - [x] **Fix barra gigante chart** — completato 2026-05-20 (commit `267e38f`). Wick degenere (high==low) su candele forex generava un drawLine degenere che copriva tutto il grafico; ora la wick si disegna solo se high>low.
+- [x] **Selettore timeframe + quick-range** — completato 2026-05-20 (commit `26f55cf`). Striscia con 2 barre segmented (TF 1H/4H/1D/1W + periodo 3M/1A/5A/MAX) nel ChartPanel; fetch reso autonomo dentro ChartPanel, rimosso da DashboardWorkspace.
 - [ ] Fase 4 — Espansione info widgets (8 widget rimanenti)
 - [ ] Fase 5 — Arricchimento panel atomici + 5 nuovi segnali in SignalBus
 - [ ] Fase 6 — Fix stati pulsanti via AppState (tutti i panel)
