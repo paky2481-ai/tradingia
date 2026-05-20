@@ -92,7 +92,6 @@ class CandlestickItem(pg.GraphicsObject):
         pen_bear = QPen(_hex(C_BEAR), 0)
         brush_bull = QBrush(_hex(C_BULL))
         brush_bear = QBrush(_hex(C_BEAR))
-        brush_doji = QBrush(Qt.BrushStyle.NoBrush)
 
         for i in range(n):
             row = df.iloc[i]
@@ -102,23 +101,28 @@ class CandlestickItem(pg.GraphicsObject):
             pen = pen_bull if is_bull else pen_bear
             painter.setPen(pen)
 
-            # Wick
-            painter.drawLine(
-                pg.Point(i, l),
-                pg.Point(i, h),
-            )
+            # Wick — solo se ha un'estensione reale. Una wick degenere
+            # (high == low, es. barra forex senza range) diventa un drawLine
+            # da un punto a se stesso che, sotto la scala forex nel QPicture,
+            # degenera e copre l'intero grafico con una barra verticale.
+            if h > l:
+                painter.drawLine(
+                    pg.Point(i, l),
+                    pg.Point(i, h),
+                )
 
             # Body
             body_top = max(o, c)
             body_bot = min(o, c)
             body_h = body_top - body_bot
 
-            if body_h < 1e-10:  # doji
-                painter.setBrush(brush_doji)
-                body_h = (max_price - min_price) * 0.002
-            else:
-                painter.setBrush(brush_bull if is_bull else brush_bear)
+            # Doji (body nullo): un body a spessore zero sarebbe invisibile.
+            # Forza uno spessore minimo visibile centrato sul prezzo.
+            if body_h < 1e-10:
+                body_h = (max_price - min_price) * 0.01
+                body_bot = c - body_h / 2
 
+            painter.setBrush(brush_bull if is_bull else brush_bear)
             painter.drawRect(QRectF(i - w, body_bot, 2 * w, body_h))
 
         painter.end()
