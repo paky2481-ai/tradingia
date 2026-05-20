@@ -13,6 +13,7 @@
 - 2026-05-20: **Selettore TF + periodo** — `ChartPanel` reso autonomo nel fetch. Striscia 28px con 2 `_SegmentedBar` (toggle esclusivo, QSS property `active`). Mapping periodo→limit, MAX→0. Rimosso fetch da DashboardWorkspace.
 - 2026-05-20: **Fix date weekly + decimali** — `_DATE_ONLY_TF = {1d,1w,1wk,1mo}` in load_data; `PriceAxisItem` con `tickStrings` `.3f` fissi su left+right; decimali uniformati a millesimi su crosshair/tooltip/info bar; fix `VolumeItem._data=None` in `__init__`.
 - 2026-05-20: **Asse X adattivo** — `TimeAxisItem` riscritto: `_timestamps` ora `list[pd.Timestamp]`, `set_timeframe()` calcola `bar_seconds`, `tickStrings()` usa `arc_seconds=spacing*bar_seconds` per scegliere il formato con contesto gerarchico ai confini. Retrocompat `list[str]` conservata.
+- 2026-05-20: **Smoke test + screenshot benchmark** — App avviata offscreen, 0 crash, 0 errori. 6 screenshot in `screenshots/benchmark-2026-05-20/`. Fase B OK (_ScanChip nascosto), Fase D OK (StatusDot presente), Fase E OK (data_panel rimosso). Nessun difetto reale rilevato; rendering font offscreen (box) è artefatto ambientale, non bug.
 
 ## Lezioni apprese (permanenti)
 
@@ -32,7 +33,8 @@
 
 ## Task aperti
 
-- [ ] Integrare eventuali nuovi widget richiesti dalle fasi B-E
+- [x] Smoke test + screenshot benchmark sprint GUI (2026-05-20) — CHIUSO
+- [ ] Osservatorio AI: area destra (ChartPanel) mostra empty-state perché nessun simbolo caricato a freddo — comportamento atteso ma da verificare su desktop reale con simbolo pre-selezionato
 
 ## Workflow
 

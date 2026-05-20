@@ -210,7 +210,7 @@ IT: dict[str, str] = {
     "ai.fund_support.neutral":     "Neutro",
 
     # ---- chart ----------------------------------------------------------------
-    "chart.empty_state":           "Seleziona un simbolo e clicca\n\"Carica Dati Storici\"",
+    "chart.empty_state":           "Seleziona uno strumento per visualizzare il grafico",
     "chart.loading_symbol":        "Scaricamento dati per {symbol}...",
     "chart.error_symbol":          "Dati non disponibili per {symbol}.\nVerifica il simbolo o la connessione.",
 
@@ -535,7 +535,7 @@ EN: dict[str, str] = {
     "ai.fund_support.neutral":     "Neutral",
 
     # ---- chart ----------------------------------------------------------------
-    "chart.empty_state":           "Select a symbol and click\n\"Load Historical Data\"",
+    "chart.empty_state":           "Select an instrument to display the chart",
     "chart.loading_symbol":        "Downloading data for {symbol}...",
     "chart.error_symbol":          "Data not available for {symbol}.\nCheck the symbol or your connection.",
 
