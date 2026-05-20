@@ -16,6 +16,7 @@
 - 2026-05-20: **Selettore timeframe + quick-range** (commit `26f55cf`). Striscia con 2 `_SegmentedBar` (TF 1H/4H/1D/1W + periodo 3M/1A/5A/MAX). `ChartPanel` reso autonomo nel fetch (ascolta current_symbol + propri selettori), fetch rimosso da `DashboardWorkspace`. Default 1H+1A.
 - 2026-05-20: **4 fix post visual check** (commit `9c75216` data + `5b06406` chart). (1) `sanitize_ohlcv()` in `data/feed.py`: clampa barre OHLCV corrotte (es. GBPUSD 2012 low=0.637) preservando i movimenti reali. (2) date asse X weekly. (3) `PriceAxisItem` decimali fissi. (4) resample `4H`→`4h`. Delega parallela Tom (data) + Marco (chart).
 - 2026-05-20: **Asse X temporale adattivo** (commit `2c961de`). `TimeAxisItem` tiene `pd.Timestamp` reali, formatta dinamicamente in base allo zoom (anno/mese+anno/giorno+mese/ora) con contesto gerarchico ai confini.
+- 2026-05-20: **Fase E — pulizia** (commit `5b1fbed`). Indagine read-only ha sgonfiato lo scope: watchlist NON duplicata, pattern pipeline integra. Vero lavoro = codice morto: rimossi `data_panel.py`+`.ui` e `analysis.py` shim; debito tecnico chiuso (`PatternObserver.observations` property pubblica vs `._obs`).
 - 2026-05-20: **Robustezza data feed** (commit `78c42db`). Errori intermittenti `curl: (16)` (CURLE_HTTP2): yfinance via curl_cffi usava HTTP/2. Fix: sessione curl_cffi HTTP/1.1 forzata sul singleton YfData + retry backoff esponenziale (0.5/1.5/3s) attorno alle chiamate di rete. Rimosso path-4 fallback ridondante. Memorie agenti compattate (commit `e31aee5`).
 
 ## Lezioni apprese (permanenti)
@@ -34,11 +35,10 @@
 
 ## Task aperti
 
-- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: **Fase E — pulizia** già scelta come prossimo step (utente: "continua"). Primo passo NON ancora fatto: indagine read-only per mappare (1) le 2 watchlist duplicate — `WatchlistPanel` atomico vs eventuale watchlist interna a un workspace; (2) `data_panel.py` — verificare se è orfano e rimuovibile; (3) stato Pattern recognition — come `PatternPanel` riceve i dati, segnale `pattern_alert` SignalBus, cosa è rotto/scollegato. Poi delegare i fix mirati.
-- [ ] Altre fasi aperte (dopo Fase E):
-   - Fase B — Backend visibile: indicatore "engine sta scansionando X"
-   - Fase D resto — auto-download al primo click simbolo non in cache
-   - Bridge tick-live — collegare `ChartPanel.update_live_tick()` al SignalBus
+- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: Fase E chiusa. Prossimo step da scegliere tra:
+   - **Fase B — Backend visibile**: indicatore "engine sta scansionando X" (chip simbolo TopBar già fatto in A.1; resta il polish).
+   - **Fase D resto** — auto-download dati al primo click su simbolo non in cache (combo + sync già fatti).
+   - **Bridge tick-live** — collegare `ChartPanel.update_live_tick()` al SignalBus.
 - [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico, da rivalutare dopo refactor GUI
 
 ## Workflow

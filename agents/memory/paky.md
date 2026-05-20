@@ -12,6 +12,7 @@
 - 2026-05-18: **Fase A.1 — filo conduttore**: WatchlistPanel click → `AppState.current_symbol`; nuovo segnale `current_scan_symbol(str,str)` + emit nei loop engine; AIAnalysisPanel/ChartPanel ascoltano `current_symbol_changed`; OrderTicket QComboBox con sync bidirezionale; chip simbolo TopBar.
 - 2026-05-20: **Fase 6 — stati pulsanti via AppState**: submit ordine engine-gated, EnginePanel refactor su `AppState.engine_running` (fonte unica, sync con TopBar), loading state Test broker, Clear pattern condizionale. (Task interrotto da ECONNRESET, completato e validato da Max — commit `3449306`.)
 - 2026-05-20: **Robustezza feed** — `data/feed.py`: sessione curl_cffi HTTP/1.1 su singleton YfData (elimina CURLE_HTTP2/curl:16), retry backoff esponenziale (0.5/1.5/3s, 3 tentativi) in `_run_with_retry` attorno a `_download`/`_download_since`/`_get_quote`. Rimosso path-4 fallback ridondante. QG: 9/9 forex OK, FAKESYM=X fallisce in 7.9s.
+- 2026-05-20: **Fase E — pulizia codice morto**: rimossi `data_panel.py`, `data_panel.ui`, `analysis.py` (shim). `PatternObserver` espone property pubblica `observations` (snapshot sincrono di `_obs` per QTimer GUI); `pattern_panel._poll_observer` usa la property invece di `._obs`. Commit `5b1fbed`.
 
 ## Lezioni apprese (permanenti)
 
