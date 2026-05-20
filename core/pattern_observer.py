@@ -78,6 +78,20 @@ class PatternObserver:
 
     # ── Public API ─────────────────────────────────────────────────────────
 
+    @property
+    def observations(self) -> Dict[str, List["PatternObservation"]]:
+        """
+        Snapshot sincrono del dizionario symbol→[PatternObservation].
+
+        Utilizzato dalla GUI per polling non-async (es. QTimer).
+        La lettura avviene senza acquisire il lock perché è solo per
+        visualizzazione — il dato può essere leggermente stale, ma non
+        causa race condition critici.
+
+        Per uso async con lock, usa `get_all()`.
+        """
+        return dict(self._obs)
+
     async def ingest(self, symbol: str, patterns: List[RawPattern]) -> int:
         """
         Inserisce i pattern in osservazione, evitando duplicati (stesso nome + TF).

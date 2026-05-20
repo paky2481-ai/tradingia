@@ -140,7 +140,7 @@ class PatternPanel(QWidget):
     def _poll_observer(self):
         """Interroga l'observer per aggiornare la colonna 'Da (min)'."""
         observer = get_pattern_observer()
-        for symbol, obs_list in observer._obs.items():
+        for symbol, obs_list in observer.observations.items():
             for obs in obs_list:
                 key = obs.id or f"{symbol}_{obs.raw.name}"
                 row = self._rows.get(key)
