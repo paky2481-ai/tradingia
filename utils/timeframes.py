@@ -40,8 +40,10 @@ YFINANCE_PERIOD_MAP = {
 
 def resample_ohlcv(df: pd.DataFrame, target_tf: str) -> pd.DataFrame:
     """Resample OHLCV dataframe to a higher timeframe."""
+    # Alias moderni pandas (>= 2.2): minuscoli.
+    # "H" -> "h", "T" -> "min", "S" -> "s" sono deprecati/rimossi.
     rule_map = {
-        "4h": "4H",
+        "4h": "4h",
         "1d": "D",
         "1w": "W",
     }

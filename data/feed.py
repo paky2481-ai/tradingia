@@ -20,6 +20,66 @@ from config.settings import settings
 logger = get_logger.bind(name="data.feed")
 
 
+def sanitize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Rimuove barre OHLCV corrotte da glitch di feed (es. yfinance).
+
+    Criterio outlier — razionale quant:
+      Per ogni barra, low e high devono essere coerenti con open/close.
+      Un low legittimo può essere ben al di sotto del corpo della candela
+      (shadow lunga in un crash reale), ma non può essere una frazione
+      assurda del corpo stesso.
+
+      Glitch concreto osservato: GBPUSD=X 2012-01-23
+        open≈1.554, close≈1.570, low=0.637  →  low/min(O,C) ≈ 0.41
+      Dato reale estremo: GBPUSD=X 2022-09-25 (crash Truss)
+        open≈1.083, close≈1.076, low≈1.038  →  low/min(O,C) ≈ 0.96
+
+      Soglia scelta: LOW_RATIO_FLOOR = 0.75
+        - Consente shadow fino al 25% sotto il corpo → ampiamente sufficiente
+          per qualsiasi crash reale di asset liquidi (GBP/USD 2022: 4% sotto).
+        - Blocca glitch tipo 2012 che sono al 41% → margine enorme.
+        - Conservativa per design: un outlier dubbio al 74% passerebbe —
+          meglio così che cancellare un dato vero.
+
+      Analogamente: HIGH_RATIO_CEIL = 1.25
+        (high non può essere > 25% sopra max(open,close))
+
+      Strategia di correzione: CLAMPING (non rimozione).
+        - Preserva la continuità temporale dell'index: fondamentale per LSTM
+          (finestre sequenziali senza buchi) e FFT (griglia temporale uniforme).
+        - La barra rimane come candela senza shadow anomala.
+        - Alternativa (rimozione) romperebbe le serie storiche e
+          richiederebbe re-indexing costoso su tutti i consumatori.
+    """
+    if df is None or df.empty:
+        return df
+
+    LOW_RATIO_FLOOR = 0.75   # low non può essere < 75% di min(open, close)
+    HIGH_RATIO_CEIL = 1.25   # high non può essere > 125% di max(open, close)
+
+    body_low  = df[["open", "close"]].min(axis=1)
+    body_high = df[["open", "close"]].max(axis=1)
+
+    # Maschera barre corrotte
+    bad_low  = df["low"]  < body_low  * LOW_RATIO_FLOOR
+    bad_high = df["high"] > body_high * HIGH_RATIO_CEIL
+
+    n_bad = int(bad_low.sum() + bad_high.sum())
+    if n_bad > 0:
+        logger.warning(
+            f"sanitize_ohlcv: trovate {n_bad} barre con valori anomali "
+            f"({int(bad_low.sum())} low, {int(bad_high.sum())} high) — clamping applicato"
+        )
+
+    # Clamping: low → max(low, body_low * FLOOR); high → min(high, body_high * CEIL)
+    df = df.copy()
+    df.loc[bad_low,  "low"]  = body_low[bad_low]  * LOW_RATIO_FLOOR
+    df.loc[bad_high, "high"] = body_high[bad_high] * HIGH_RATIO_CEIL
+
+    return df
+
+
 class OHLCVBar:
     """Single OHLCV bar"""
     __slots__ = ("symbol", "timeframe", "timestamp", "open", "high", "low", "close", "volume")
@@ -331,6 +391,9 @@ class UniversalDataFeed:
         Fetch OHLCV data.
         limit=0 (default) → restituisce TUTTA la storia disponibile.
         limit>0 → restituisce le ultime N barre.
+
+        Il sanitize anti-glitch viene applicato centralmente qui,
+        coprendo ogni path (SQLite, pickle cache, download fresco).
         """
         asset_type = self.get_asset_type(symbol)
         store = self._get_ohlcv_store()
@@ -340,6 +403,10 @@ class UniversalDataFeed:
             """Applica il limite solo se > 0, altrimenti restituisce tutto."""
             return df if limit == 0 else df.tail(limit)
 
+        def _clean(df: pd.DataFrame) -> pd.DataFrame:
+            """Sanitize centralizzato: copre tutti i path (cache, DB, rete)."""
+            return sanitize_ohlcv(df)
+
         # ── 1. ccxt per crypto con API key ──────────────────────────────
         if asset_type == "crypto" and settings.broker.ccxt_api_key:
             ccxt_limit = limit if limit > 0 else 1000
@@ -347,7 +414,7 @@ class UniversalDataFeed:
             if df is not None:
                 if store:
                     asyncio.create_task(store.store(symbol, timeframe, df))
-                return df
+                return _clean(df)
 
         # ── 2. SQLite come cache primaria ───────────────────────────────
         if store:
@@ -363,7 +430,7 @@ class UniversalDataFeed:
                     db_df = await store.get_raw(symbol, timeframe, limit)
                     if db_df is not None:
                         logger.debug(f"SQLite hit: {symbol} {timeframe} ({len(db_df)} bars, age {age})")
-                        return db_df
+                        return _clean(db_df)
                 else:
                     # Dati obsoleti → aggiornamento incrementale
                     logger.info(f"Incremental update: {symbol} {timeframe} since {last_ts_naive.date()}")
@@ -372,7 +439,7 @@ class UniversalDataFeed:
                         await store.store(symbol, timeframe, df_new)
                     db_df = await store.get_raw(symbol, timeframe, limit)
                     if db_df is not None:
-                        return db_df
+                        return _clean(db_df)
 
         # ── 3. Primo download: scarica l'intera storia ──────────────────
         logger.info(f"First download (full history): {symbol} {timeframe}")
@@ -380,13 +447,14 @@ class UniversalDataFeed:
         if df is not None:
             if store:
                 await store.store(symbol, timeframe, df)
-            return _tail(df)
+            return _clean(_tail(df))
 
         # ── 4. Fallback: rispetta il limit originale (0 = storia completa)
         df = await self.yf_feed.fetch(symbol, timeframe, limit)
         if df is not None:
             if store:
                 asyncio.create_task(store.store(symbol, timeframe, df))
+            return _clean(df)
         return df
 
     async def _persist(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
