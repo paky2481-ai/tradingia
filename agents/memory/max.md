@@ -34,11 +34,11 @@
 
 ## Task aperti
 
-- [ ] **PUNTO DI RIPARTENZA**: scegliere prossima fase tra:
-   - Fase E — Pulizia: fix Pattern recognition + unifica 2 watchlist + rimuovi data_panel
-   - Fase B — Backend visibile polish: indicatore "engine sta scansionando X"
+- [ ] **PUNTO DI RIPARTENZA (prossima sessione)**: **Fase E — pulizia** già scelta come prossimo step (utente: "continua"). Primo passo NON ancora fatto: indagine read-only per mappare (1) le 2 watchlist duplicate — `WatchlistPanel` atomico vs eventuale watchlist interna a un workspace; (2) `data_panel.py` — verificare se è orfano e rimuovibile; (3) stato Pattern recognition — come `PatternPanel` riceve i dati, segnale `pattern_alert` SignalBus, cosa è rotto/scollegato. Poi delegare i fix mirati.
+- [ ] Altre fasi aperte (dopo Fase E):
+   - Fase B — Backend visibile: indicatore "engine sta scansionando X"
    - Fase D resto — auto-download al primo click simbolo non in cache
-   - Bridge tick-live: collegare `ChartPanel.update_live_tick()` al SignalBus
+   - Bridge tick-live — collegare `ChartPanel.update_live_tick()` al SignalBus
 - [ ] Validazione statistica pattern recognition (Tom + Chloe) — task strategico, da rivalutare dopo refactor GUI
 
 ## Workflow
