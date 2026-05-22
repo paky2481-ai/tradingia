@@ -5,6 +5,11 @@ Extended with:
   - AutoConfig (hourly regime detection, indicator selection, param tuning)
   - MetaLearner (combines LSTM, GBM, cycle, fundamental into final signal)
   - Dynamic strategy selection per symbol based on market regime
+  - SignalRegistry (S2) — registry dei segnali pluggabili composabili.
+    Il registry è un thin layer ADDITIVO: non cambia il comportamento delle
+    6 strategie hardcoded né l'API pubblica di StrategyManager.
+    I TradeSignal prodotti dal registry vengono aggiunti (non sostituiti)
+    alla lista dei segnali prima dell'aggregazione.
 """
 
 import asyncio
@@ -21,6 +26,7 @@ from strategies.technical_strategy import (
     ScalpingStrategy,
 )
 from strategies.pattern_strategy import PatternStrategy
+from strategies.signal_registry import SignalRegistry
 from config.settings import settings
 from utils.logger import get_logger
 
@@ -31,6 +37,10 @@ class StrategyManager:
     """
     Runs all active strategies on incoming market data, aggregates signals,
     and applies AI meta-learning to produce the final recommendation.
+
+    Internamente contiene un SignalRegistry per i segnali pluggabili (S2).
+    L'API pubblica (evaluate, evaluate_all, get_auto_config_result,
+    run_analysis) non cambia — orchestrator.py non deve essere toccato.
     """
 
     def __init__(self):
@@ -44,9 +54,29 @@ class StrategyManager:
             "pattern_recognition": PatternStrategy(timeframe=settings.primary_timeframe),
         }
 
+        # S2 — registry dei segnali pluggabili (inizialmente vuoto)
+        self._signal_registry: SignalRegistry = SignalRegistry(
+            default_timeframe=settings.primary_timeframe,
+        )
+
         # Lazy-load AutoConfig to avoid heavy imports at startup
         self._auto_config = None
-        logger.info(f"Strategy manager loaded {len(self._strategy_map)} strategies")
+        logger.info(
+            "Strategy manager loaded %d strategies + SignalRegistry (S2)",
+            len(self._strategy_map),
+        )
+
+    # ── Accesso pubblico al registry (per GUI, test, configurazione) ──────
+
+    @property
+    def signal_registry(self) -> SignalRegistry:
+        """
+        Espone il SignalRegistry per la GUI e i test.
+
+        La GUI può registrare nuovi segnali, cambiare pesi, abilitare/disabilitare
+        tramite questo handle senza toccare la logica interna del manager.
+        """
+        return self._signal_registry
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -112,6 +142,20 @@ class StrategyManager:
                         all_signals.append(s)
             except Exception as e:
                 logger.error(f"Strategy {strategy.name} error on {symbol}: {e}")
+
+        # ── Signal Registry (S2) — segnali pluggabili PER_ASSET ──────────
+        if len(self._signal_registry) > 0:
+            try:
+                registry_signals = await asyncio.to_thread(
+                    self._signal_registry.compose_per_asset, symbol, primary_df
+                )
+                for s in registry_signals:
+                    if self._signal_registry._score_threshold <= abs(
+                        s.metadata.get("score", 0.0)
+                    ):
+                        all_signals.append(s)
+            except Exception as e:
+                logger.error(f"SignalRegistry PER_ASSET error on {symbol}: {e}")
 
         aggregated = self._aggregate(all_signals)
 

@@ -69,6 +69,41 @@ Tom + Chloe hanno validato se il pattern recognition ha un edge economico reale.
 
 ---
 
+## 🚧 Sprint attivo (2026-05-21): Framework modulare di segnali + motore di esecuzione disciplinato
+
+**Decisione utente (2026-05-21):** *"Implementiamo questi due [momentum + mean reversion] facendo prima un protocollo di validazione, ma alla fine implementa tutto in modo tale che io possa mettere e togliere determinati segnali da una strategia ed effettuare backtest e ordini in automatico."* + *"Quello che rende questi programmi da provare è la mancanza del fattore umano: ottima gestione del rischio e del portafoglio e i tempi di entrata/uscita — su questo deve basarsi il motore principale."*
+
+**Visione consolidata da Max:** due layer distinti.
+- **Signal layer** — ogni sistema (momentum, mean reversion, pattern declassati, indicatori) è un plugin `Signal` attivabile/disattivabile con un peso. L'utente compone strategie liberamente.
+- **Execution layer (IL MOTORE PRINCIPALE)** — risk management + portfolio management + timing entrata/uscita, disciplinato e senza emozioni. È qui che vive il valore della macchina vs l'umano. I segnali sono *input*; il motore di esecuzione è il cuore.
+- Caveat onesto registrato: la disciplina di esecuzione è condizione **necessaria ma non sufficiente** — moltiplica un edge esistente, non lo crea. Serve almeno un segnale con edge non-negativo.
+
+### Stato fasi
+
+- [x] **S0 — Audit architettura** (Paky, 2026-05-21). `BaseStrategy` ABC riusabile come base di `Signal` (`generate_signals` già compatibile); `TradeSignal` ha già confidence/direction/metadata. `Backtester.run()` già generico. **Rischio #1**: due engine paralleli (`TradingEngine` GUI vs `TradingOrchestrator`) non condividono stato → da consolidare su uno solo, che diventa il motore di esecuzione. `TrendStrategy4H`/`RangeStrategy1H` fuori gerarchia (`compute()` + `Signal` locale) → adapter. `StrategyManager` ha dict statico senza pesi espliciti.
+- [x] **S1 — Protocollo di validazione** (Tom + Chloe, 2026-05-21). Consolidato in `docs/VALIDATION_PROTOCOL.md`: 11 sezioni, 8 criteri PASS/FAIL per segnale + 8 per ensemble, killer criteria K1-K5, costi reali (financing CFD, borrow cost), soglia momentum 1.8%/mese, walk-forward 60/10/30, DSR + Hansen SPA + FDR.
+- [x] **S2 — SignalRegistry + interfaccia Signal** (Tom + Paky, 2026-05-21). Tom: `strategies/signal_base.py` — ABC `Signal`, `SignalOutput` (score [-1,+1], confidence [0,1]), `SignalScope` (PER_ASSET/CROSS_ASSET/PAIR), adapter `SignalStrategy` per retrocompatibilità col `Backtester`. Paky: `strategies/signal_registry.py` — register/unregister/set_weight/set_enabled, `compose()` con dispatch per scope, formula ensemble pesata, persistenza QSettings; `StrategyManager` → thin wrapper (API invariata); +2 segnali SignalBus. Quality gate PASS (7 test registry + import). Consolidamento engine SCORPORATO: piano in `docs/ENGINE_CONSOLIDATION.md` (2 fasi), parte solo dopo review Max.
+- [x] **S3 ROUND 3 — definitivo, MOMENTUM FAIL pulito** (2026-05-22). `scripts/validate_signals_round3.py`, eseguito e supervisionato da Max. Le 3 correzioni verificate nel codice: outer join (panel 2010-2026 intero, niente amputazione), criterio baseline al posto del DSR rotto, n_configs=27 (gradi di libertà di tutti e 3 i round contati). Split: IS 2010-2019 multi-regime, VAL 2019-2021, OOS 2021-2025. Risultato OOS: **Sharpe netto 0.157, MDD 35.5%, CAGR +1.16%/anno, WF stability 60%, 6/7 criteri gate FAIL**. Baseline 500 portafogli casuali: E[Sharpe]=-0.10, P95=+0.58 → il segnale (0.157) è dentro la nuvola del caso. **Verdetto definitivo: il momentum cross-sectional non ha edge dimostrabile.** Con questo, tutte e 3 le fonti di alpha esplorate (pattern, pairs, momentum) sono bocciate con rigore. La caccia all'alpha via segnali predittivi semplici è conclusa.
+- [~] **S3 ROUND 2** (2026-05-21). Tom: `scripts/validate_signals_round2.py`, universi congelati `docs/ROUND2_UNIVERSE.md` (42 ETF + 14 coppie), protocollo §12/§13 applicato. Esito grezzo: entrambi FAIL. **Supervisione Max round 2**: (1) **PAIRS — FAIL robusto e definitivo**: 14 coppie, screening cointegrazione su IS con storia piena per coppia (fatto bene), FDR fa passare solo QQQ/QQQM (arbitraggio sub-barra, HL 0.3gg, non tradabile) e HYG/SPY (5 trade OOS, non interpretabile); Hansen SPA FAIL. Il pairs trading su questo universo non ha edge — chiuso. (2) **MOMENTUM — round 2 viziato, verdetto NON valido**: `build_panel()` usa inner join (`index.intersection`) su 42 ETF → XLC (IPO 2018) tronca l'intero panel al 2018-06-19; 40 ETF con storia dal 2010 amputati di 8 anni, contro l'avviso esplicito di Chloe in `ROUND2_UNIVERSE.md`. L'IS risultante (2018-2022) è quasi interamente il crash COVID — caso peggiore per il momentum. La griglia "16 config tutte negative in IS" è prodotta da un IS contaminato. Inoltre C7/DSR resta rotto (sempre PASS con n_obs grande). Terzo round del momentum viziato (round 1: criterio C1 inadatto; round 2: panel amputato). Decisione strategica con l'utente.
+- [~] **S3 — Segnali implementati, validazione + supervisione Max** (2026-05-21, round 1). Tom: `strategies/signals/momentum_cross_sectional.py`, `strategies/signals/pairs_mean_reversion.py`, `scripts/validate_signals.py`. Esito grezzo Tom: entrambi FAIL. **Supervisione critica di Max sul codice** (richiesta utente): nessun look-ahead bias (lag corretti). Ma 3 rilievi metodologici: (1) **C1 mal-specificato per segnali always-in** — il momentum è in posizione il 96% del tempo, i suoi "trade" sono partizioni mensili arbitrarie; il CI su 53 osservazioni boccia un segnale che il DSR sugli stessi 1132 rendimenti daily dichiara significativo. (2) **DSR depotenziato**: `n_configs=1` → nessuna deflazione reale, C7 diventa un t-test; `top_quantile=0.30` ≠ default `0.20` indica scelte di parametro non tracciate. (3) **Pairs: testato un solo pair** (SPY/QQQ) → FAIL solido e ben spiegato (rottura cointegrazione era-Mag7) ma NON è un verdetto sul pairs trading come classe. Verdetto rivisto: pairs SPY/QQQ bocciato; momentum NON equiparabile ai pattern (Sharpe netto 0.72, batte 7× la baseline casuale) — merita un round 2 con protocollo corretto. Decisione strategica aperta con l'utente.
+### 🔀 PIVOT (2026-05-22) — dal segnale all'esecuzione
+
+**Verdetto della caccia all'alpha**: pattern + pairs + momentum tutti bocciati con rigore. Gli edge predittivi semplici su dati di prezzo pubblici non esistono per un retail. Decisione utente: *"la matematica basta, pivotiamo"* (ensemble non salva — `E[combo] = media degli E[segnale] ≤ 0`).
+
+**Nuovo obiettivo del sistema**: NON prevedere il mercato. Catturare i premi per il rischio (equity risk premium, diversificazione) in modo più disciplinato di un umano emotivo. Onesto, costruibile, valido come strumento di studio e paper trading.
+
+S4/S5 del piano segnali sono ASSORBITE nel nuovo piano "Motore di esecuzione disciplinato":
+
+- [x] **E1 — Design del motore** (Chloe + Tom → Max, 2026-05-22). Consolidato in `docs/EXECUTION_ENGINE_DESIGN.md`. Universo 8 ETF all-weather, allocazione ERC, covarianza Ledoit-Wolf, vol targeting UNLEVERED (Max ha risolto il conflitto Chloe vs Tom a favore di Chloe — niente leva per contesto retail), circuit breaker lineare a tratti, filtro regime reattivo. Vol target scelto dall'utente: **12%** (profilo intermedio).
+- [ ] **E2 — Motore di allocazione** (Tom + Paky). Risk parity / ERC + vol targeting + ribilanciamento + circuit breaker drawdown.
+- [ ] **E3 — Backtest del motore** (Paky). Non per "edge" ma per verificare cattura efficiente del premio per il rischio: Sharpe, drawdown controllato, robustezza multi-regime.
+- [ ] **E4 — Consolidamento engine + esecuzione automatica paper** (Paky). Qui entra `docs/ENGINE_CONSOLIDATION.md`.
+- [ ] **E5 — GUI allocazione + monitoraggio rischio** (Marco + Paky).
+
+Il framework S0-S2 (`SignalRegistry`, interfaccia `Signal`) NON è sprecato: i segnali esistenti restano come moduli a peso basso/zero, e l'infrastruttura regge il nuovo scopo.
+
+---
+
 ## 🎨 Fase 1.5 — Polish difetti gate review (PROSSIMO STEP)
 
 Difetti identificati nello screenshot del gate review (2026-05-14, app live su Windows). Organizzati in 3 ondate per impatto/effort.

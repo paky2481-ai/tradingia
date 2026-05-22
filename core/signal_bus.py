@@ -222,6 +222,10 @@ class _BusQtEmitter(QObject):
     # Fase A.1 — simbolo correntemente scansionato dal backend
     current_scan_symbol = pyqtSignal(str, str)     # (symbol_yf, loop_name)
 
+    # Signal Registry — S2
+    registry_changed = pyqtSignal()                # segnale registrato/rimosso/abilitato
+    weight_updated   = pyqtSignal(str, float)      # (signal_id, new_weight)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Signal Bus Singleton
@@ -306,6 +310,16 @@ class SignalBus:
     def emit_current_scan_symbol(self, symbol: str, loop_name: str):
         """Emette il simbolo che il backend sta elaborando adesso (Fase A.1)."""
         self.qt.current_scan_symbol.emit(symbol, loop_name)
+
+    # ── S2: Signal Registry ───────────────────────────────────────────────
+
+    def emit_registry_changed(self):
+        """Segnale registrato/rimosso/abilitato nel SignalRegistry."""
+        self.qt.registry_changed.emit()
+
+    def emit_weight_updated(self, signal_id: str, weight: float):
+        """Peso di un segnale aggiornato nel SignalRegistry."""
+        self.qt.weight_updated.emit(signal_id, float(weight))
 
     # ── GUI → Engine ───────────────────────────────────────────────────────
 

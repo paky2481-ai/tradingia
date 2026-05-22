@@ -15,6 +15,8 @@
 - 2026-05-20: **Fase E — pulizia codice morto**: rimossi `data_panel.py`, `data_panel.ui`, `analysis.py` (shim). `PatternObserver` espone property pubblica `observations` (snapshot sincrono di `_obs` per QTimer GUI); `pattern_panel._poll_observer` usa la property invece di `._obs`. Commit `5b1fbed`.
 - 2026-05-20: **Fase D — loading feedback ChartPanel**: aggiunto `StatusDot` nella selector bar; `_empty_label` aggiornabile runtime; 3 helper `_set_loading_state`/`_set_idle_state`/`_set_error_state`; 2 nuove chiavi i18n IT+EN (`chart.loading_symbol`, `chart.error_symbol`). Non committato (in attesa validazione Max).
 - 2026-05-20: **Fase B — Backend visibile**: `AppState.current_scan_symbol_changed` + `set_scan_symbol`/`clear_scan_symbol` + bridge in `connect_signal_bus`. `_ScanChip` nella TopBar (dopo engine btn, prima chip trader): StatusDot pulsante + label simbolo + loop name. Si nasconde quando engine fermo o idle >5s. Non committato (in attesa validazione Max).
+- 2026-05-20: **Polish empty-state ChartPanel** (scenario a): `chart.empty_state` IT+EN aggiornata — rimosso riferimento a "Carica Dati Storici" (pulsante rimosso in Fase D), testo ora neutro "Seleziona uno strumento...". Commit `5a63415`.
+- 2026-05-21: **S2 — Signal Registry**: creato `strategies/signal_registry.py` (SignalRegistry: register/unregister, set_weight/set_enabled, compose PER_ASSET/CROSS_ASSET/PAIR, to_dict/from_dict); `StrategyManager` refactored con thin wrapper + property `signal_registry`; `core/signal_bus.py` + `registry_changed`/`weight_updated` Qt signals; `docs/ENGINE_CONSOLIDATION.md` piano in due tempi. QG: PASS su tutti i moduli.
 
 ## Lezioni apprese (permanenti)
 
@@ -40,6 +42,7 @@
 ## Task aperti
 
 - [ ] DockArea drag-and-drop con pyqtgraph (oggi: workspace switching invece di dock) — eventuale, non prioritario
+- [ ] Engine Consolidation Fase 1 (EngineAdapter ABC) — in attesa approvazione Max di `docs/ENGINE_CONSOLIDATION.md`
 
 ## Workflow
 
